@@ -10,17 +10,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
-  Modal,
   ActivityIndicator,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types/profile';
-import {
-  createNeumorphicCard,
-  createNeumorphicButton,
-  createNeumorphicInput,
-  NeumorphicTextStyles,
-} from '../lib/neumorphicStyles';
+import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { Colors } from '../lib/colors';
 
 interface AuthScreenProps {
@@ -28,754 +22,726 @@ interface AuthScreenProps {
 }
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
-  const styles = createStyles();
+  // Main state
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Signup form fields
+  // Signup steps: 1=Basic Info, 2=Site ID, 3=Credentials & OTP
+  const [signupStep, setSignupStep] = useState(1);
+  
+  // Step 1: Basic Info
   const [fullName, setFullName] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [role, setRole] = useState<Profile['role']>('public');
   const [organization, setOrganization] = useState('');
   const [location, setLocation] = useState('');
+  
+  // Step 2: Site ID
   const [siteId, setSiteId] = useState('');
-
-  // OTP related state
-  const [showOtpModal, setShowOtpModal] = useState(false);
+  
+  // Step 3: Credentials
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
-
-  // Role dropdown state
+  const [showOtpField, setShowOtpField] = useState(false);
+  
+  // Login
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  
+  // UI state
+  const [showGenderDropdown, setShowGenderDropdown] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
 
-  const roles: { value: Profile['role']; label: string; description: string }[] = [
-    { 
-      value: 'central_analyst', 
-      label: 'Central Analyst', 
-      description: 'CWC headquarters staff for data analysis and policy decisions'
-    },
-    { 
-      value: 'supervisor', 
-      label: 'Supervisor', 
-      description: 'Regional supervisors managing multiple monitoring sites'
-    },
-    { 
-      value: 'field_personnel', 
-      label: 'Field Personnel', 
-      description: 'On-ground staff taking water level readings at monitoring sites'
-    },
-    { 
-      value: 'public', 
-      label: 'Public User', 
-      description: 'General public contributing to water level monitoring'
-    },
+  const roles = [
+    { value: 'central_analyst', label: 'Central Analyst', description: 'CWC headquarters staff' },
+    { value: 'supervisor', label: 'Supervisor', description: 'Regional supervisors' },
+    { value: 'field_personnel', label: 'Field Personnel', description: 'On-ground staff' },
+    { value: 'public', label: 'Public User', description: 'General public' },
+  ] as const;
+
+  const genders = [
+    { value: 'male', label: 'Male' },
+    { value: 'female', label: 'Female' },
+    { value: 'other', label: 'Other' }
   ];
 
-  const isValidEmail = (text: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
+  const isValidEmail = (text: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
+  const isValidPhone = (text: string) => /^[\+]?[1-9][\d]{0,15}$/.test(text.replace(/[\s\-\(\)]/g, ''));
+  
+  // Step validations
+  const validateStep1 = () => {
+    if (!fullName.trim() || !organization.trim() || !location.trim()) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return false;
+    }
+    return true;
   };
 
-  const handleAuth = async () => {
-    if (isLogin) {
-      // For login, only use email (remove phone login for now)
-      if (!email || !password) {
-        Alert.alert('Error', 'Please enter email and password');
-        return;
-      }
-      if (!isValidEmail(email)) {
-        Alert.alert('Error', 'Please enter a valid email address');
-        return;
-      }
-    } else {
-      if (!email || !password || !fullName || !organization || !location) {
-        Alert.alert('Error', 'Please fill in all required fields');
-        return;
-      }
-      if (!isValidEmail(email)) {
-        Alert.alert('Error', 'Please enter a valid email address');
-        return;
-      }
-      if (role === 'field_personnel' && !siteId) {
-        Alert.alert('Error', 'Site ID is required for field personnel');
-        return;
-      }
+  const validateStep2 = () => {
+    if (role === 'field_personnel' && !siteId.trim()) {
+      Alert.alert('Error', 'Site ID is required for field personnel');
+      return false;
     }
+    return true;
+  };
+
+  const validateStep3 = () => {
+    if (!email.trim() || !phone.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return false;
+    }
+    if (!isValidEmail(email)) {
+      Alert.alert('Error', 'Please enter a valid email');
+      return false;
+    }
+    if (!isValidPhone(phone)) {
+      Alert.alert('Error', 'Please enter a valid phone number');
+      return false;
+    }
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return false;
+    }
+    return true;
+  };
+
+  // Navigation functions
+  const handleNextStep = () => {
+    if (signupStep === 1 && validateStep1()) {
+      setSignupStep(2);
+    } else if (signupStep === 2 && validateStep2()) {
+      setSignupStep(3);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (signupStep > 1) setSignupStep(signupStep - 1);
+  };
+
+  // Authentication functions - using old working approach
+  const handleGetOTP = async () => {
+    if (!validateStep3()) return;
 
     setLoading(true);
-    
     try {
-      if (isLogin) {
-        // Login with email only
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (error) {
-          Alert.alert('Login Error', error.message);
-        } else {
-          onAuthSuccess();
-        }
-      } else {
-        // First create user with password for future logins
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-              role,
-              organization,
-              location,
-              phone,
-              site_id: role === 'field_personnel' ? siteId : null,
-            }
+      console.log('Attempting to sign up user with email:', email);
+      
+      // Use old working approach: signUp with user metadata
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: fullName,
+            phone: phone,
+            role: role,
+            organization: organization,
+            location: location,
+            site_id: role === 'field_personnel' ? (siteId || null) : null,
           }
-        });
-
-        if (signUpError) {
-          Alert.alert('Sign Up Error', signUpError.message);
-          return;
         }
-
-        // Then send OTP for verification (without creating another user)
-        const { error: otpError } = await supabase.auth.signInWithOtp({
-          email: email,
-        });
-        
-        if (otpError) {
-          Alert.alert('OTP Error', otpError.message);
-        } else {
-          setUserEmail(email);
-          setShowOtpModal(true);
-        }
+      });
+      
+      if (error) {
+        console.error('Signup error:', error);
+        Alert.alert('Error', error.message);
+        return;
       }
-    } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
-      console.error('Auth error:', error);
+
+      console.log('Signup response with metadata:', { user: data.user, session: data.session });
+
+      if (data.user) {
+        // Always require email verification - no auto-confirmation
+        console.log('User created with metadata, email verification required');
+        setShowOtpField(true);
+        Alert.alert('Success', 'Please check your email...');
+      }
+    } catch (error: any) {
+      console.error('OTP request error:', error);
+      Alert.alert('Error', 'Failed to send OTP. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOtpVerification = async () => {
+  const handleRegister = async () => {
     if (!otpCode || otpCode.length !== 6) {
       Alert.alert('Error', 'Please enter a valid 6-digit OTP');
       return;
     }
 
-    setOtpLoading(true);
-    
+    setLoading(true);
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: userEmail,
+      // User already created in handleGetOTP with metadata, just verify the OTP
+
+      // If magic link was sent successfully, verify with the OTP code
+      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+        email,
         token: otpCode,
-        type: 'email'
+        type: 'signup'
       });
-      
-      if (error) {
-        Alert.alert('OTP Error', error.message);
-      } else if (data.user) {
-        // Check if profile already exists (might be created by trigger)
-        const { error: profileCheckError } = await supabase
+
+      if (verifyError) {
+        console.error('OTP verification error:', verifyError);
+        Alert.alert('Error', verifyError.message);
+        return;
+      }
+
+      if (verifyData.user && verifyData.session) {
+        console.log('OTP verified successfully for user:', verifyData.user.email);
+        console.log('User metadata:', verifyData.user.user_metadata);
+
+        // Create profile using the metadata from auth.user
+        const { error: profileError } = await supabase
           .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
+          .insert({
+            id: verifyData.user.id,
+            full_name: verifyData.user.user_metadata.display_name || fullName,
+            email: verifyData.user.email,
+            phone: verifyData.user.user_metadata.phone || phone,
+            gender,
+            role: verifyData.user.user_metadata.role || role,
+            organization: verifyData.user.user_metadata.organization || organization,
+            location: verifyData.user.user_metadata.location || location,
+            site_id: verifyData.user.user_metadata.site_id || (role === 'field_personnel' ? siteId || null : null),
+            is_active: true,
+            last_login_at: new Date().toISOString(),
+          });
 
-        if (profileCheckError && profileCheckError.code === 'PGRST116') {
-          // Profile doesn't exist, create it
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              full_name: fullName,
-              role,
-              organization,
-              location,
-              site_id: role === 'field_personnel' ? siteId : null,
-              created_at: new Date().toISOString(),
-              is_active: true,
-            });
-
-          if (profileError) {
-            console.error('Profile creation error:', profileError);
-          }
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          Alert.alert('Error', `Profile creation failed: ${profileError.message}`);
+          return;
         }
 
-        setShowOtpModal(false);
-        setShowSuccessModal(true);
-        setOtpCode('');
+        console.log('Profile created successfully for user:', verifyData.user.email);
+        
+        // The user is now authenticated with a complete profile
+        Alert.alert('Success', 'Account created successfully!', [
+          { text: 'OK', onPress: onAuthSuccess }
+        ]);
       }
-    } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
-      console.error('OTP verification error:', error);
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      Alert.alert('Error', 'Registration failed. Please try again.');
     } finally {
-      setOtpLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleSuccessNext = () => {
-    setShowSuccessModal(false);
-    // Reset form
-    setEmail('');
-    setPassword('');
-    setFullName('');
-    setOrganization('');
-    setLocation('');
-    setPhone('');
-    setSiteId('');
-    setIsLogin(true);
-    onAuthSuccess();
+  const handleLogin = async () => {
+    if (!loginIdentifier.trim() || !loginPassword.trim()) {
+      Alert.alert('Error', 'Please enter email/phone and password');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let loginEmail = loginIdentifier;
+
+      // If phone number, find email first
+      if (isValidPhone(loginIdentifier)) {
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('phone', loginIdentifier)
+          .single();
+
+        if (error || !profileData) {
+          Alert.alert('Error', 'No account found with this phone number');
+          return;
+        }
+        loginEmail = profileData.email;
+      }
+
+      // Login
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
+      });
+
+      if (error) {
+        Alert.alert('Error', error.message);
+        return;
+      }
+
+      if (data.user) {
+        // Update last login
+        await supabase
+          .from('profiles')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('id', data.user.id);
+
+        console.log('User logged in successfully:', data.user.email);
+        onAuthSuccess();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerContainer}>
+        <View style={styles.logoContainer}>
           <Image 
-            source={require('../assets/icon.png')} 
+            source={require('../assets/icons/HydroSnap_logo.png')} 
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.subtitle}>
-            {isLogin ? 'Welcome Back!' : 'Join Water Level Monitoring'}
-          </Text>
-          <Text style={styles.description}>
-            Secure River Water Level Data Collection
-          </Text>
+          <Text style={[NeumorphicTextStyles.heading, styles.appTitle]}>HydroSnap</Text>
         </View>
 
-        <View style={styles.formContainer}>
+        <View style={[styles.card, createNeumorphicCard()]}>
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tab, isLogin && styles.activeTab, createNeumorphicCard({ size: 'small' })]}
+              onPress={() => {
+                setIsLogin(true);
+                setSignupStep(1);
+              }}
+            >
+              <Text style={[styles.tabText, isLogin && styles.activeTabText]}>
+                Login
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tab, !isLogin && styles.activeTab, createNeumorphicCard({ size: 'small' })]}
+              onPress={() => {
+                setIsLogin(false);
+                setSignupStep(1);
+              }}
+            >
+              <Text style={[styles.tabText, !isLogin && styles.activeTabText]}>
+                Sign Up
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Login Form */}
           {isLogin ? (
-            <>
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your email"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                />
-              </View>
+            <View style={styles.formContainer}>
+              <Text style={styles.title}>Welcome Back</Text>
+              
+              <TextInput
+                style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                placeholder="Email or Phone Number"
+                value={loginIdentifier}
+                onChangeText={setLoginIdentifier}
+                autoCapitalize="none"
+                placeholderTextColor={Colors.textSecondary}
+              />
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoComplete="password"
-                />
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Full Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your full name"
-                  value={fullName}
-                  onChangeText={setFullName}
-                  autoCapitalize="words"
-                />
-              </View>
+              <TextInput
+                style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                placeholder="Password"
+                value={loginPassword}
+                onChangeText={setLoginPassword}
+                secureTextEntry
+                placeholderTextColor={Colors.textSecondary}
+              />
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Email Address *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your email address"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Phone Number</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your phone number"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  autoComplete="tel"
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Role *</Text>
-                <TouchableOpacity
-                  style={styles.dropdownButton}
-                  onPress={() => setShowRoleDropdown(!showRoleDropdown)}
-                >
-                  <View style={styles.dropdownContent}>
-                    <View style={styles.dropdownLeft}>
-                      <Text style={styles.dropdownText}>
-                        {roles.find(r => r.value === role)?.label || 'Select Role'}
-                      </Text>
-                      <Text style={styles.dropdownDescription}>
-                        {roles.find(r => r.value === role)?.description}
-                      </Text>
-                    </View>
-                    <Text style={styles.dropdownArrow}>
-                      {showRoleDropdown ? '▲' : '▼'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                
-                {showRoleDropdown && (
-                  <View style={styles.dropdownList}>
-                    {roles.map((roleOption) => (
-                      <TouchableOpacity
-                        key={roleOption.value}
-                        style={[
-                          styles.dropdownItem,
-                          role === roleOption.value && styles.dropdownItemSelected,
-                        ]}
-                        onPress={() => {
-                          setRole(roleOption.value);
-                          setShowRoleDropdown(false);
-                        }}
-                      >
-                        <View style={styles.dropdownItemContent}>
-                          <Text
-                            style={[
-                              styles.dropdownItemText,
-                              role === roleOption.value && styles.dropdownItemTextSelected,
-                            ]}
-                          >
-                            {roleOption.label}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.dropdownItemDescription,
-                              role === roleOption.value && styles.dropdownItemDescriptionSelected,
-                            ]}
-                          >
-                            {roleOption.description}
-                          </Text>
-                        </View>
-                        {role === roleOption.value && (
-                          <Text style={styles.checkmark}>✓</Text>
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+              <TouchableOpacity
+                style={[styles.button, createNeumorphicCard()]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color={Colors.deepSecurityBlue} />
+                ) : (
+                  <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.deepSecurityBlue }]}>
+                    Login
+                  </Text>
                 )}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Organization *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g., Central Water Commission, State Irrigation Dept"
-                  value={organization}
-                  onChangeText={setOrganization}
-                  autoCapitalize="words"
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Location *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Your work location/region"
-                  value={location}
-                  onChangeText={setLocation}
-                  autoCapitalize="words"
-                />
-              </View>
-
-              {role === 'field_personnel' && (
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Site ID *</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* Signup Steps */
+            <View style={styles.stepContainer}>
+              {signupStep === 1 && (
+                <>
+                  <Text style={styles.stepTitle}>Step 1: Basic Information</Text>
+                  
                   <TextInput
-                    style={styles.input}
-                    placeholder="e.g., CWC-GAN-001, IRR-DEL-05"
+                    style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                    placeholder="Full Name *"
+                    value={fullName}
+                    onChangeText={setFullName}
+                    placeholderTextColor={Colors.textSecondary}
+                  />
+
+                  <TouchableOpacity
+                    style={[styles.dropdown, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                    onPress={() => setShowGenderDropdown(!showGenderDropdown)}
+                  >
+                    <Text style={styles.dropdownText}>
+                      {genders.find(g => g.value === gender)?.label || 'Select Gender *'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {showGenderDropdown && (
+                    <View style={[styles.dropdownList, createNeumorphicCard()]}>
+                      {genders.map((g) => (
+                        <TouchableOpacity
+                          key={g.value}
+                          style={styles.dropdownItem}
+                          onPress={() => {
+                            setGender(g.value as any);
+                            setShowGenderDropdown(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownItemText}>{g.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.dropdown, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                    onPress={() => setShowRoleDropdown(!showRoleDropdown)}
+                  >
+                    <Text style={styles.dropdownText}>
+                      {roles.find(r => r.value === role)?.label || 'Select Role *'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {showRoleDropdown && (
+                    <View style={[styles.dropdownList, createNeumorphicCard()]}>
+                      {roles.map((r) => (
+                        <TouchableOpacity
+                          key={r.value}
+                          style={styles.dropdownItem}
+                          onPress={() => {
+                            setRole(r.value);
+                            setShowRoleDropdown(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownItemText}>{r.label}</Text>
+                          <Text style={styles.roleDescription}>{r.description}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  <TextInput
+                    style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                    placeholder="Organization *"
+                    value={organization}
+                    onChangeText={setOrganization}
+                    placeholderTextColor={Colors.textSecondary}
+                  />
+
+                  <TextInput
+                    style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                    placeholder="Location *"
+                    value={location}
+                    onChangeText={setLocation}
+                    placeholderTextColor={Colors.textSecondary}
+                  />
+
+                  <TouchableOpacity
+                    style={[styles.button, createNeumorphicCard()]}
+                    onPress={handleNextStep}
+                  >
+                    <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.deepSecurityBlue }]}>
+                      Next
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {signupStep === 2 && (
+                <>
+                  <Text style={styles.stepTitle}>Step 2: Site Information</Text>
+                  
+                  <TextInput
+                    style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                    placeholder={role === 'field_personnel' ? 'Site ID *' : 'Site ID (Optional)'}
                     value={siteId}
                     onChangeText={setSiteId}
-                    autoCapitalize="characters"
+                    placeholderTextColor={Colors.textSecondary}
                   />
-                  <Text style={styles.helperText}>
-                    Enter the monitoring site ID assigned to you
+
+                  <Text style={styles.infoText}>
+                    {role === 'field_personnel' 
+                      ? 'Site ID is required for field personnel'
+                      : 'You can skip this step or update it later'
+                    }
                   </Text>
-                </View>
+
+                  <View style={styles.stepButtons}>
+                    <TouchableOpacity
+                      style={[styles.button, styles.backButton, createNeumorphicCard({ size: 'small' })]}
+                      onPress={handlePrevStep}
+                    >
+                      <Text style={[NeumorphicTextStyles.buttonSecondary, { color: Colors.textSecondary }]}>
+                        Back
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.button, createNeumorphicCard()]}
+                      onPress={handleNextStep}
+                    >
+                      <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.deepSecurityBlue }]}>
+                        Next
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {role !== 'field_personnel' && (
+                    <TouchableOpacity
+                      style={styles.skipButton}
+                      onPress={() => {
+                        setSiteId('');
+                        setSignupStep(3);
+                      }}
+                    >
+                      <Text style={styles.skipText}>Skip this step</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
               )}
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Password *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Create a strong password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoComplete="password"
-                />
-              </View>
-            </>
+              {signupStep === 3 && (
+                <>
+                  <Text style={styles.stepTitle}>Step 3: Account Details</Text>
+                  
+                  <TextInput
+                    style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                    placeholder="Email *"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholderTextColor={Colors.textSecondary}
+                  />
+
+                  <TextInput
+                    style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                    placeholder="Phone Number *"
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                    placeholderTextColor={Colors.textSecondary}
+                  />
+
+                  <TextInput
+                    style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                    placeholder="Password *"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    placeholderTextColor={Colors.textSecondary}
+                  />
+
+                  {!showOtpField ? (
+                    <TouchableOpacity
+                      style={[styles.button, createNeumorphicCard()]}
+                      onPress={handleGetOTP}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <ActivityIndicator color={Colors.deepSecurityBlue} />
+                      ) : (
+                        <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.deepSecurityBlue }]}>
+                          Get OTP
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : (
+                    <>
+                      <TextInput
+                        style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                        placeholder="Enter 6-digit OTP *"
+                        value={otpCode}
+                        onChangeText={setOtpCode}
+                        keyboardType="numeric"
+                        maxLength={6}
+                        placeholderTextColor={Colors.textSecondary}
+                      />
+
+                      <TouchableOpacity
+                        style={[styles.button, createNeumorphicCard()]}
+                        onPress={handleRegister}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <ActivityIndicator color={Colors.deepSecurityBlue} />
+                        ) : (
+                          <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.deepSecurityBlue }]}>
+                            Register
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.button, styles.backButton, createNeumorphicCard({ size: 'small' })]}
+                    onPress={handlePrevStep}
+                  >
+                    <Text style={[NeumorphicTextStyles.buttonSecondary, { color: Colors.textSecondary }]}>
+                      Back
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           )}
-
-          <TouchableOpacity
-            style={[styles.primaryButton, loading && styles.buttonDisabled]}
-            onPress={handleAuth}
-            disabled={loading}
-          >
-            <Text style={styles.primaryButtonText}>
-              {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Join HydroSnap'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.switchButton}
-            onPress={() => {
-              setIsLogin(!isLogin);
-              setShowRoleDropdown(false); // Close dropdown when switching
-              // Clear form when switching
-              setEmail('');
-              setPhone('');
-              setPassword('');
-              setFullName('');
-              setOrganization('');
-              setLocation('');
-              setSiteId('');
-            }}
-          >
-            <Text style={styles.switchText}>
-              {isLogin
-                ? "Don't have an account? "
-                : 'Already have an account? '}
-              <Text style={styles.switchTextBold}>
-                {isLogin ? 'Sign Up' : 'Sign In'}
-              </Text>
-            </Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* OTP Verification Modal */}
-      <Modal
-        visible={showOtpModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowOtpModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Enter Verification Code</Text>
-            <Text style={styles.modalSubtitle}>
-              We've sent a 6-digit verification code to {userEmail}
-            </Text>
-            
-            <View style={styles.otpContainer}>
-              <TextInput
-                style={styles.otpInput}
-                value={otpCode}
-                onChangeText={setOtpCode}
-                placeholder="000000"
-                keyboardType="numeric"
-                maxLength={6}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.primaryButton, otpLoading && styles.buttonDisabled]}
-              onPress={handleOtpVerification}
-              disabled={otpLoading}
-            >
-              {otpLoading ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Text style={styles.primaryButtonText}>Verify OTP</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setShowOtpModal(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Success Modal */}
-      <Modal
-        visible={showSuccessModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowSuccessModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.successIcon}>
-              <Text style={styles.successCheckmark}>✓</Text>
-            </View>
-            
-            <Text style={styles.modalTitle}>Account Created Successfully!</Text>
-            <Text style={styles.modalSubtitle}>
-              Your account has been created and verified. You can now start monitoring water levels with HydroSnap.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={handleSuccessNext}
-            >
-              <Text style={styles.primaryButtonText}>Start Monitoring</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </KeyboardAvoidingView>
   );
 }
 
-const createStyles = () => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.softLightGrey, // Use new Soft UI background
+    backgroundColor: Colors.softLightGrey,
   },
-  scrollContainer: {
+  scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 65,
-    paddingBottom: 30,
+    justifyContent: 'center',
+    padding: 20,
   },
-  headerContainer: {
+  logoContainer: {
     alignItems: 'center',
     marginBottom: 40,
   },
   logo: {
-    width: 150,
-    height: 150,
-    marginBottom: 0,
+    width: 80,
+    height: 80,
+    marginBottom: 10,
   },
-  subtitle: {
-    ...NeumorphicTextStyles.subheading,
-    textAlign: 'center',
-    marginBottom: 4,
+  appTitle: {
+    fontSize: 32,
+    color: Colors.deepSecurityBlue,
+    fontWeight: 'bold',
+  },
+  card: {
+    padding: 30,
+    borderRadius: 20,
+    marginBottom: 20,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginBottom: 30,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginHorizontal: 2,
+  },
+  activeTab: {
+    backgroundColor: Colors.aquaTechBlue + '20',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.textSecondary,
   },
-  description: {
-    ...NeumorphicTextStyles.bodySecondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
+  activeTabText: {
+    color: Colors.deepSecurityBlue,
   },
   formContainer: {
-    ...createNeumorphicCard({ size: 'large', borderRadius: 24 }),
-    padding: 30,
-    marginHorizontal: 5,
+    gap: 20,
   },
-  inputContainer: {
-    marginBottom: 20,
-    position: 'relative',
+  stepContainer: {
+    gap: 20,
   },
-  inputLabel: {
-    ...NeumorphicTextStyles.body,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 10,
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
     color: Colors.textPrimary,
+    marginBottom: 10,
+  },
+  stepTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: Colors.textPrimary,
+    marginBottom: 10,
   },
   input: {
-    ...createNeumorphicInput({ borderRadius: 14 }),
-    padding: 18,
+    height: 50,
+    paddingHorizontal: 15,
     fontSize: 16,
     color: Colors.textPrimary,
-    fontWeight: '500',
   },
-  helperText: {
-    ...NeumorphicTextStyles.caption,
-    marginTop: 8,
-    fontStyle: 'italic',
-    color: Colors.textSecondary,
-  },
-  // Dropdown styles
-  dropdownButton: {
-    ...createNeumorphicInput({ borderRadius: 14 }),
-    padding: 18,
-  },
-  dropdownContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  dropdownLeft: {
-    flex: 1,
+  dropdown: {
+    height: 50,
+    paddingHorizontal: 15,
+    justifyContent: 'center',
   },
   dropdownText: {
     fontSize: 16,
     color: Colors.textPrimary,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  dropdownDescription: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    lineHeight: 16,
-  },
-  dropdownArrow: {
-    fontSize: 16,
-    color: Colors.aquaTechBlue,
-    marginLeft: 10,
   },
   dropdownList: {
-    ...createNeumorphicCard({ size: 'medium', borderRadius: 16 }),
-    position: 'absolute',
-    top: 85,
-    left: 0,
-    right: 0,
-    maxHeight: 250,
-    zIndex: 1000,
+    marginTop: -10,
+    marginBottom: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  dropdownItemSelected: {
-    backgroundColor: Colors.aquaTechBlue + '20', // Soft tint
-  },
-  dropdownItemContent: {
-    flex: 1,
-  },
   dropdownItemText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
     color: Colors.textPrimary,
-    marginBottom: 2,
+    fontWeight: '600',
   },
-  dropdownItemTextSelected: {
-    color: Colors.deepSecurityBlue,
-  },
-  dropdownItemDescription: {
+  roleDescription: {
     fontSize: 12,
     color: Colors.textSecondary,
-    lineHeight: 16,
+    marginTop: 4,
   },
-  dropdownItemDescriptionSelected: {
-    color: Colors.aquaTechBlue,
-  },
-  checkmark: {
-    fontSize: 16,
-    color: Colors.aquaTechBlue,
-    fontWeight: 'bold',
-  },
-  primaryButton: {
-    ...createNeumorphicButton('primary', { size: 'large', borderRadius: 16 }),
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    marginTop: 15,
-  },
-  buttonDisabled: {
-    backgroundColor: Colors.textLight,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  primaryButtonText: {
-    ...NeumorphicTextStyles.buttonPrimary,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  switchButton: {
-    marginTop: 30,
+  button: {
+    height: 50,
+    borderRadius: 12,
     alignItems: 'center',
-    paddingVertical: 15,
-  },
-  switchText: {
-    ...NeumorphicTextStyles.body,
-    color: Colors.textSecondary,
-  },
-  switchTextBold: {
-    color: Colors.deepSecurityBlue,
-    fontWeight: 'bold',
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(26, 26, 26, 0.6)', // Darker overlay using new dark text color
     justifyContent: 'center',
+  },
+  stepButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 15,
+  },
+  backButton: {
+    flex: 0.4,
+    backgroundColor: Colors.lightShadow,
+  },
+  skipButton: {
     alignItems: 'center',
-    padding: 20,
+    marginTop: 10,
   },
-  modalContainer: {
-    ...createNeumorphicCard({ size: 'large', borderRadius: 28 }),
-    padding: 35,
-    width: '90%',
-    maxWidth: 400,
-    alignItems: 'center',
-  },
-  modalTitle: {
-    ...NeumorphicTextStyles.heading,
-    textAlign: 'center',
-    marginBottom: 15,
-    color: Colors.textPrimary,
-  },
-  modalSubtitle: {
-    ...NeumorphicTextStyles.body,
-    textAlign: 'center',
-    marginBottom: 30,
-    lineHeight: 24,
+  skipText: {
     color: Colors.textSecondary,
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
-  otpContainer: {
-    width: '100%',
-    marginBottom: 30,
-  },
-  otpInput: {
-    ...createNeumorphicInput({ borderRadius: 16 }),
-    padding: 24,
-    textAlign: 'center',
-    fontSize: 28,
-    letterSpacing: 12,
-    fontWeight: 'bold',
-    color: Colors.deepSecurityBlue,
-  },
-  cancelButton: {
-    marginTop: 20,
-    padding: 15,
-  },
-  cancelButtonText: {
-    ...NeumorphicTextStyles.body,
+  infoText: {
+    fontSize: 14,
     color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  successIcon: {
-    ...createNeumorphicCard({ size: 'medium', borderRadius: 50 }),
-    width: 90,
-    height: 90,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 25,
-    backgroundColor: Colors.validationGreen,
-  },
-  successCheckmark: {
-    color: Colors.white,
-    fontSize: 44,
-    fontWeight: 'bold',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
