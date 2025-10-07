@@ -6,7 +6,7 @@
 # 🌊 HydroSnap – Secure River Water Level Monitoring
 
 <p align="center">
-  <img src="assets/HydroSnap_logo.png" alt="HydroSnap Application logo" heigt=500 width=500>
+  <img src="assets/icons/HydroSnap_logo.png" alt="HydroSnap Application logo" heigt=500 width=500>
 </p>
 
 ---
