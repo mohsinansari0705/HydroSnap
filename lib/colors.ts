@@ -1,55 +1,71 @@
 /**
- * HydroSnap Color Palette - Soft UI/Neumorphism Theme
- * Centralized color constants for consistent theming across the application
+ * HydroSnap Color Palette - Modern UI Theme
+ * Inspired by the provided app designs with purple/blue gradients and soft aesthetics
  */
 
 export const Colors = {
-  // Soft UI Base Colors
-  softLightGrey: '#F0F4F8',     // Primary Base - Main background color for Neumorphic effect
-  deepSecurityBlue: '#194E78',  // Primary Brand - CTAs, Navigation, Main Headings
-  aquaTechBlue: '#70C3D3',      // Secondary Accent - Secondary buttons, Active tabs, Progress bars
-  alertRed: '#E95454',          // Danger/Warning - Geofence breach, Tamper alerts, Delete buttons
-  validationGreen: '#4CAF50',   // Success/Safe - Location validated, Success messages, Verified data
-  darkText: '#1A1A1A',          // Typography - Main body text and important labels
+  // Main Brand Colors (inspired by the purple/blue UI design)
+  softLightGrey: '#F5F6FA',     // Primary Base - Light background with slight purple tint
+  deepSecurityBlue: '#6366F1',  // Primary Brand - Modern indigo for CTAs, Navigation
+  aquaTechBlue: '#8B5CF6',      // Secondary Accent - Purple accent for highlights
+  alertRed: '#EF4444',          // Danger/Warning - Modern red for alerts
+  validationGreen: '#10B981',   // Success/Safe - Modern green for success states
+  darkText: '#1F2937',          // Typography - Darker text for better readability
+  
+  // Purple gradient colors (matching the UI design)
+  purpleStart: '#8B5CF6',       // Purple gradient start
+  purpleEnd: '#6366F1',         // Purple gradient end
+  pinkAccent: '#EC4899',        // Pink accent for special elements
   
   // Legacy colors for backward compatibility
-  primary: '#194E78',           // Same as deepSecurityBlue
-  secondary: '#70C3D3',         // Same as aquaTechBlue
-  tertiary: '#3273A8',          // Keeping for gradients
+  primary: '#6366F1',           // Updated to modern indigo
+  secondary: '#8B5CF6',         // Updated to purple
+  tertiary: '#3B82F6',          // Modern blue
   white: '#FFFFFF',             // Pure white
-  background: '#F0F4F8',        // Updated to Soft Light Grey
+  background: '#F5F6FA',        // Updated to soft light grey
   
-  // Neumorphic Shadow Colors
+  // Neumorphic Shadow Colors (updated for modern look)
   lightShadow: '#FFFFFF',       // Top/Left shadow for raised effect
-  darkShadow: '#D1D9E6',        // Bottom/Right shadow for depth
-  insetShadowLight: '#E6ECF3',  // Light inset shadow
-  insetShadowDark: '#C5D2E0',   // Dark inset shadow
+  darkShadow: '#E2E5E9',        // Bottom/Right shadow for depth
+  insetShadowLight: '#EAECEF',  // Light inset shadow
+  insetShadowDark: '#D4D7DB',   // Dark inset shadow
   
-  // Enhanced Gradients for Soft UI
-  primaryGradientStart: '#194E78',
-  primaryGradientEnd: '#70C3D3',
+  // Card backgrounds with gradient support
+  cardBackground: '#FFFFFF',    // White cards with shadows
+  cardGradientStart: '#FFFFFF', // Gradient card start
+  cardGradientEnd: '#F8FAFC',   // Gradient card end
   
-  // Status colors (updated to match new palette)
-  success: '#4CAF50',           // Updated to validation green
-  warning: '#FFA726',           // Softer orange for warnings
-  error: '#E95454',             // Updated to alert red
-  info: '#70C3D3',              // Using aqua tech blue for info
+  // Enhanced Gradients for Modern UI
+  primaryGradientStart: '#8B5CF6',  // Purple to indigo gradient
+  primaryGradientEnd: '#6366F1',
   
-  // Text colors (updated for better contrast on soft backgrounds)
-  textPrimary: '#1A1A1A',       // Updated to dark text
-  textSecondary: '#4A4A4A',     // Slightly lighter for secondary text
-  textLight: '#8A8A8A',         // Light gray for disabled/placeholder text
+  // Status colors (updated to modern palette)
+  success: '#10B981',           // Modern emerald green
+  warning: '#F59E0B',           // Modern amber
+  error: '#EF4444',             // Modern red
+  info: '#3B82F6',              // Modern blue
+  
+  // Text colors (updated for modern design)
+  textPrimary: '#1F2937',       // Dark gray for primary text
+  textSecondary: '#6B7280',     // Medium gray for secondary text
+  textLight: '#9CA3AF',         // Light gray for disabled/placeholder text
   textOnDark: '#FFFFFF',        // White text on dark backgrounds
   textOnPrimary: '#FFFFFF',     // White text on primary color
   
-  // Component specific colors (updated for Soft UI)
-  border: '#E0E7F0',            // Softer border color
-  borderFocus: '#70C3D3',       // Aqua tech blue for focused borders
-  shadow: '#00000015',          // Lighter shadow for Soft UI
-  overlay: '#00000040',         // Semi-transparent overlay
+  // Component specific colors (modern design system)
+  border: '#E5E7EB',            // Light border
+  borderFocus: '#8B5CF6',       // Purple focus border
+  shadow: '#00000008',          // Very light shadow for cards
+  overlay: '#00000060',         // Semi-transparent overlay
   
-  // Card and Surface colors
-  cardBackground: '#F0F4F8',    // Same as soft light grey for seamless cards
+  // Storage/file management colors (inspired by the file management UI)
+  storageBlue: '#3B82F6',       // Blue for storage elements
+  storageOrange: '#F97316',     // Orange for video/media
+  storagePink: '#EC4899',       // Pink for images
+  storageGreen: '#10B981',      // Green for files
+  storagePurple: '#8B5CF6',     // Purple for folders
+  
+  // Surface colors for layering
   surfaceElevated: '#F8FAFC',   // Slightly elevated surface
   surfaceDepressed: '#E8EEF4',  // Slightly depressed surface
 } as const;

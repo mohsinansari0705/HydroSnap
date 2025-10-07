@@ -1,6 +1,6 @@
 /**
- * Neumorphic/Soft UI Style Utilities for HydroSnap
- * Reusable style functions for consistent neumorphic design
+ * Modern Neumorphic/Soft UI Style Utilities for HydroSnap
+ * Enhanced reusable style functions for consistent modern design
  */
 
 import { ViewStyle, TextStyle } from 'react-native';
@@ -12,41 +12,49 @@ export interface NeumorphicStyleOptions {
   elevated?: boolean;
   depressed?: boolean;
   borderRadius?: number;
+  gradient?: boolean;
 }
 
 /**
- * Creates a neumorphic card style with double shadow effect
+ * Creates a modern neumorphic card style with subtle shadows
  */
 export const createNeumorphicCard = (options: NeumorphicStyleOptions = {}): ViewStyle => {
   const { size = 'medium', pressed = false, elevated = false, depressed = false, borderRadius } = options;
   
-  // Shadow distances based on size
+  // Modern shadow distances - more subtle
   const shadowDistance = {
-    small: 4,
-    medium: 6,
+    small: 2,
+    medium: 4,
+    large: 6,
+  };
+  
+  const elevation = {
+    small: 2,
+    medium: 4,
     large: 8,
   };
   
   const distance = shadowDistance[size];
-  const radius = borderRadius || (size === 'small' ? 12 : size === 'medium' ? 16 : 20);
+  const cardElevation = elevation[size];
+  const radius = borderRadius || (size === 'small' ? 8 : size === 'medium' ? 12 : 16);
   
   if (pressed || depressed) {
-    // Inset shadow effect for pressed/depressed state
+    // Modern inset effect with minimal shadows
     return {
       backgroundColor: Colors.cardBackground,
       borderRadius: radius,
-      shadowColor: Colors.insetShadowDark,
-      shadowOffset: { width: distance / 2, height: distance / 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: distance,
-      elevation: 0, // No elevation for inset effect
-      // Inner shadow simulation with border
-      borderWidth: 1,
-      borderColor: Colors.insetShadowLight,
+      shadowColor: Colors.darkShadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 0,
+      // Subtle border for definition
+      borderWidth: 0.5,
+      borderColor: Colors.border,
     };
   }
   
-  // Elevated neumorphic effect (default)
+  // Modern elevated card with clean shadows
   return {
     backgroundColor: Colors.cardBackground,
     borderRadius: radius,
@@ -54,7 +62,7 @@ export const createNeumorphicCard = (options: NeumorphicStyleOptions = {}): View
     shadowOffset: { width: distance, height: distance },
     shadowOpacity: 0.15,
     shadowRadius: distance * 1.5,
-    elevation: elevated ? distance : distance / 2,
+    elevation: elevated ? cardElevation : cardElevation / 2,
     // Add light shadow simulation with a subtle border
     borderWidth: 0.5,
     borderColor: Colors.lightShadow,
