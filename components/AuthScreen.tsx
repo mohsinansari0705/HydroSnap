@@ -16,12 +16,15 @@ import { supabase } from '../lib/supabase';
 import { Profile } from '../types/profile';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { Colors } from '../lib/colors';
+import { useAuth } from '../lib/AuthContext';
 
 interface AuthScreenProps {
   onAuthSuccess: () => void;
 }
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
+  const { refreshProfile, setIsRegistering } = useAuth(); // changed to include refreshProfile
+
   // Main state
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -39,12 +42,15 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   // Step 2: Site ID
   const [siteId, setSiteId] = useState('');
   
-  // Step 3: Credentials
+  // Step 3: Credentials & Password
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [showOtpField, setShowOtpField] = useState(false);
+  
+  // Password (collected before OTP now)
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   // Login
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -53,6 +59,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   // UI state
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [registrationInProgress, setRegistrationInProgress] = useState(false);
 
   const roles = [
     { value: 'central_analyst', label: 'Central Analyst', description: 'CWC headquarters staff' },
@@ -88,7 +95,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   };
 
   const validateStep3 = () => {
-    if (!email.trim() || !phone.trim() || !password.trim()) {
+    if (!email.trim() || !phone.trim() || !newPassword.trim() || !confirmPassword.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return false;
     }
@@ -100,8 +107,12 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       Alert.alert('Error', 'Please enter a valid phone number');
       return false;
     }
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return false;
+    }
+    if (newPassword.length < 12) {
+      Alert.alert('Error', 'Password must be at least 12 characters long');
       return false;
     }
     return true;
@@ -120,114 +131,177 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     if (signupStep > 1) setSignupStep(signupStep - 1);
   };
 
-  // Authentication functions - using old working approach
   const handleGetOTP = async () => {
     if (!validateStep3()) return;
-
     setLoading(true);
     try {
-      console.log('Attempting to sign up user with email:', email);
+      setRegistrationInProgress(true);
+      setShowOtpField(false);
+      setOtpCode('');
       
-      // Use old working approach: signUp with user metadata
-      const { data, error } = await supabase.auth.signUp({
+      // IMPORTANT: Set registering flag BEFORE OTP request
+      setIsRegistering(true);
+      
+      console.log('Requesting Email OTP (create user if new):', email);
+
+      const { data, error } = await supabase.auth.signInWithOtp({
         email,
-        password,
         options: {
+          shouldCreateUser: true,
           data: {
             display_name: fullName,
-            phone: phone,
-            role: role,
-            organization: organization,
-            location: location,
+            phone,
+            role,
+            organization,
+            location,
             site_id: role === 'field_personnel' ? (siteId || null) : null,
+            needs_profile: true
           }
         }
       });
-      
+
       if (error) {
-        console.error('Signup error:', error);
+        console.error('OTP send error:', error);
         Alert.alert('Error', error.message);
+        setRegistrationInProgress(false);
+        setIsRegistering(false); // Reset flag on error
         return;
       }
 
-      console.log('Signup response with metadata:', { user: data.user, session: data.session });
-
-      if (data.user) {
-        // Always require email verification - no auto-confirmation
-        console.log('User created with metadata, email verification required');
-        setShowOtpField(true);
-        Alert.alert('Success', 'Please check your email...');
-      }
-    } catch (error: any) {
-      console.error('OTP request error:', error);
-      Alert.alert('Error', 'Failed to send OTP. Please try again.');
+      console.log('OTP sent response:', data);
+      setShowOtpField(true);
+      Alert.alert('OTP Sent', 'Check your email for the 6-digit code.');
+    } catch (e: any) {
+      console.error('OTP initiation error:', e);
+      Alert.alert('Error', 'Failed to send OTP.');
+      setRegistrationInProgress(false);
+      setIsRegistering(false); // Reset flag on error
     } finally {
       setLoading(false);
     }
   };
 
   const handleRegister = async () => {
+    if (!registrationInProgress) {
+      Alert.alert('Error', 'Start signup first.');
+      return;
+    }
     if (!otpCode || otpCode.length !== 6) {
-      Alert.alert('Error', 'Please enter a valid 6-digit OTP');
+      Alert.alert('Error', 'Enter the 6-digit OTP.');
       return;
     }
 
     setLoading(true);
     try {
-      // User already created in handleGetOTP with metadata, just verify the OTP
-
-      // If magic link was sent successfully, verify with the OTP code
+      console.log('Verifying email OTP for:', email);
       const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
         email,
         token: otpCode,
-        type: 'signup'
+        type: 'email'
       });
 
       if (verifyError) {
-        console.error('OTP verification error:', verifyError);
-        Alert.alert('Error', verifyError.message);
+        console.error('OTP verify error:', verifyError);
+        const m = verifyError.message.toLowerCase();
+        if (m.includes('expired')) Alert.alert('OTP Expired', 'Request a new code.');
+        else if (m.includes('invalid')) Alert.alert('Invalid Code', 'Check the code and retry.');
+        else Alert.alert('Error', verifyError.message);
+        setLoading(false);
         return;
       }
 
-      if (verifyData.user && verifyData.session) {
-        console.log('OTP verified successfully for user:', verifyData.user.email);
-        console.log('User metadata:', verifyData.user.user_metadata);
+      if (!verifyData.session || !verifyData.user) {
+        console.warn('Verified but no session/user returned:', verifyData);
+        Alert.alert('Error', 'Unexpected state. Try logging in after a minute.');
+        setLoading(false);
+        return;
+      }
 
-        // Create profile using the metadata from auth.user
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: verifyData.user.id,
-            full_name: verifyData.user.user_metadata.display_name || fullName,
-            email: verifyData.user.email,
-            phone: verifyData.user.user_metadata.phone || phone,
-            gender,
-            role: verifyData.user.user_metadata.role || role,
-            organization: verifyData.user.user_metadata.organization || organization,
-            location: verifyData.user.user_metadata.location || location,
-            site_id: verifyData.user.user_metadata.site_id || (role === 'field_personnel' ? siteId || null : null),
-            is_active: true,
-            last_login_at: new Date().toISOString(),
-          });
+      const user = verifyData.user;
+      console.log('OTP verified, user id:', user.id);
 
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
+      // Wait a moment for auth state to stabilize
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Create profile with explicit data
+      const profileData = {
+        id: user.id,
+        full_name: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        gender,
+        role,
+        organization: organization.trim(),
+        location: location.trim(),
+        site_id: role === 'field_personnel' ? (siteId?.trim() || null) : null,
+        is_active: true,
+        last_login_at: new Date().toISOString(),
+      };
+
+      console.log('Creating profile with data:', profileData);
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert(profileData);
+
+      if (profileError) {
+        console.error('Profile create error:', profileError);
+        
+        // Check if profile already exists
+        if (profileError.code === '23505') {
+          console.log('Profile already exists, fetching it...');
+        } else {
           Alert.alert('Error', `Profile creation failed: ${profileError.message}`);
+          setLoading(false);
+          setIsRegistering(false);
           return;
         }
-
-        console.log('Profile created successfully for user:', verifyData.user.email);
-        
-        // The user is now authenticated with a complete profile
-        Alert.alert('Success', 'Account created successfully!', [
-          { text: 'OK', onPress: onAuthSuccess }
-        ]);
+      } else {
+        console.log('Profile created successfully');
       }
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      Alert.alert('Error', 'Registration failed. Please try again.');
-    } finally {
+
+      // Set password
+      console.log('Setting password...');
+      const { error: pwdError } = await supabase.auth.updateUser({ 
+        password: newPassword 
+      });
+      
+      if (pwdError) {
+        console.error('Password set error:', pwdError);
+        Alert.alert('Warning', 'Account created but password setup failed. Please use password recovery.');
+      } else {
+        console.log('Password set successfully.');
+      }
+
+      // Wait for database to commit
+      console.log('Waiting for database commit...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Now fetch the profile manually
+      console.log('Fetching profile manually...');
+      try {
+        await refreshProfile();
+        console.log('Profile fetched successfully');
+      } catch (refreshError) {
+        console.error('Profile refresh failed:', refreshError);
+      }
+
+      // Clear registration flag
+      setIsRegistering(false);
+
+      // Success - navigate to app
+      console.log('Registration complete, navigating to app');
       setLoading(false);
+      Alert.alert('Success', 'Account created and verified!', [
+        { text: 'OK', onPress: () => onAuthSuccess() }
+      ]);
+      
+    } catch (e: any) {
+      console.error('Registration flow error:', e);
+      Alert.alert('Error', 'Could not complete registration. Please try logging in.');
+      setIsRegistering(false);
+      setLoading(false);
+    } finally {
+      setRegistrationInProgress(false);
     }
   };
 
@@ -516,8 +590,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
               {signupStep === 3 && (
                 <>
-                  <Text style={styles.stepTitle}>Step 3: Account Details</Text>
-                  
+                  <Text style={styles.stepTitle}>Step 3: Credentials & Verification</Text>
+
                   <TextInput
                     style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
                     placeholder="Email *"
@@ -537,14 +611,26 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     placeholderTextColor={Colors.textSecondary}
                   />
 
-                  <TextInput
-                    style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                    placeholder="Password *"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    placeholderTextColor={Colors.textSecondary}
-                  />
+                  {!showOtpField && (
+                    <>
+                      <TextInput
+                        style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                        placeholder="Password *"
+                        value={newPassword}
+                        onChangeText={setNewPassword}
+                        secureTextEntry
+                        placeholderTextColor={Colors.textSecondary}
+                      />
+                      <TextInput
+                        style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
+                        placeholder="Confirm Password *"
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        secureTextEntry
+                        placeholderTextColor={Colors.textSecondary}
+                      />
+                    </>
+                  )}
 
                   {!showOtpField ? (
                     <TouchableOpacity
@@ -581,7 +667,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                           <ActivityIndicator color={Colors.deepSecurityBlue} />
                         ) : (
                           <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.deepSecurityBlue }]}>
-                            Register
+                            Verify OTP
                           </Text>
                         )}
                       </TouchableOpacity>
@@ -598,6 +684,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   </TouchableOpacity>
                 </>
               )}
+
             </View>
           )}
         </View>

@@ -1,0 +1,235 @@
+import React from 'react';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { useAuth } from '../lib/AuthContext';
+import { useNavigation } from '../lib/NavigationContext';
+import AuthScreen from './AuthScreen';
+import ProfileSetup from './ProfileSetup';
+import Loading from './Loading';
+import SplashScreen from '../pages/SplashScreen';
+import OnboardingScreen from '../pages/OnboardingScreen';
+import HomeScreen from '../pages/HomeScreen';
+import SiteDetailsScreen from '../pages/SiteDetailsScreen';
+import NewReadingScreen from '../pages/NewReadingScreen';
+import SupervisorDashboard from '../pages/SupervisorDashboard';
+import PublicUploadScreen from '../pages/PublicUploadScreen';
+import SettingsPage from '../pages/SettingsPage';
+import { Colors } from '../lib/colors';
+
+export default function AppNavigator() {
+  const { session, profile, loading, error, clearError } = useAuth();
+  const { 
+    currentScreen, 
+    setCurrentScreen,
+    hasSeenOnboarding,
+    setHasSeenOnboarding,
+    selectedSiteId,
+    navigateToSite,
+    navigateToNewReading,
+    navigateToSettings,
+    navigateBack
+  } = useNavigation();
+
+  // Handle authentication success
+  const handleAuthSuccess = () => {
+    console.log('Authentication successful, navigating to home');
+    setCurrentScreen('home');
+  };
+
+  // Handle sign out
+  const handleSignOut = async () => {
+    const { signOut } = useAuth();
+    await signOut();
+    setCurrentScreen('auth');
+  };
+
+  // Navigation helpers
+  const navigateToSiteDetails = (siteId: string) => {
+    navigateToSite(siteId);
+  };
+
+  const navigateToNewReadingScreen = (siteId: string) => {
+    navigateToNewReading(siteId);
+  };
+
+  // Show loading state
+  if (loading) {
+    return <Loading />;
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>⚠️ {error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton} 
+          onPress={clearError}
+        >
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Render appropriate screen
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'splash':
+        return (
+          <SplashScreen 
+            onAnimationComplete={() => {
+              if (session && profile) {
+                // User is logged in and verified
+                setCurrentScreen('home');
+              } else {
+                // Show onboarding or auth
+                setCurrentScreen(hasSeenOnboarding ? 'auth' : 'onboarding');
+              }
+            }}
+          />
+        );
+
+      case 'onboarding':
+        return (
+          <OnboardingScreen 
+            onComplete={() => {
+              setHasSeenOnboarding(true);
+              setCurrentScreen('auth');
+            }}
+          />
+        );
+
+      case 'auth':
+        return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+
+      case 'profile-setup':
+        if (!session) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        return (
+          <ProfileSetup 
+            userId={session.user.id}
+            onComplete={() => setCurrentScreen('home')}
+          />
+        );
+
+      case 'home':
+        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        
+        // Role-based home screen
+        if (profile.role === 'supervisor') {
+          return (
+            <SupervisorDashboard
+              profile={profile}
+              onNavigateToSite={navigateToSiteDetails}
+              onNavigateToSettings={navigateToSettings}
+              onSignOut={handleSignOut}
+            />
+          );
+        } else {
+          return (
+            <HomeScreen
+              profile={profile}
+              onNavigateToSite={navigateToSiteDetails}
+              onNavigateToNewReading={navigateToNewReadingScreen}
+              onNavigateToProfile={() => setCurrentScreen('settings')}
+              onNavigateToSettings={navigateToSettings}
+            />
+          );
+        }
+
+      case 'site-details':
+        return (
+          <SiteDetailsScreen
+            siteId={selectedSiteId}
+            onNavigateBack={navigateBack}
+            onNavigateToNewReading={navigateToNewReadingScreen}
+          />
+        );
+
+      case 'new-reading':
+        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        return (
+          <NewReadingScreen
+            siteId={selectedSiteId}
+            userProfile={profile}
+            onNavigateBack={navigateBack}
+            onReadingSubmitted={() => {
+              console.log('Reading submitted successfully');
+              navigateBack();
+            }}
+          />
+        );
+
+      case 'public-upload':
+        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        return (
+          <PublicUploadScreen
+            userProfile={profile}
+            onNavigateBack={navigateBack}
+          />
+        );
+
+      case 'settings':
+        return (
+          <SettingsPage
+            onNavigate={(screen: string) => {
+              if (screen === 'Auth') {
+                handleSignOut();
+              } else {
+                navigateBack();
+              }
+            }}
+            onBack={navigateBack}
+          />
+        );
+
+      default:
+        return <SplashScreen onAnimationComplete={() => setCurrentScreen('auth')} />;
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      {renderScreen()}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.softLightGrey,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.softLightGrey,
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.alertRed,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  retryButton: {
+    backgroundColor: Colors.deepSecurityBlue,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    shadowColor: Colors.deepSecurityBlue,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});
