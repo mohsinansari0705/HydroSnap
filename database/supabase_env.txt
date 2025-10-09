@@ -1,0 +1,9 @@
+# Supabase Configuration
+EXPO_PUBLIC_SUPABASE_URL = https://fibganvflundperooxfs.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpYmdhbnZmbHVuZHBlcm9veGZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NDc5MjcsImV4cCI6MjA3NTIyMzkyN30.xr_SUkxqfXhveSm7MgFlQIpxoChO4ihiOuDwZk04UOc
+
+# API Configuration
+EXPO_PUBLIC_API_URL = https://api.hydrosnap.com
+
+# Development/Production Mode
+NODE_ENV = development
