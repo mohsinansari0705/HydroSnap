@@ -77,6 +77,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const isValidEmail = (text: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
   const isValidPhone = (text: string) => /^[\+]?[1-9][\d]{0,15}$/.test(text.replace(/[\s\-\(\)]/g, ''));
   
+  // Normalize phone number for consistent matching
+  const normalizePhoneNumber = (phone: string) => {
+    return phone.replace(/[\s\-\(\)\+]/g, '');
+  };
+  
   // Step validations
   const validateStep1 = () => {
     if (!fullName.trim() || !organization.trim() || !location.trim()) {
@@ -310,49 +315,120 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       Alert.alert('Error', 'Please enter email/phone and password');
       return;
     }
-
+  
     setLoading(true);
     try {
-      let loginEmail = loginIdentifier;
-
+      let loginEmail = loginIdentifier.trim();
+    
       // If phone number, find email first
       if (isValidPhone(loginIdentifier)) {
-        const { data: profileData, error } = await supabase
+        console.log('Phone number detected, looking up email for:', loginIdentifier);
+        
+        // Normalize the input phone number
+        const normalizedInput = normalizePhoneNumber(loginIdentifier);
+        console.log('Normalized input phone:', normalizedInput);
+        
+        // Try exact match first
+        let { data: profileData, error } = await supabase
           .from('profiles')
-          .select('email')
-          .eq('phone', loginIdentifier)
-          .single();
-
-        if (error || !profileData) {
-          Alert.alert('Error', 'No account found with this phone number');
+          .select('email, phone')
+          .eq('phone', loginIdentifier.trim())
+          .maybeSingle();
+      
+        console.log('Exact match result:', { profileData, error });
+      
+        // If exact match doesn't work, try fetching all and matching
+        if (!profileData || error) {
+          console.log('Exact match failed, trying flexible matching...');
+          
+          const { data: allProfiles, error: fetchError } = await supabase
+            .from('profiles')
+            .select('email, phone');
+        
+          console.log('Fetched profiles count:', allProfiles?.length, 'Error:', fetchError);
+        
+          if (fetchError) {
+            console.error('Failed to fetch profiles:', fetchError);
+            Alert.alert(
+              'Database Error', 
+              'Unable to access profiles. This might be an RLS (Row Level Security) policy issue. Please contact support or try logging in with your email address.'
+            );
+            setLoading(false);
+            return;
+          }
+        
+          if (!allProfiles || allProfiles.length === 0) {
+            Alert.alert('Error', 'No accounts found in the system. Please sign up first.');
+            setLoading(false);
+            return;
+          }
+        
+          // Find matching phone number by normalizing both input and stored phone numbers
+          profileData = allProfiles.find(profile => {
+            if (!profile.phone) return false;
+            const normalizedStored = normalizePhoneNumber(profile.phone);
+            console.log('Comparing:', normalizedInput, 'with', normalizedStored);
+            
+            // Try multiple matching strategies
+            return normalizedStored === normalizedInput || 
+                   normalizedStored.endsWith(normalizedInput) || 
+                   normalizedInput.endsWith(normalizedStored) ||
+                   normalizedInput.includes(normalizedStored) ||
+                   normalizedStored.includes(normalizedInput);
+          }) || null;
+        }
+      
+        if (!profileData || !profileData.email) {
+          Alert.alert('Error', 'No account found with this phone number. Please check the number or use your email address.');
+          setLoading(false);
           return;
         }
+      
         loginEmail = profileData.email;
+        console.log('Found email for phone:', loginEmail);
       }
-
+    
+      // Validate email format before login attempt
+      if (!isValidEmail(loginEmail)) {
+        Alert.alert('Error', 'Invalid email format');
+        setLoading(false);
+        return;
+      }
+    
+      console.log('Attempting login with email:', loginEmail);
+    
       // Login
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
       });
-
+    
       if (error) {
+        console.error('Login error:', error);
         Alert.alert('Error', error.message);
+        setLoading(false);
         return;
       }
-
+    
       if (data.user) {
-        // Update last login
-        await supabase
-          .from('profiles')
-          .update({ last_login_at: new Date().toISOString() })
-          .eq('id', data.user.id);
-
         console.log('User logged in successfully:', data.user.email);
+        
+        // Update last login
+        try {
+          await supabase
+            .from('profiles')
+            .update({ last_login_at: new Date().toISOString() })
+            .eq('id', data.user.id);
+        } catch (updateError) {
+          console.error('Failed to update last login:', updateError);
+          // Don't block login for this
+        }
+      
         onAuthSuccess();
       }
     } catch (error: any) {
-      Alert.alert('Error', 'Login failed');
+      console.error('Login process error:', error);
+      Alert.alert('Error', 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -414,6 +490,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 value={loginIdentifier}
                 onChangeText={setLoginIdentifier}
                 autoCapitalize="none"
+                keyboardType="email-address"
                 placeholderTextColor={Colors.textSecondary}
               />
 
