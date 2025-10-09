@@ -63,7 +63,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
         duration: 500,
         useNativeDriver: true,
       }).start();
-    }, 1000);
+    }, 8000);
 
     // Progress bar animation
     setTimeout(() => {
@@ -72,12 +72,12 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
         duration: 2000,
         useNativeDriver: false,
       }).start();
-    }, 1200);
+    }, 1100);
 
     // Auto-navigate after animations
     const timer = setTimeout(() => {
       onAnimationComplete();
-    }, 5000000000);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [fadeAnim, scaleAnim, slideAnim, pulseAnim, progressAnim, taglineAnim]);
@@ -163,7 +163,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
 
       {/* Version Info */}
       <View style={styles.versionContainer}>
-        <Text style={styles.versionText}>v1.0.0 • SIH 2025</Text>
+        <Text style={styles.versionText}>v1.0.0 • © GrayCode</Text>
       </View>
     </View>
   );
@@ -184,16 +184,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: Colors.aquaTechBlue + '08',
+    backgroundColor: Colors.aquaTechBlue + '09',
   },
   decorativeCircle1: {
     position: 'absolute',
     top: 100,
-    right: -50,
+    right: -100,
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: Colors.deepSecurityBlue + '05',
+    backgroundColor: Colors.deepSecurityBlue + '09',
   },
   decorativeCircle2: {
     position: 'absolute',
@@ -201,26 +201,26 @@ const styles = StyleSheet.create({
     left: -80,
     width: 160,
     height: 160,
-    borderRadius: 80,
-    backgroundColor: Colors.pinkAccent + '08',
+    borderRadius: 100,
+    backgroundColor: Colors.pinkAccent + '09',
   },
   logoContainer: {
     width: 180,
     height: 180,
-    borderRadius: 32,
+    borderRadius: 45,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 50,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.softLightGrey,
     position: 'relative',
     shadowColor: Colors.deepSecurityBlue,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 12,
-    // Modern rounded rectangle with subtle rotation
-    transform: [{ rotate: '8deg' }],
-    borderWidth: 3,
+    // Modern rounded rectangle
+    transform: [{ rotate: '45deg' }],
+    borderWidth: 4,
     borderColor: Colors.aquaTechBlue + '20',
   },
   logoRing: {
@@ -229,11 +229,10 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 28,
     borderWidth: 4,
-    borderColor: Colors.deepSecurityBlue + '15',
+    borderColor: Colors.deepSecurityBlue + '25',
     borderStyle: 'dashed',
   },
   logoWrapper: {
-    transform: [{ rotate: '-8deg' }],
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -311,7 +310,7 @@ const styles = StyleSheet.create({
   },
   versionContainer: {
     position: 'absolute',
-    bottom: 50,
+    bottom: 60,
     alignItems: 'center',
   },
   versionText: {
