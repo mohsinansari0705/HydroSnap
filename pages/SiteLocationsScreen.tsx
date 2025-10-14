@@ -5,10 +5,10 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
   RefreshControl,
   TextInput,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
@@ -29,6 +29,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
   onBack,
   userLocation,
 }) => {
+  console.log('SiteLocationsScreen: Component loaded');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'river' | 'reservoir' | 'canal' | 'lake'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'distance' | 'status'>('name');
@@ -164,6 +165,16 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
     </TouchableOpacity>
   );
 
+  const renderLoadingState = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={Colors.aquaTechBlue} />
+      <Text style={styles.loadingTitle}>Loading Sites...</Text>
+      <Text style={styles.loadingText}>
+        Fetching monitoring sites from database
+      </Text>
+    </View>
+  );
+
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyIcon}>🗺️</Text>
@@ -188,7 +199,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -229,7 +240,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
         </ScrollView>
 
         {/* Sort Options */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sortContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortContainer}>
           <Text style={styles.sortLabel}>Sort by:</Text>
           <TouchableOpacity
             style={[styles.sortChip, sortBy === 'name' && styles.sortChipActive]}
@@ -262,6 +273,8 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
       <View style={styles.content}>
         {error ? (
           renderErrorState()
+        ) : loading && allSites.length === 0 ? (
+          renderLoadingState()
         ) : (
           <FlatList
             data={sortedSites}
@@ -277,7 +290,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
             }
             contentContainerStyle={styles.listContainer}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={loading ? null : renderEmptyState}
+            ListEmptyComponent={renderEmptyState}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
           />
         )}
@@ -306,7 +319,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
           <Text style={styles.statLabel}>Alerts</Text>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -314,6 +327,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.softLightGrey,
+    paddingTop: 40, // Account for status bar
   },
   header: {
     flexDirection: 'row',
@@ -433,6 +447,27 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 8,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 60,
+    ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
+    marginTop: 40,
+    marginHorizontal: 20,
+  },
+  loadingTitle: {
+    ...NeumorphicTextStyles.heading,
+    fontSize: 18,
+    color: Colors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  loadingText: {
+    ...NeumorphicTextStyles.body,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   emptyContainer: {
     alignItems: 'center',

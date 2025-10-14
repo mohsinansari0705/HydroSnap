@@ -17,6 +17,7 @@ import BottomNavigation from '../components/BottomNavigation';
 import { useMonitoringSites } from '../hooks/useMonitoringSites';
 import { MonitoringSite } from '../services/monitoringSitesService';
 import { DebugUtils } from '../services/debugUtils';
+import { useSiteCache } from '../lib/SiteCacheContext';
 
 interface HomeScreenProps {
   profile: Profile;
@@ -94,7 +95,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'dashboard' | 'sites' | 'profile'>('dashboard');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
 
-  // Use the monitoring sites hook with optimized settings
+  // Use the site cache to prevent repeated fetching
+  const { sites: cachedSites, setCachedSites, isCacheValid, clearCache } = useSiteCache();
+
+  // Use the monitoring sites hook with optimized settings and caching
   const {
     sites,
     loading,
@@ -109,7 +113,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     userRole: profile.role,
     autoRefresh: false, // Disable auto-refresh on startup to improve performance
     refreshInterval: 10 * 60 * 1000, // Refresh every 10 minutes instead of 5
+    skipInitialFetch: cachedSites.length > 0 && isCacheValid(), // Skip initial fetch if we have valid cached data
   });
+
+  // Cache sites when they are loaded successfully, and use cached sites if available
+  const displaySites = cachedSites.length > 0 && isCacheValid() ? cachedSites : sites;
+  
+  useEffect(() => {
+    if (sites && sites.length > 0) {
+      setCachedSites(sites);
+      console.log(`[HomeScreen] Cached ${sites.length} sites for better performance`);
+    }
+  }, [sites, setCachedSites]);
 
   useEffect(() => {
     // Delay location fetching to improve initial load time
@@ -135,6 +150,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const onRefresh = async () => {
     try {
+      // Clear cache to ensure fresh data on refresh
+      clearCache();
+      console.log('[HomeScreen] Cleared cache for fresh data refresh');
       await refresh();
     } catch (error) {
       Alert.alert('Error', 'Failed to refresh data. Please try again.');
@@ -199,6 +217,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         // Already on dashboard - do nothing
         break;
       case 'sites':
+        console.log('Navigating to site locations');
         onNavigateToSiteLocations();
         break;
       case 'profile':
@@ -218,9 +237,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         Alert.alert('Notifications', 'Notification center will be implemented here.');
         break;
       case 'profile':
-        onNavigateToProfile();
+        // Profile is currently disabled
+        console.log('Profile feature coming soon');
         break;
       case 'settings':
+        console.log('Settings button pressed, calling onNavigateToSettings');
         onNavigateToSettings();
         break;
     }
@@ -272,7 +293,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     </TouchableOpacity>
   );
 
-  const renderHeroSection = () => {
+  const renderCompactHeader = () => {
     const currentHour = new Date().getHours();
     const getGreeting = () => {
       if (currentHour < 12) return 'Good Morning';
@@ -280,19 +301,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       return 'Good Evening';
     };
 
-    const getCurrentDate = () => {
-      const today = new Date();
-      return today.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-    };
-
     const getWaterLevelStatus = () => {
-      const warningSites = sites.filter(site => site.status === 'warning').length;
-      const dangerSites = sites.filter(site => site.status === 'danger').length;
+      const warningSites = displaySites.filter(site => site.status === 'warning').length;
+      const dangerSites = displaySites.filter(site => site.status === 'danger').length;
       
       if (dangerSites > 0) {
         return { status: 'Critical', color: Colors.alertRed, icon: '🚨' };
@@ -303,68 +314,53 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       }
     };
 
-    const totalSites = sites.length;
-    const currentFloodAlerts = floodAlertsCount;
     const waterStatus = getWaterLevelStatus();
 
     return (
-      <View style={[styles.heroContainer, createNeumorphicCard({ size: 'large', borderRadius: 24 })]}>
-        {/* Header Section */}
-        <View style={styles.heroHeader}>
-          <View style={styles.greetingContainer}>
-            <Text style={styles.greeting}>{getGreeting()}, {profile.full_name.split(' ')[0]}</Text>
-            <View style={styles.statusContainer}>
-              <Text style={styles.statusIcon}>{waterStatus.icon}</Text>
-              <Text style={[styles.statusText, { color: waterStatus.color }]}>
-                Water Level Status: {waterStatus.status}
-              </Text>
-            </View>
-            <Text style={styles.date}>{getCurrentDate()}</Text>
+      <View style={styles.compactHeader}>
+        <View style={styles.greetingSection}>
+          <Text style={styles.compactGreeting}>{getGreeting()}, {profile.full_name.split(' ')[0]}</Text>
+          <View style={styles.compactStatusContainer}>
+            <Text style={styles.compactStatusIcon}>{waterStatus.icon}</Text>
+            <Text style={[styles.compactStatusText, { color: waterStatus.color }]}>
+              {waterStatus.status}
+            </Text>
           </View>
         </View>
-
-        {/* Stats Container */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>📍</Text>
-            <Text style={styles.statNumber}>{totalSites}</Text>
-            <Text style={styles.statLabel}>Active Sites</Text>
+        
+        <View style={styles.quickStats}>
+          <View style={styles.quickStatItem}>
+            <Text style={styles.quickStatNumber}>{displaySites.length}</Text>
+            <Text style={styles.quickStatLabel}>Sites</Text>
           </View>
-          
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>📊</Text>
-            <Text style={styles.statNumber}>{todaysReadingsCount}</Text>
-            <Text style={styles.statLabel}>Today's Readings</Text>
+          <View style={styles.quickStatItem}>
+            <Text style={styles.quickStatNumber}>{todaysReadingsCount}</Text>
+            <Text style={styles.quickStatLabel}>Readings</Text>
           </View>
-          
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>⚠️</Text>
-            <Text style={styles.statNumber}>{currentFloodAlerts}</Text>
-            <Text style={styles.statLabel}>Flood Alerts</Text>
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => onNavigateToNewReading('capture')}
-          >
-            <Text style={styles.actionIcon}>📸</Text>
-            <Text style={styles.actionText}>Capture Reading</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => console.log('View Sites')}
-          >
-            <Text style={styles.actionIcon}>🗺️</Text>
-            <Text style={styles.actionText}>View Sites</Text>
-          </TouchableOpacity>
         </View>
       </View>
     );
   };
+
+  const renderFixedActions = () => (
+    <View style={styles.fixedActionsContainer}>
+      <TouchableOpacity 
+        style={styles.primaryActionButton}
+        onPress={() => onNavigateToNewReading('capture')}
+      >
+        <Text style={styles.primaryActionIcon}>📸</Text>
+        <Text style={styles.primaryActionText}>Capture Reading</Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        style={styles.secondaryActionButton}
+        onPress={() => Alert.alert('Map View', 'Interactive map view for monitoring sites is coming soon!')}
+      >
+        <Text style={styles.secondaryActionIcon}>🗺️</Text>
+        <Text style={styles.secondaryActionText}>Map View</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   const renderFloodAlerts = () => (
     <View style={styles.section}>
@@ -418,14 +414,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         <Text style={styles.sectionTitle}>🤖 AI Flood Prediction</Text>
         <Text style={styles.sectionSubtitle}>Machine learning analysis</Text>
       </View>
-      <View style={styles.insightCard}>
-        <Text style={styles.insightTitle}>Flood Risk Assessment</Text>
-        <Text style={styles.insightText}>
-          AI model predicts 68% chance of moderate flooding in Brahmaputra basin within next 48 hours based on upstream precipitation data and current water levels.
+      <View style={styles.comingSoonCard}>
+        <Text style={styles.comingSoonIcon}>🚀</Text>
+        <Text style={styles.comingSoonTitle}>Flood Risk Assessment</Text>
+        <Text style={styles.comingSoonText}>
+          Advanced AI flood prediction model is currently in development. This feature will provide real-time flood risk analysis based on weather data, water levels, and historical patterns.
         </Text>
-        <View style={styles.riskIndicator}>
-          <Text style={styles.riskLabel}>Risk Level: </Text>
-          <Text style={styles.riskMedium}>MEDIUM</Text>
+        <View style={styles.comingSoonBadge}>
+          <Text style={styles.comingSoonBadgeText}>COMING SOON</Text>
         </View>
       </View>
     </View>
@@ -440,7 +436,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         onSettingsPress={() => handleNavbarAction('settings')}
       />
 
-      {renderHeroSection()}
+      {renderCompactHeader()}
+      {renderFixedActions()}
       
       <ScrollView
         style={styles.content}
@@ -455,7 +452,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               <Text style={styles.sectionTitle}>🏗️ Monitoring Sites</Text>
               <Text style={styles.sectionSubtitle}>Overview • History • Map</Text>
             </View>
-            {sites.length > 5 && (
+            {displaySites.length > 5 && (
               <TouchableOpacity 
                 style={styles.viewAllButton}
                 onPress={() => handleTabPress('sites')}
@@ -465,7 +462,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             )}
           </View>
           
-          {loading && sites.length === 0 ? (
+          {loading && displaySites.length === 0 ? (
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>Loading monitoring sites...</Text>
             </View>
@@ -479,14 +476,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                 <Text style={styles.retryButtonText}>Run Debug Tests</Text>
               </TouchableOpacity>
             </View>
-          ) : sites.length === 0 ? (
+          ) : displaySites.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No monitoring sites found in your area</Text>
               <Text style={styles.emptySubtext}>Trying to load sites...</Text>
             </View>
           ) : (
             // Only show first 5 sites on home screen
-            sites.slice(0, 5).map(renderSiteCard)
+            displaySites.slice(0, 5).map(renderSiteCard)
           )}
         </View>
 
@@ -702,7 +699,7 @@ const styles = StyleSheet.create({
   },
   // AI Insights Styles
   insightCard: {
-    ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
+    ...createNeumorphicCard({ size: 'large', borderRadius: 15 }),
     padding: 20,
     borderLeftWidth: 6,
     borderLeftColor: Colors.warning || '#FFA726',
@@ -734,9 +731,49 @@ const styles = StyleSheet.create({
     color: Colors.warning || '#FFA726',
     backgroundColor: (Colors.warning || '#FFA726') + '20',
     paddingHorizontal: 12,
-    paddingVertical: 6,
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  // Coming Soon Card Styles
+  comingSoonCard: {
+    ...createNeumorphicCard({ size: 'large', borderRadius: 15 }),
+    padding: 24,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    backgroundColor: Colors.softLightGrey,
+    borderLeftWidth: 6,
+    borderLeftColor: Colors.aquaTechBlue,
+  },
+  comingSoonIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  comingSoonTitle: {
+    ...NeumorphicTextStyles.subheading,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  comingSoonText: {
+    ...NeumorphicTextStyles.body,
+    lineHeight: 22,
+    marginBottom: 20,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  comingSoonBadge: {
+    backgroundColor: Colors.aquaTechBlue,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  comingSoonBadgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: Colors.white,
+    letterSpacing: 1,
   },
   // Loading, Error, and Empty States
   loadingContainer: {
@@ -806,6 +843,101 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Compact Header Styles
+  compactHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginTop: 10,
+    marginRight: 10,
+    marginLeft: 10,
+    borderRadius: 20,
+    backgroundColor: Colors.deepSecurityBlue,
+    marginBottom: 0,
+  },
+  greetingSection: {
+    flex: 1,
+  },
+  compactGreeting: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.white,
+    marginBottom: 4,
+  },
+  compactStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  compactStatusIcon: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  compactStatusText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.white,
+  },
+  quickStats: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  quickStatItem: {
+    alignItems: 'center',
+  },
+  quickStatNumber: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.white,
+  },
+  quickStatLabel: {
+    fontSize: 12,
+    color: Colors.white + 'CC',
+    marginTop: 2,
+  },
+  // Fixed Actions Styles
+  fixedActionsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 12,
+    backgroundColor: Colors.softLightGrey,
+  },
+  primaryActionButton: {
+    ...createNeumorphicCard({ size: 'medium', borderRadius: 16 }),
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    backgroundColor: Colors.deepSecurityBlue,
+  },
+  primaryActionIcon: {
+    fontSize: 20,
+    marginBottom: 6,
+  },
+  primaryActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.white,
+  },
+  secondaryActionButton: {
+    ...createNeumorphicCard({ size: 'medium', borderRadius: 16 }),
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    backgroundColor: Colors.aquaTechBlue,
+  },
+  secondaryActionIcon: {
+    fontSize: 20,
+    marginBottom: 6,
+  },
+  secondaryActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.white,
   },
 });
 

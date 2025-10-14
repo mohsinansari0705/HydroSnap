@@ -238,14 +238,12 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, createNeumorphicCard({ size: 'medium' })]}>
-        <TouchableOpacity style={styles.backButton} onPress={onCancel}>
-          <Text style={styles.backButtonText}>← Back</Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onCancel} style={styles.backButton}>
+          <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerInfo}>
-          <Text style={[styles.headerTitle, NeumorphicTextStyles.heading]}>New Reading</Text>
-          <Text style={[styles.headerSubtitle, NeumorphicTextStyles.caption]}>{siteName}</Text>
-        </View>
+        <Text style={styles.headerTitle}>New Reading</Text>
+        <View style={styles.headerRight} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -363,30 +361,43 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-    margin: 20,
-    marginBottom: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingTop: 50,
+    backgroundColor: Colors.softLightGrey, // Same as card color
+    shadowColor: Colors.deepSecurityBlue + '40',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
   },
   backButton: {
-    marginRight: 16,
+    padding: 10,
+    backgroundColor: Colors.softLightGrey,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 22,
+    shadowColor: Colors.deepSecurityBlue + '20',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  backButtonText: {
-    fontSize: 16,
+  backIcon: {
+    fontSize: 20,
     color: Colors.deepSecurityBlue,
-    fontWeight: '600',
-  },
-  headerInfo: {
-    flex: 1,
+    fontWeight: 'bold',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    ...NeumorphicTextStyles.heading,
+    fontSize: 22,
     color: Colors.deepSecurityBlue,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: 2,
+  headerRight: {
+    width: 44,
   },
   content: {
     flex: 1,
@@ -506,6 +517,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 20,
+    marginBottom: 35,
   },
   submitButton: {
     paddingVertical: 16,
@@ -516,7 +528,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   submitButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
   },
   

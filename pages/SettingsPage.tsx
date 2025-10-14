@@ -7,7 +7,6 @@ import {
   ScrollView,
   Switch,
   Alert,
-  TextInput,
   Modal,
 } from 'react-native';
 import { useTheme } from '../lib/ThemeContext';
@@ -435,7 +434,7 @@ const createStyles = () => StyleSheet.create({
   },
   logoutSection: {
     marginVertical: 24,
-    marginBottom: 40,
+    marginBottom: 55,
     paddingHorizontal: 4,
   },
   logoutButton: {
@@ -453,7 +452,7 @@ const createStyles = () => StyleSheet.create({
   },
   logoutText: {
     ...NeumorphicTextStyles.buttonPrimary,
-    fontSize: 17,
+    fontSize: 20,
     fontWeight: '700',
   },
   modalOverlay: {
