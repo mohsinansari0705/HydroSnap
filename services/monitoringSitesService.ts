@@ -83,12 +83,7 @@ export class MonitoringSitesService {
         throw error;
       }
 
-      console.log('✅ Successfully fetched monitoring sites:', data?.length || 0, 'sites found');
-      console.log('📋 First site sample:', data?.[0] ? {
-        id: data[0].id,
-        name: data[0].name,
-        location: data[0].location
-      } : 'No sites found');
+      console.log('✅ Successfully fetched', data?.length || 0, 'monitoring sites');
 
       return data || [];
     } catch (error) {
@@ -236,13 +231,19 @@ export class MonitoringSitesService {
    */
   static async enrichSitesWithReadings(sites: MonitoringSite[]): Promise<MonitoringSite[]> {
     try {
-      console.log('✨ Enriching', sites.length, 'sites with readings...');
+      // Skip enrichment if too many sites to improve performance
+      if (sites.length > 50) {
+        console.log('⚡ Skipping enrichment for', sites.length, 'sites to improve performance');
+        return sites.map(site => ({
+          ...site,
+          status: 'reading_due' as const,
+          lastReading: undefined,
+          isAccessible: true
+        }));
+      }
       
       const siteIds = sites.map(site => site.id);
-      console.log('🔍 Getting latest readings for site IDs:', siteIds.slice(0, 3), '... (showing first 3)');
-      
       const latestReadings = await this.getLatestReadingsForSites(siteIds);
-      console.log('📊 Latest readings found for', Object.keys(latestReadings).length, 'sites');
 
       const enrichedSites = sites.map(site => {
         const latestReading = latestReadings[site.id];
@@ -251,8 +252,6 @@ export class MonitoringSitesService {
         let status: 'normal' | 'warning' | 'danger' | 'reading_due' = 'reading_due';
         
         if (latestReading) {
-          console.log(`📈 Processing reading for site ${site.id}:`, latestReading.water_level, 'cm');
-          
           const waterLevel = latestReading.water_level;
           
           if (waterLevel >= site.danger_level) {
@@ -270,8 +269,6 @@ export class MonitoringSitesService {
           if (readingTime < sixHoursAgo) {
             status = 'reading_due';
           }
-        } else {
-          console.log(`📭 No reading found for site ${site.id}, setting status to reading_due`);
         }
 
         return {
@@ -286,12 +283,7 @@ export class MonitoringSitesService {
         };
       });
 
-      console.log('✅ Sites enrichment completed. Status distribution:', {
-        normal: enrichedSites.filter(s => s.status === 'normal').length,
-        warning: enrichedSites.filter(s => s.status === 'warning').length,
-        danger: enrichedSites.filter(s => s.status === 'danger').length,
-        reading_due: enrichedSites.filter(s => s.status === 'reading_due').length,
-      });
+      console.log('✅ Sites enrichment completed. Total sites processed:', enrichedSites.length);
 
       return enrichedSites;
     } catch (error) {
