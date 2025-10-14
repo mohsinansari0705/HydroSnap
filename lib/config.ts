@@ -1,7 +1,7 @@
 // Environment configuration
 export const CONFIG = {
-  SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://hzicxykqtlxhaalgqkey.supabase.co',
-  SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6aWN4eWtxdGx4aGFhbGdxa2V5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNTI5MjAsImV4cCI6MjA3MzkyODkyMH0.BNzScC1Q14v1kQIdXEgINcChp8wu854alEUptgvOC00',
+  SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://fibganvflundperooxfs.supabase.co',
+  SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpYmdhbnZmbHVuZHBlcm9veGZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NDc5MjcsImV4cCI6MjA3NTIyMzkyN30.xr_SUkxqfXhveSm7MgFlQIpxoChO4ihiOuDwZk04UOc',
   APP_ENV: process.env.NODE_ENV || 'development',
   API_BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'https://api.hydrosnap.com',
 } as const;
