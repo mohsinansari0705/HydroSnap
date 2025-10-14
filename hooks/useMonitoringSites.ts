@@ -79,13 +79,7 @@ export const useMonitoringSites = (
       console.log('✨ Enriching sites with readings...');
       const enrichedSites = await MonitoringSitesService.enrichSitesWithReadings(fetchedSites);
       
-      console.log('🎯 Final enriched sites:', enrichedSites.length);
-      console.log('📋 Sample enriched site:', enrichedSites[0] ? {
-        id: enrichedSites[0].id,
-        name: enrichedSites[0].name,
-        status: enrichedSites[0].status,
-        hasLastReading: !!enrichedSites[0].lastReading
-      } : 'No sites');
+      console.log('✅ Fetched and enriched', enrichedSites.length, 'monitoring sites');
 
       setSites(enrichedSites);
 
@@ -94,8 +88,6 @@ export const useMonitoringSites = (
         site.status === 'warning' || site.status === 'danger'
       );
       setFloodAlertsCount(floodAlerts.length);
-      
-      console.log('🚨 Flood alerts count:', floodAlerts.length);
 
     } catch (err) {
       console.error('💥 Error fetching monitoring sites:', err);
@@ -189,7 +181,7 @@ export const useMonitoringSites = (
 };
 
 /**
- * Hook specifically for site locations (used in sidebar navigation)
+ * Hook specifically for site locations (used in location screens)
  */
 export const useSiteLocations = (userLocation?: { latitude: number; longitude: number }) => {
   const [locations, setLocations] = useState<MonitoringSite[]>([]);
