@@ -8,6 +8,7 @@ export type AppScreen =
   | 'home'
   | 'supervisor-dashboard'
   | 'site-details'
+  | 'site-locations'
   | 'new-reading'
   | 'public-upload'
   | 'settings';
