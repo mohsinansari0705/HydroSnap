@@ -13,7 +13,7 @@ import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicSty
 import { Profile } from '../types/profile';
 import Card from '../components/Card';
 import Navbar from '../components/Navbar';
-import Sidebar from '../components/Sidebar';
+import BottomNavigation from '../components/BottomNavigation';
 import { useMonitoringSites } from '../hooks/useMonitoringSites';
 import { MonitoringSite } from '../services/monitoringSitesService';
 import { DebugUtils } from '../services/debugUtils';
@@ -22,6 +22,8 @@ interface HomeScreenProps {
   profile: Profile;
   onNavigateToSite: (siteId: string) => void;
   onNavigateToNewReading: (siteId: string) => void;
+  onNavigateToMyReadings: () => void;
+  onNavigateToSiteLocations: () => void;
   onNavigateToProfile: () => void;
   onNavigateToSettings: () => void;
 }
@@ -84,13 +86,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   profile,
   onNavigateToSite,
   onNavigateToNewReading,
+  onNavigateToMyReadings,
+  onNavigateToSiteLocations,
   onNavigateToProfile,
   onNavigateToSettings,
 }) => {
-  const [isSidebarVisible, setSidebarVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'dashboard' | 'sites' | 'profile'>('dashboard');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
 
-  // Use the monitoring sites hook
+  // Use the monitoring sites hook with optimized settings
   const {
     sites,
     loading,
@@ -103,12 +107,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     ...(userLocation && { userLocation }),
     userId: profile.id,
     userRole: profile.role,
-    autoRefresh: true,
-    refreshInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    autoRefresh: false, // Disable auto-refresh on startup to improve performance
+    refreshInterval: 10 * 60 * 1000, // Refresh every 10 minutes instead of 5
   });
 
   useEffect(() => {
-    fetchUserLocation();
+    // Delay location fetching to improve initial load time
+    const timer = setTimeout(() => {
+      fetchUserLocation();
+    }, 2000); // 2 second delay
+
+    return () => clearTimeout(timer);
   }, []);
 
   const fetchUserLocation = async () => {
@@ -177,28 +186,42 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     return (site.isAccessible ?? true) && (site.distanceFromUser ?? 0) <= 500; // Within 500 meters
   };
 
-  const handleSidebarNavigation = (screen: string) => {
-    setSidebarVisible(false);
-    switch (screen) {
-      case 'Profile':
-        onNavigateToProfile();
-        break;
-      case 'Settings':
-        onNavigateToSettings();
-        break;
-      case 'Dashboard':
-        // Already on dashboard
-        break;
-      case 'Capture':
+  const handleTabPress = (tab: 'capture' | 'readings' | 'dashboard' | 'sites' | 'profile') => {
+    setActiveTab(tab);
+    switch (tab) {
+      case 'capture':
         onNavigateToNewReading('capture');
         break;
-      case 'Sites':
-        // Navigate to Site Locations - for now just show alert
-        Alert.alert('Site Locations', 'Site locations feature will open here. This would navigate to the SiteLocationsScreen component.');
+      case 'readings':
+        onNavigateToMyReadings();
         break;
-      default:
-        console.log(`Navigating to ${screen} - Feature coming soon!`);
-        Alert.alert('Coming Soon', `${screen} feature will be available soon!`);
+      case 'dashboard':
+        // Already on dashboard - do nothing
+        break;
+      case 'sites':
+        onNavigateToSiteLocations();
+        break;
+      case 'profile':
+        onNavigateToProfile();
+        break;
+    }
+  };
+
+  const handleNavbarAction = (action: 'qr' | 'notifications' | 'profile' | 'settings') => {
+    switch (action) {
+      case 'qr':
+        console.log('QR Scanner will open');
+        Alert.alert('QR Scanner', 'QR code scanning functionality will be implemented here.');
+        break;
+      case 'notifications':
+        console.log('Notifications will open');
+        Alert.alert('Notifications', 'Notification center will be implemented here.');
+        break;
+      case 'profile':
+        onNavigateToProfile();
+        break;
+      case 'settings':
+        onNavigateToSettings();
         break;
     }
   };
@@ -411,20 +434,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   return (
     <View style={styles.container}>
       <Navbar 
-        onMenuPress={() => setSidebarVisible(true)}
-        userName={profile.full_name || 'User'}
-      />
-      
-      <Sidebar
-        isVisible={isSidebarVisible}
-        onClose={() => setSidebarVisible(false)}
-        onNavigate={handleSidebarNavigation}
-        isGuest={false}
-        userProfile={{
-          fullName: profile.full_name || 'Field Personnel',
-          role: profile.role || 'Water Level Operator',
-          initials: (profile.full_name || 'FP').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-        }}
+        onQRScanPress={() => handleNavbarAction('qr')}
+        onNotificationPress={() => handleNavbarAction('notifications')}
+        onProfilePress={() => handleNavbarAction('profile')}
+        onSettingsPress={() => handleNavbarAction('settings')}
       />
 
       {renderHeroSection()}
@@ -437,9 +450,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       >
         {/* Monitoring Sites Section */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>🏗️ Monitoring Sites</Text>
-            <Text style={styles.sectionSubtitle}>Overview • History • Map</Text>
+          <View style={styles.sectionHeaderWithAction}>
+            <View>
+              <Text style={styles.sectionTitle}>🏗️ Monitoring Sites</Text>
+              <Text style={styles.sectionSubtitle}>Overview • History • Map</Text>
+            </View>
+            {sites.length > 5 && (
+              <TouchableOpacity 
+                style={styles.viewAllButton}
+                onPress={() => handleTabPress('sites')}
+              >
+                <Text style={styles.viewAllButtonText}>View All</Text>
+              </TouchableOpacity>
+            )}
           </View>
           
           {loading && sites.length === 0 ? (
@@ -462,7 +485,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               <Text style={styles.emptySubtext}>Trying to load sites...</Text>
             </View>
           ) : (
-            sites.map(renderSiteCard)
+            // Only show first 5 sites on home screen
+            sites.slice(0, 5).map(renderSiteCard)
           )}
         </View>
 
@@ -475,6 +499,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* AI Insights Section */}
         {renderAIInsights()}
       </ScrollView>
+      
+      <BottomNavigation
+        activeTab={activeTab}
+        onTabPress={handleTabPress}
+      />
     </View>
   );
 };
@@ -486,7 +515,7 @@ const styles = StyleSheet.create({
     paddingTop: 0, // Remove top padding since navbar handles it
   },
   scrollContainer: {
-    paddingBottom: 34, // Add bottom padding to prevent collision with navigation buttons
+    paddingBottom: 100, // Add bottom padding to prevent collision with bottom navigation
   },
   // Hero Section Styles
   heroContainer: {
@@ -758,6 +787,25 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
+  },
+  // Section Header with Action
+  sectionHeaderWithAction: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  viewAllButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: Colors.aquaTechBlue,
+    borderRadius: 20,
+  },
+  viewAllButtonText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 
