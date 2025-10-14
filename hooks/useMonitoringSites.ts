@@ -10,6 +10,7 @@ interface UseMonitoringSitesOptions {
   userRole?: string;
   autoRefresh?: boolean;
   refreshInterval?: number; // in milliseconds
+  skipInitialFetch?: boolean; // Performance optimization - skip initial fetch if data is cached
 }
 
 interface UseMonitoringSitesReturn {
@@ -36,6 +37,7 @@ export const useMonitoringSites = (
     userRole,
     autoRefresh = false,
     refreshInterval = 5 * 60 * 1000, // 5 minutes default
+    skipInitialFetch = false,
   } = options;
 
   const [sites, setSites] = useState<MonitoringSite[]>([]);
@@ -124,8 +126,14 @@ export const useMonitoringSites = (
 
   /**
    * Initial load with connection test
+   * Can be skipped for performance optimization when data is already cached
    */
   useEffect(() => {
+    if (skipInitialFetch) {
+      console.log('⚡ Skipping initial fetch - using cached data for better performance');
+      return;
+    }
+
     const initialLoad = async () => {
       setLoading(true);
       try {
@@ -151,7 +159,7 @@ export const useMonitoringSites = (
     };
 
     initialLoad();
-  }, [fetchSites, fetchTodaysReadingsCount]);
+  }, [fetchSites, fetchTodaysReadingsCount, skipInitialFetch]);
 
   /**
    * Auto-refresh setup
