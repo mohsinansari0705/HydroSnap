@@ -1,148 +1,240 @@
-import React, { useMemo } from 'react';
+import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
-import {
-  createNeumorphicCard,
-  createNeumorphicIconContainer,
-  NeumorphicTextStyles,
-} from '../lib/neumorphicStyles';
 import { Colors } from '../lib/colors';
 
 interface NavbarProps {
-  onMenuPress: () => void;
-  userName: string;
+  onQRScanPress?: () => void;
+  onNotificationPress?: () => void;
+  onProfilePress?: () => void;
+  onSettingsPress?: () => void;
+  userName?: string;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onMenuPress, userName }) => {
-  const styles = useMemo(() => createStyles(), []);
-  
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+const Navbar: React.FC<NavbarProps> = ({
+  onQRScanPress,
+  onNotificationPress,
+  onProfilePress,
+  onSettingsPress,
+}) => {
+  const [showMenu, setShowMenu] = useState(false);
+
+  const handleMenuPress = () => {
+    setShowMenu(!showMenu);
   };
+
+  const handleMenuItemPress = (action: () => void) => {
+    setShowMenu(false);
+    action();
+  };
+
+  // QR Code Icon SVG
+  const QRIcon = () => (
+    <View style={styles.iconContainer}>
+      <View style={styles.qrGrid}>
+        <View style={[styles.qrSquare, { backgroundColor: Colors.deepSecurityBlue }]} />
+        <View style={styles.qrSpace} />
+        <View style={[styles.qrSquare, { backgroundColor: Colors.deepSecurityBlue }]} />
+        <View style={styles.qrSpace} />
+        <View style={[styles.qrSquare, { backgroundColor: Colors.deepSecurityBlue }]} />
+        <View style={styles.qrSpace} />
+        <View style={[styles.qrSquare, { backgroundColor: Colors.deepSecurityBlue }]} />
+      </View>
+    </View>
+  );
+
+  // Notification Bell Icon SVG
+  const NotificationIcon = () => (
+    <View style={styles.iconContainer}>
+      <View style={styles.bellContainer}>
+        <View style={styles.bellTop} />
+        <View style={styles.bellBody} />
+        <View style={styles.bellBottom} />
+      </View>
+    </View>
+  );
+
+  // Three Dots Menu Icon
+  const MenuIcon = () => (
+    <View style={styles.iconContainer}>
+      <View style={styles.dotsContainer}>
+        <View style={styles.dot} />
+        <View style={styles.dot} />
+        <View style={styles.dot} />
+      </View>
+    </View>
+  );
 
   return (
     <View style={styles.navbar}>
+      {/* Left Section - App Name */}
       <View style={styles.leftSection}>
-        <TouchableOpacity onPress={onMenuPress} style={styles.menuButton} activeOpacity={0.7}>
-          <View style={styles.menuIconContainer}>
-            <View style={styles.menuLine} />
-            <View style={styles.menuLine} />
-            <View style={styles.menuLine} />
-          </View>
-        </TouchableOpacity>
-        
-        <View style={styles.brandContainer}>
-          <View style={styles.brandText}>
-            <Text style={styles.appName}>HydroSnap</Text>
-            <Text style={styles.tagline}>Water Level Monitoring</Text>
-          </View>
-        </View>
+        <Text style={styles.appName}>HydroSnap</Text>
       </View>
       
-      <View style={styles.rightSection}>        
-        <TouchableOpacity style={styles.avatarContainer} activeOpacity={0.8}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(userName)}</Text>
-          </View>
-          <View style={styles.statusDot} />
+      {/* Right Section - Icons */}
+      <View style={styles.rightSection}>
+        <TouchableOpacity onPress={onQRScanPress} style={styles.iconButton}>
+          <QRIcon />
         </TouchableOpacity>
+        
+        <TouchableOpacity onPress={onNotificationPress} style={styles.iconButton}>
+          <NotificationIcon />
+        </TouchableOpacity>
+        
+        <View style={styles.menuContainer}>
+          <TouchableOpacity onPress={handleMenuPress} style={styles.iconButton}>
+            <MenuIcon />
+          </TouchableOpacity>
+          
+          {/* Dropdown Menu */}
+          {showMenu && (
+            <View style={styles.dropdownMenu}>
+              <TouchableOpacity 
+                style={styles.menuItem}
+                onPress={() => handleMenuItemPress(onProfilePress || (() => {}))}
+              >
+                <Text style={styles.menuItemText}>👤 Profile</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.menuItem}
+                onPress={() => handleMenuItemPress(onSettingsPress || (() => {}))}
+              >
+                <Text style={styles.menuItemText}>⚙️ Settings</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </View>
     </View>
   );
 };
 
-const createStyles = () => StyleSheet.create({
+const styles = StyleSheet.create({
   navbar: {
     height: 85,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    backgroundColor: Colors.deepSecurityBlue, // Use Deep Security Blue for navbar
-    marginTop: 40,
-    paddingTop: 10,
-    // Neumorphic shadow for elevated effect
-    shadowColor: Colors.deepSecurityBlue + '40',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 10,
+    backgroundColor: Colors.deepSecurityBlue,
+    paddingTop: 45, // Account for status bar
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
   leftSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
-  },
-  menuButton: {
-    ...createNeumorphicCard({ size: 'small', borderRadius: 14 }),
-    padding: 14,
-    backgroundColor: Colors.softLightGrey, // Light neumorphic button on dark navbar
-  },
-  menuIconContainer: {
-    width: 22,
-    height: 22,
-    justifyContent: 'space-between',
-  },
-  menuLine: {
-    height: 3,
-    backgroundColor: Colors.deepSecurityBlue,
-    borderRadius: 2,
-  },
-  brandContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 18,
-    flex: 1,
-  },
-  logoContainer: {
-    ...createNeumorphicIconContainer(48),
-    backgroundColor: Colors.aquaTechBlue, // Accent color for logo
-  },
-  logo: {
-    width: 30,
-    height: 30,
-    tintColor: Colors.white,
-  },
-  brandText: {
-    marginLeft: 16,
   },
   appName: {
-    ...NeumorphicTextStyles.heading,
     fontSize: 24,
-    color: Colors.white, // White text on dark navbar
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: 13,
-    color: Colors.aquaTechBlue, // Accent color for tagline
-    fontWeight: '600',
-    marginTop: 2,
+    fontWeight: 'bold',
+    color: Colors.white,
   },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 16,
   },
-  avatarContainer: {
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.white + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconContainer: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // QR Code Icon Styles
+  qrGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: 16,
+    height: 16,
+  },
+  qrSquare: {
+    width: 3,
+    height: 3,
+    borderRadius: 1,
+  },
+  qrSpace: {
+    width: 1,
+    height: 3,
+  },
+  // Notification Bell Icon Styles
+  bellContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellTop: {
+    width: 4,
+    height: 4,
+    backgroundColor: Colors.white,
+    borderRadius: 2,
+    marginBottom: 1,
+  },
+  bellBody: {
+    width: 14,
+    height: 12,
+    backgroundColor: Colors.white,
+    borderRadius: 6,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
+  },
+  bellBottom: {
+    width: 8,
+    height: 2,
+    backgroundColor: Colors.white,
+    borderRadius: 1,
+    marginTop: 1,
+  },
+  // Three Dots Menu Icon Styles
+  dotsContainer: {
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 16,
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    backgroundColor: Colors.white,
+    borderRadius: 2,
+    marginVertical: 1,
+  },
+  // Menu Dropdown Styles
+  menuContainer: {
     position: 'relative',
   },
-  avatar: {
-    ...createNeumorphicIconContainer(46),
-    backgroundColor: Colors.aquaTechBlue, // Accent color for avatar
-  },
-  avatarText: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: Colors.white,
-  },
-  statusDot: {
+  dropdownMenu: {
     position: 'absolute',
-    bottom: 0,
+    top: 50,
     right: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: Colors.validationGreen,
-    borderWidth: 3,
-    borderColor: Colors.deepSecurityBlue,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    paddingVertical: 8,
+    minWidth: 150,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  menuItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: Colors.textPrimary,
+    fontWeight: '500',
   },
 });
 

@@ -107,7 +107,7 @@ export default function AppNavigator() {
         return (
           <ProfileSetup 
             userId={session.user.id}
-            onComplete={() => setCurrentScreen('home')}
+            onProfileComplete={() => setCurrentScreen('home')}
           />
         );
 
@@ -130,6 +130,8 @@ export default function AppNavigator() {
               profile={profile}
               onNavigateToSite={navigateToSiteDetails}
               onNavigateToNewReading={navigateToNewReadingScreen}
+              onNavigateToMyReadings={() => console.log('Navigate to My Readings')}
+              onNavigateToSiteLocations={() => console.log('Navigate to Site Locations')}
               onNavigateToProfile={() => setCurrentScreen('settings')}
               onNavigateToSettings={navigateToSettings}
             />
@@ -150,12 +152,15 @@ export default function AppNavigator() {
         return (
           <NewReadingScreen
             siteId={selectedSiteId}
-            userProfile={profile}
-            onNavigateBack={navigateBack}
-            onReadingSubmitted={() => {
-              console.log('Reading submitted successfully');
+            siteName="Sample Site"
+            siteLocation="Sample Location"
+            targetCoordinates={{ latitude: 28.6139, longitude: 77.2090 }}
+            validRadius={500}
+            onSubmitReading={(data) => {
+              console.log('Reading submitted successfully:', data);
               navigateBack();
             }}
+            onCancel={navigateBack}
           />
         );
 
@@ -163,8 +168,11 @@ export default function AppNavigator() {
         if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
         return (
           <PublicUploadScreen
-            userProfile={profile}
-            onNavigateBack={navigateBack}
+            onSubmitReport={(data) => {
+              console.log('Public report submitted:', data);
+              navigateBack();
+            }}
+            onCancel={navigateBack}
           />
         );
 
