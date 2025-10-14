@@ -19,13 +19,6 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuPress, userName }) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return '🌅';
-    if (hour < 17) return '💧';
-    return '🌊';
-  };
-
   return (
     <View style={styles.navbar}>
       <View style={styles.leftSection}>
@@ -45,11 +38,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuPress, userName }) => {
         </View>
       </View>
       
-      <View style={styles.rightSection}>
-        <View style={styles.greetingContainer}>
-          <Text style={styles.greetingIcon}>{getGreeting()}</Text>
-        </View>
-        
+      <View style={styles.rightSection}>        
         <TouchableOpacity style={styles.avatarContainer} activeOpacity={0.8}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{getInitials(userName)}</Text>
@@ -69,7 +58,7 @@ const createStyles = () => StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     backgroundColor: Colors.deepSecurityBlue, // Use Deep Security Blue for navbar
-    marginTop: 35,
+    marginTop: 40,
     paddingTop: 10,
     // Neumorphic shadow for elevated effect
     shadowColor: Colors.deepSecurityBlue + '40',
@@ -132,23 +121,12 @@ const createStyles = () => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  greetingContainer: {
-    ...createNeumorphicCard({ size: 'small', borderRadius: 12 }),
-    backgroundColor: Colors.softLightGrey,
-    padding: 8,
-    marginRight: 15,
-  },
-  greetingIcon: {
-    fontSize: 26,
-  },
   avatarContainer: {
     position: 'relative',
   },
   avatar: {
     ...createNeumorphicIconContainer(46),
     backgroundColor: Colors.aquaTechBlue, // Accent color for avatar
-    borderWidth: 3,
-    borderColor: Colors.softLightGrey,
   },
   avatarText: {
     fontSize: 17,
