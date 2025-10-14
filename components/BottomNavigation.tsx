@@ -104,7 +104,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderTopWidth: 1,
     borderTopColor: Colors.lightShadow,
-    paddingBottom: 34, // Safe area for iPhone
+    // BOTTOM MARGIN SETTINGS
+    paddingBottom: 45, // adjust bottom spacing
+    marginBottom: 10, // Added extra margin
   },
   navigation: {
     flexDirection: 'row',

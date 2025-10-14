@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useAuth } from '../lib/AuthContext';
 import { useNavigation } from '../lib/NavigationContext';
+import { SiteCacheProvider } from '../lib/SiteCacheContext';
 import AuthScreen from './AuthScreen';
 import ProfileSetup from './ProfileSetup';
 import Loading from './Loading';
@@ -9,6 +10,7 @@ import SplashScreen from '../pages/SplashScreen';
 import OnboardingScreen from '../pages/OnboardingScreen';
 import HomeScreen from '../pages/HomeScreen';
 import SiteDetailsScreen from '../pages/SiteDetailsScreen';
+import SiteLocationsScreen from '../pages/SiteLocationsScreen';
 import NewReadingScreen from '../pages/NewReadingScreen';
 import SupervisorDashboard from '../pages/SupervisorDashboard';
 import PublicUploadScreen from '../pages/PublicUploadScreen';
@@ -131,7 +133,7 @@ export default function AppNavigator() {
               onNavigateToSite={navigateToSiteDetails}
               onNavigateToNewReading={navigateToNewReadingScreen}
               onNavigateToMyReadings={() => console.log('Navigate to My Readings')}
-              onNavigateToSiteLocations={() => console.log('Navigate to Site Locations')}
+              onNavigateToSiteLocations={() => setCurrentScreen('site-locations')}
               onNavigateToProfile={() => setCurrentScreen('settings')}
               onNavigateToSettings={navigateToSettings}
             />
@@ -144,6 +146,15 @@ export default function AppNavigator() {
             siteId={selectedSiteId}
             onNavigateBack={navigateBack}
             onNavigateToNewReading={navigateToNewReadingScreen}
+          />
+        );
+
+      case 'site-locations':
+        return (
+          <SiteLocationsScreen
+            onNavigateToSite={navigateToSiteDetails}
+            onBack={navigateBack}
+            userLocation={{ latitude: 28.6139, longitude: 77.2090 }}
           />
         );
 
@@ -196,9 +207,11 @@ export default function AppNavigator() {
   };
 
   return (
-    <View style={styles.container}>
-      {renderScreen()}
-    </View>
+    <SiteCacheProvider>
+      <View style={styles.container}>
+        {renderScreen()}
+      </View>
+    </SiteCacheProvider>
   );
 }
 

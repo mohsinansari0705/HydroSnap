@@ -16,6 +16,7 @@ const Navbar: React.FC<NavbarProps> = ({
   onProfilePress,
   onSettingsPress,
 }) => {
+  console.log('Navbar: onSettingsPress is', typeof onSettingsPress);
   const [showMenu, setShowMenu] = useState(false);
 
   const handleMenuPress = () => {
@@ -23,6 +24,7 @@ const Navbar: React.FC<NavbarProps> = ({
   };
 
   const handleMenuItemPress = (action: () => void) => {
+    console.log('Menu item pressed, calling action');
     setShowMenu(false);
     action();
   };
@@ -30,14 +32,14 @@ const Navbar: React.FC<NavbarProps> = ({
   // QR Code Icon SVG
   const QRIcon = () => (
     <View style={styles.iconContainer}>
-      <View style={styles.qrGrid}>
-        <View style={[styles.qrSquare, { backgroundColor: Colors.deepSecurityBlue }]} />
-        <View style={styles.qrSpace} />
-        <View style={[styles.qrSquare, { backgroundColor: Colors.deepSecurityBlue }]} />
-        <View style={styles.qrSpace} />
-        <View style={[styles.qrSquare, { backgroundColor: Colors.deepSecurityBlue }]} />
-        <View style={styles.qrSpace} />
-        <View style={[styles.qrSquare, { backgroundColor: Colors.deepSecurityBlue }]} />
+      <View style={styles.qrContainer}>
+        <View style={styles.qrFrame}>
+          <View style={styles.qrTopLeft} />
+          <View style={styles.qrTopRight} />
+          <View style={styles.qrBottomLeft} />
+          <View style={styles.qrBottomRight} />
+          <View style={styles.qrCenter} />
+        </View>
       </View>
     </View>
   );
@@ -66,9 +68,14 @@ const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <View style={styles.navbar}>
-      {/* Left Section - App Name */}
+      {/* Left Section - App Name with Logo */}
       <View style={styles.leftSection}>
-        <Text style={styles.appName}>HydroSnap</Text>
+        <View style={styles.brandContainer}>
+          <View style={styles.appInfo}>
+            <Text style={styles.appName}>HydroSnap</Text>
+            <Text style={styles.appSubtitle}>Smart Water Level Monitoring</Text>
+          </View>
+        </View>
       </View>
       
       {/* Right Section - Icons */}
@@ -89,16 +96,19 @@ const Navbar: React.FC<NavbarProps> = ({
           {/* Dropdown Menu */}
           {showMenu && (
             <View style={styles.dropdownMenu}>
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => handleMenuItemPress(onProfilePress || (() => {}))}
+              <View 
+                style={[styles.menuItem, styles.disabledMenuItem]}
               >
-                <Text style={styles.menuItemText}>👤 Profile</Text>
-              </TouchableOpacity>
+                <Text style={[styles.menuItemText, styles.disabledMenuText]}>👤 Profile</Text>
+                <Text style={styles.comingSoonText}>Coming Soon</Text>
+              </View>
               
               <TouchableOpacity 
                 style={styles.menuItem}
-                onPress={() => handleMenuItemPress(onSettingsPress || (() => {}))}
+                onPress={() => {
+                  console.log('Settings menu item pressed');
+                  handleMenuItemPress(onSettingsPress || (() => {}));
+                }}
               >
                 <Text style={styles.menuItemText}>⚙️ Settings</Text>
               </TouchableOpacity>
@@ -112,13 +122,17 @@ const Navbar: React.FC<NavbarProps> = ({
 
 const styles = StyleSheet.create({
   navbar: {
-    height: 85,
+    // Adjust these values to separate from mobile header
+    height: 110, // adjust navbar height
+    // marginTop: 8, // Added top margin
+    paddingTop: 40, // adjust internal top padding
+    paddingBottom: 8, // Added bottom padding
+    
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     backgroundColor: Colors.deepSecurityBlue,
-    paddingTop: 45, // Account for status bar
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -128,10 +142,23 @@ const styles = StyleSheet.create({
   leftSection: {
     flex: 1,
   },
+  brandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  appInfo: {
+    flex: 1,
+  },
   appName: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: Colors.white,
+    marginBottom: 2,
+  },
+  appSubtitle: {
+    fontSize: 12,
+    color: Colors.white + 'CC',
+    fontWeight: '500',
   },
   rightSection: {
     flexDirection: 'row',
@@ -153,20 +180,65 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   // QR Code Icon Styles
-  qrGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    width: 16,
-    height: 16,
+  qrContainer: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  qrSquare: {
-    width: 3,
-    height: 3,
+  qrFrame: {
+    width: 18,
+    height: 18,
+    position: 'relative',
+  },
+  qrTopLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 6,
+    height: 6,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: Colors.white,
+  },
+  qrTopRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 6,
+    height: 6,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderColor: Colors.white,
+  },
+  qrBottomLeft: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: 6,
+    height: 6,
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: Colors.white,
+  },
+  qrBottomRight: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 6,
+    height: 6,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderColor: Colors.white,
+  },
+  qrCenter: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 6,
+    height: 6,
+    backgroundColor: Colors.white,
     borderRadius: 1,
-  },
-  qrSpace: {
-    width: 1,
-    height: 3,
   },
   // Notification Bell Icon Styles
   bellContainer: {
@@ -235,6 +307,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textPrimary,
     fontWeight: '500',
+  },
+  disabledMenuItem: {
+    opacity: 0.6,
+  },
+  disabledMenuText: {
+    color: Colors.textSecondary,
+  },
+  comingSoonText: {
+    fontSize: 12,
+    color: Colors.aquaTechBlue,
+    fontWeight: '600',
+    marginTop: 2,
   },
 });
 
