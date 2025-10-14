@@ -11,21 +11,12 @@ import {
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { Profile } from '../types/profile';
-
-interface MonitoringSite {
-  id: string;
-  name: string;
-  location: string;
-  status: 'normal' | 'warning' | 'danger' | 'reading_due';
-  lastReading?: {
-    waterLevel: number;
-    timestamp: string;
-    operator: string;
-  };
-  distanceFromUser?: number; // in meters
-  isAccessible: boolean;
-  qrCode: string;
-}
+import Card from '../components/Card';
+import Navbar from '../components/Navbar';
+import Sidebar from '../components/Sidebar';
+import { useMonitoringSites } from '../hooks/useMonitoringSites';
+import { MonitoringSite } from '../services/monitoringSitesService';
+import { DebugUtils } from '../services/debugUtils';
 
 interface HomeScreenProps {
   profile: Profile;
@@ -35,62 +26,57 @@ interface HomeScreenProps {
   onNavigateToSettings: () => void;
 }
 
-const mockSites: MonitoringSite[] = [
+
+
+// Flood alerts data
+const floodAlerts = [
   {
-    id: 'site_1',
-    name: 'Yamuna River - Palla',
-    location: 'Delhi, India',
-    status: 'normal',
-    lastReading: {
-      waterLevel: 142.5,
-      timestamp: '2 hours ago',
-      operator: 'Field Officer',
-    },
-    distanceFromUser: 1200,
-    isAccessible: true,
-    qrCode: 'YAM_PAL_001',
+    id: 'flood_1',
+    title: 'High Water Level Alert',
+    description: 'Water level approaching danger mark at gauge station',
+    location: 'Brahmaputra River - Guwahati',
+    date: '2025-10-14',
+    type: 'flood_alert' as const,
+    severity: 'high' as const,
+    waterLevel: 142.5,
+    dangerLevel: 145.0,
   },
   {
-    id: 'site_2',
-    name: 'Ganga River - Ganga Canal',
-    location: 'Muradnagar, UP',
-    status: 'reading_due',
-    lastReading: {
-      waterLevel: 156.8,
-      timestamp: '6 hours ago',
-      operator: 'System Auto',
-    },
-    distanceFromUser: 850,
-    isAccessible: true,
-    qrCode: 'GAN_MUR_002',
+    id: 'flood_2',
+    title: 'Rising Water Levels',
+    description: 'Steady increase in water level due to upstream rainfall',
+    location: 'Ganges River - Patna',
+    date: '2025-10-14',
+    type: 'flood_alert' as const,
+    severity: 'medium' as const,
+    waterLevel: 48.2,
+    dangerLevel: 50.0,
+  },
+];
+
+// Recent readings data
+const recentReadings = [
+  {
+    id: 'reading_1',
+    title: 'Latest Water Level Reading',
+    description: 'Automated reading captured via HydroSnap mobile app',
+    location: 'Narmada River - Bhopal',
+    date: '2025-10-14',
+    type: 'reading' as const,
+    severity: 'low' as const,
+    waterLevel: 35.8,
+    fieldPersonnel: 'Rajesh Kumar',
   },
   {
-    id: 'site_3',
-    name: 'Hindon River',
-    location: 'Ghaziabad, UP',
-    status: 'danger',
-    lastReading: {
-      waterLevel: 178.2,
-      timestamp: 'Just now',
-      operator: 'Emergency Team',
-    },
-    distanceFromUser: 2100,
-    isAccessible: false,
-    qrCode: 'HIN_GHA_003',
-  },
-  {
-    id: 'site_4',
-    name: 'Gomti Barrage',
-    location: 'Lucknow, UP',
-    status: 'normal',
-    lastReading: {
-      waterLevel: 134.7,
-      timestamp: 'Just now',
-      operator: 'Auto Sensor',
-    },
-    distanceFromUser: 450,
-    isAccessible: true,
-    qrCode: '4CAF130',
+    id: 'reading_2',
+    title: 'Manual Site Inspection',
+    description: 'Field verification and water level measurement',
+    location: 'Yamuna River - Agra',
+    date: '2025-10-14',
+    type: 'reading' as const,
+    severity: 'low' as const,
+    waterLevel: 28.4,
+    fieldPersonnel: 'Priya Sharma',
   },
 ];
 
@@ -101,33 +87,59 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToProfile,
   onNavigateToSettings,
 }) => {
-  const [sites] = useState<MonitoringSite[]>(mockSites);
-  const [refreshing, setRefreshing] = useState(false);
+  const [isSidebarVisible, setSidebarVisible] = useState(false);
+  const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
+
+  // Use the monitoring sites hook
+  const {
+    sites,
+    loading,
+    error,
+    refreshing,
+    todaysReadingsCount,
+    floodAlertsCount,
+    refresh,
+  } = useMonitoringSites({
+    ...(userLocation && { userLocation }),
+    userId: profile.id,
+    userRole: profile.role,
+    autoRefresh: true,
+    refreshInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+  });
 
   useEffect(() => {
-    // TODO: Get user location and fetch nearby sites
     fetchUserLocation();
-    fetchMonitoringSites();
   }, []);
 
   const fetchUserLocation = async () => {
-    // TODO: Implement location fetching
-    console.log('Fetching user location...');
-  };
-
-  const fetchMonitoringSites = async () => {
-    // TODO: Fetch sites from API based on user role and location
-    console.log('Fetching monitoring sites...');
+    try {
+      // TODO: Implement proper location fetching with permissions
+      // For now, we'll use a mock location (Delhi)
+      setUserLocation({
+        latitude: 28.6139,
+        longitude: 77.2090
+      });
+    } catch (error) {
+      console.log('Could not fetch user location:', error);
+    }
   };
 
   const onRefresh = async () => {
-    setRefreshing(true);
     try {
-      await fetchMonitoringSites();
+      await refresh();
     } catch (error) {
       Alert.alert('Error', 'Failed to refresh data. Please try again.');
-    } finally {
-      setRefreshing(false);
+    }
+  };
+
+  const runDebugTests = async () => {
+    console.log('🐛 Running debug tests from HomeScreen...');
+    try {
+      await DebugUtils.runAllTests();
+      Alert.alert('Debug Complete', 'Check the console for detailed debug information.');
+    } catch (error) {
+      console.error('Debug tests failed:', error);
+      Alert.alert('Debug Failed', 'Debug tests encountered an error. Check console for details.');
     }
   };
 
@@ -162,7 +174,33 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   };
 
   const canTakeReading = (site: MonitoringSite) => {
-    return site.isAccessible && (site.distanceFromUser ?? 0) <= 500; // Within 500 meters
+    return (site.isAccessible ?? true) && (site.distanceFromUser ?? 0) <= 500; // Within 500 meters
+  };
+
+  const handleSidebarNavigation = (screen: string) => {
+    setSidebarVisible(false);
+    switch (screen) {
+      case 'Profile':
+        onNavigateToProfile();
+        break;
+      case 'Settings':
+        onNavigateToSettings();
+        break;
+      case 'Dashboard':
+        // Already on dashboard
+        break;
+      case 'Capture':
+        onNavigateToNewReading('capture');
+        break;
+      case 'Sites':
+        // Navigate to Site Locations - for now just show alert
+        Alert.alert('Site Locations', 'Site locations feature will open here. This would navigate to the SiteLocationsScreen component.');
+        break;
+      default:
+        console.log(`Navigating to ${screen} - Feature coming soon!`);
+        Alert.alert('Coming Soon', `${screen} feature will be available soon!`);
+        break;
+    }
   };
 
   const renderSiteCard = (site: MonitoringSite) => (
@@ -179,7 +217,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(site.status) }]}>
-          <Text style={styles.statusText}>{getStatusText(site.status)}</Text>
+          <Text style={styles.statusBadgeText}>{getStatusText(site.status)}</Text>
         </View>
       </View>
 
@@ -211,78 +249,231 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     </TouchableOpacity>
   );
 
-  const renderHeader = () => (
-    <View style={[styles.header, createNeumorphicCard({ size: 'medium' })]}>
-      <View style={styles.headerContent}>
-        <View>
-          <Text style={[styles.greeting, NeumorphicTextStyles.heading]}>
-            Hello, {profile.full_name.split(' ')[0]} 👋
-          </Text>
-          <Text style={[styles.roleLabel, NeumorphicTextStyles.caption]}>
-            {profile.role.replace('_', ' ').toUpperCase()}
-          </Text>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[styles.headerButton, createNeumorphicCard({ size: 'small' })]}
-            onPress={onNavigateToProfile}
-          >
-            <Text style={styles.headerButtonIcon}>👤</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.headerButton, createNeumorphicCard({ size: 'small' })]}
-            onPress={onNavigateToSettings}
-          >
-            <Text style={styles.headerButtonIcon}>⚙️</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
+  const renderHeroSection = () => {
+    const currentHour = new Date().getHours();
+    const getGreeting = () => {
+      if (currentHour < 12) return 'Good Morning';
+      if (currentHour < 17) return 'Good Afternoon';
+      return 'Good Evening';
+    };
 
-  const renderQuickStats = () => {
+    const getCurrentDate = () => {
+      const today = new Date();
+      return today.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    };
+
+    const getWaterLevelStatus = () => {
+      const warningSites = sites.filter(site => site.status === 'warning').length;
+      const dangerSites = sites.filter(site => site.status === 'danger').length;
+      
+      if (dangerSites > 0) {
+        return { status: 'Critical', color: Colors.alertRed, icon: '🚨' };
+      } else if (warningSites > 0) {
+        return { status: 'Monitoring', color: Colors.warning, icon: '⚠️' };
+      } else {
+        return { status: 'Normal', color: Colors.validationGreen, icon: '✅' };
+      }
+    };
+
     const totalSites = sites.length;
-    const dangerSites = sites.filter(s => s.status === 'danger').length;
-    const overdueSites = sites.filter(s => s.status === 'reading_due').length;
+    const currentFloodAlerts = floodAlertsCount;
+    const waterStatus = getWaterLevelStatus();
 
     return (
-      <View style={styles.statsContainer}>
-        <View style={[styles.statCard, createNeumorphicCard({ size: 'small' })]}>
-          <Text style={[styles.statValue, NeumorphicTextStyles.heading]}>{totalSites}</Text>
-          <Text style={[styles.statLabel, NeumorphicTextStyles.caption]}>Total Sites</Text>
+      <View style={[styles.heroContainer, createNeumorphicCard({ size: 'large', borderRadius: 24 })]}>
+        {/* Header Section */}
+        <View style={styles.heroHeader}>
+          <View style={styles.greetingContainer}>
+            <Text style={styles.greeting}>{getGreeting()}, {profile.full_name.split(' ')[0]}</Text>
+            <View style={styles.statusContainer}>
+              <Text style={styles.statusIcon}>{waterStatus.icon}</Text>
+              <Text style={[styles.statusText, { color: waterStatus.color }]}>
+                Water Level Status: {waterStatus.status}
+              </Text>
+            </View>
+            <Text style={styles.date}>{getCurrentDate()}</Text>
+          </View>
         </View>
-        <View style={[styles.statCard, createNeumorphicCard({ size: 'small' })]}>
-          <Text style={[styles.statValue, NeumorphicTextStyles.heading, { color: Colors.alertRed }]}>
-            {dangerSites}
-          </Text>
-          <Text style={[styles.statLabel, NeumorphicTextStyles.caption]}>High Alert</Text>
+
+        {/* Stats Container */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>📍</Text>
+            <Text style={styles.statNumber}>{totalSites}</Text>
+            <Text style={styles.statLabel}>Active Sites</Text>
+          </View>
+          
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>📊</Text>
+            <Text style={styles.statNumber}>{todaysReadingsCount}</Text>
+            <Text style={styles.statLabel}>Today's Readings</Text>
+          </View>
+          
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>⚠️</Text>
+            <Text style={styles.statNumber}>{currentFloodAlerts}</Text>
+            <Text style={styles.statLabel}>Flood Alerts</Text>
+          </View>
         </View>
-        <View style={[styles.statCard, createNeumorphicCard({ size: 'small' })]}>
-          <Text style={[styles.statValue, NeumorphicTextStyles.heading, { color: Colors.warning }]}>
-            {overdueSites}
-          </Text>
-          <Text style={[styles.statLabel, NeumorphicTextStyles.caption]}>Overdue</Text>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => onNavigateToNewReading('capture')}
+          >
+            <Text style={styles.actionIcon}>📸</Text>
+            <Text style={styles.actionText}>Capture Reading</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => console.log('View Sites')}
+          >
+            <Text style={styles.actionIcon}>🗺️</Text>
+            <Text style={styles.actionText}>View Sites</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   };
 
+  const renderFloodAlerts = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>🚨 Flood Alert Status</Text>
+        <Text style={styles.sectionSubtitle}>Real-time water level monitoring</Text>
+      </View>
+      {floodAlerts.map(alert => (
+        <Card
+          key={alert.id}
+          type={alert.type}
+          severity={alert.severity}
+          title={alert.title}
+          description={alert.description}
+          location={alert.location}
+          date={alert.date}
+          waterLevel={alert.waterLevel}
+          dangerLevel={alert.dangerLevel}
+          onPress={() => console.log(`Flood alert ${alert.id} pressed`)}
+        />
+      ))}
+    </View>
+  );
+
+  const renderRecentReadings = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>📊 Recent Water Level Readings</Text>
+        <Text style={styles.sectionSubtitle}>Latest data collection</Text>
+      </View>
+      {recentReadings.map(reading => (
+        <Card
+          key={reading.id}
+          type={reading.type}
+          severity={reading.severity}
+          title={reading.title}
+          description={reading.description}
+          location={reading.location}
+          date={reading.date}
+          waterLevel={reading.waterLevel}
+          fieldPersonnel={reading.fieldPersonnel}
+          onPress={() => console.log(`Reading ${reading.id} pressed`)}
+        />
+      ))}
+    </View>
+  );
+
+  const renderAIInsights = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>🤖 AI Flood Prediction</Text>
+        <Text style={styles.sectionSubtitle}>Machine learning analysis</Text>
+      </View>
+      <View style={styles.insightCard}>
+        <Text style={styles.insightTitle}>Flood Risk Assessment</Text>
+        <Text style={styles.insightText}>
+          AI model predicts 68% chance of moderate flooding in Brahmaputra basin within next 48 hours based on upstream precipitation data and current water levels.
+        </Text>
+        <View style={styles.riskIndicator}>
+          <Text style={styles.riskLabel}>Risk Level: </Text>
+          <Text style={styles.riskMedium}>MEDIUM</Text>
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      {renderHeader()}
+      <Navbar 
+        onMenuPress={() => setSidebarVisible(true)}
+        userName={profile.full_name || 'User'}
+      />
+      
+      <Sidebar
+        isVisible={isSidebarVisible}
+        onClose={() => setSidebarVisible(false)}
+        onNavigate={handleSidebarNavigation}
+        isGuest={false}
+        userProfile={{
+          fullName: profile.full_name || 'Field Personnel',
+          role: profile.role || 'Water Level Operator',
+          initials: (profile.full_name || 'FP').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+        }}
+      />
+
+      {renderHeroSection()}
       
       <ScrollView
         style={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContainer}
       >
-        {renderQuickStats()}
-        
-        <Text style={[styles.sectionTitle, NeumorphicTextStyles.heading]}>
-          Monitoring Sites
-        </Text>
-        
-        {sites.map(renderSiteCard)}
+        {/* Monitoring Sites Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>🏗️ Monitoring Sites</Text>
+            <Text style={styles.sectionSubtitle}>Overview • History • Map</Text>
+          </View>
+          
+          {loading && sites.length === 0 ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading monitoring sites...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Failed to load sites: {error}</Text>
+              <TouchableOpacity onPress={refresh} style={styles.retryButton}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={runDebugTests} style={[styles.retryButton, { backgroundColor: Colors.warning, marginTop: 10 }]}>
+                <Text style={styles.retryButtonText}>Run Debug Tests</Text>
+              </TouchableOpacity>
+            </View>
+          ) : sites.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No monitoring sites found in your area</Text>
+              <Text style={styles.emptySubtext}>Trying to load sites...</Text>
+            </View>
+          ) : (
+            sites.map(renderSiteCard)
+          )}
+        </View>
+
+        {/* Flood Alerts Section */}
+        {renderFloodAlerts()}
+
+        {/* Recent Readings Section */}
+        {renderRecentReadings()}
+
+        {/* AI Insights Section */}
+        {renderAIInsights()}
       </ScrollView>
     </View>
   );
@@ -292,80 +483,129 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.softLightGrey,
+    paddingTop: 0, // Remove top padding since navbar handles it
   },
-  header: {
+  scrollContainer: {
+    paddingBottom: 34, // Add bottom padding to prevent collision with navigation buttons
+  },
+  // Hero Section Styles
+  heroContainer: {
     margin: 20,
     marginBottom: 10,
-    padding: 20,
-    borderRadius: 16,
+    padding: 24,
+    borderRadius: 24,
   },
-  headerContent: {
+  heroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  greetingContainer: {
+    flex: 1,
   },
   greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.deepSecurityBlue,
-    marginBottom: 4,
+    ...NeumorphicTextStyles.body,
+    color: Colors.textSecondary,
+    marginBottom: 8,
   },
-  roleLabel: {
-    fontSize: 12,
-    color: Colors.aquaTechBlue,
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statusIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  statusText: {
+    ...NeumorphicTextStyles.subheading,
+    fontSize: 16,
     fontWeight: '600',
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 10,
+  date: {
+    ...NeumorphicTextStyles.bodySecondary,
+    fontSize: 14,
   },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerButtonIcon: {
-    fontSize: 20,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
+  // Stats Container
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   statCard: {
+    ...createNeumorphicCard({ size: 'medium', borderRadius: 16 }),
     flex: 1,
-    marginHorizontal: 4,
-    padding: 16,
+    padding: 18,
     alignItems: 'center',
-    borderRadius: 12,
+    marginHorizontal: 6,
   },
-  statValue: {
+  statIcon: {
+    fontSize: 28,
+    marginBottom: 10,
+  },
+  statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: Colors.deepSecurityBlue,
-    marginBottom: 4,
+    color: Colors.aquaTechBlue,
+    marginBottom: 6,
   },
   statLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
+    ...NeumorphicTextStyles.caption,
     textAlign: 'center',
+    fontWeight: '600',
+  },
+  // Quick Actions
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  actionButton: {
+    ...createNeumorphicCard({ size: 'large', borderRadius: 16 }),
+    flex: 1,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginHorizontal: 6,
+    backgroundColor: Colors.deepSecurityBlue,
+  },
+  actionIcon: {
+    fontSize: 24,
+    marginBottom: 10,
+  },
+  actionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.white,
+  },
+  // Content Section
+  content: {
+    flex: 1,
+  },
+  section: {
+    margin: 20,
+    marginBottom: 28,
+  },
+  sectionHeader: {
+    marginBottom: 20,
+    paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.deepSecurityBlue,
-    marginBottom: 16,
-    marginLeft: 4,
+    ...NeumorphicTextStyles.heading,
+    fontSize: 22,
+    marginBottom: 6,
+    color: Colors.textPrimary,
   },
+  sectionSubtitle: {
+    ...NeumorphicTextStyles.bodySecondary,
+    fontSize: 15,
+    color: Colors.textSecondary,
+  },
+  // Site Card Styles
   siteCard: {
     padding: 20,
     marginBottom: 16,
+    marginHorizontal: 4,
     borderRadius: 16,
   },
   siteHeader: {
@@ -393,7 +633,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
   },
-  statusText: {
+  statusBadgeText: {
     fontSize: 12,
     color: Colors.white,
     fontWeight: '600',
@@ -430,6 +670,94 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.white,
     fontWeight: '600',
+  },
+  // AI Insights Styles
+  insightCard: {
+    ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
+    padding: 20,
+    borderLeftWidth: 6,
+    borderLeftColor: Colors.warning || '#FFA726',
+    marginHorizontal: 4,
+  },
+  insightTitle: {
+    ...NeumorphicTextStyles.subheading,
+    marginBottom: 12,
+    color: Colors.textPrimary,
+  },
+  insightText: {
+    ...NeumorphicTextStyles.body,
+    lineHeight: 24,
+    marginBottom: 16,
+    color: Colors.textSecondary,
+  },
+  riskIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  riskLabel: {
+    ...NeumorphicTextStyles.body,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  riskMedium: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.warning || '#FFA726',
+    backgroundColor: (Colors.warning || '#FFA726') + '20',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  // Loading, Error, and Empty States
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    ...createNeumorphicCard({ size: 'medium', borderRadius: 16 }),
+    marginHorizontal: 4,
+  },
+  loadingText: {
+    ...NeumorphicTextStyles.body,
+    color: Colors.textSecondary,
+  },
+  errorContainer: {
+    padding: 30,
+    alignItems: 'center',
+    ...createNeumorphicCard({ size: 'medium', borderRadius: 16 }),
+    marginHorizontal: 4,
+  },
+  errorText: {
+    ...NeumorphicTextStyles.body,
+    color: Colors.alertRed,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: Colors.deepSecurityBlue,
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    ...createNeumorphicCard({ size: 'medium', borderRadius: 16 }),
+    marginHorizontal: 4,
+  },
+  emptyText: {
+    ...NeumorphicTextStyles.body,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    ...NeumorphicTextStyles.caption,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
 
