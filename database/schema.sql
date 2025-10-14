@@ -110,15 +110,3 @@ CREATE TRIGGER update_monitoring_sites_updated_at
   BEFORE UPDATE ON monitoring_sites
   FOR EACH ROW
   EXECUTE PROCEDURE update_updated_at_column();
-
--- SAMPLE MONITORING SITES FOR TESTING
-INSERT INTO monitoring_sites (
-    id, name, location, latitude, longitude, river_name, state, district,
-    organization, site_type, danger_level, warning_level, safe_level,
-    qr_code
-) VALUES 
-    ('SITE001', 'Gomti River Bridge', 'Lucknow, UP', 26.8467, 80.9462, 'Gomti', 'Uttar Pradesh', 'Lucknow', 'CWC UP', 'river', 450.0, 350.0, 250.0, 'QR001'),
-    ('SITE002', 'Yamuna Ghat', 'Agra, UP', 27.1767, 78.0081, 'Yamuna', 'Uttar Pradesh', 'Agra', 'CWC UP', 'river', 480.0, 380.0, 280.0, 'QR002'),
-    ('SITE003', 'Ganga Ghat', 'Varanasi, UP', 25.3176, 82.9739, 'Ganga', 'Uttar Pradesh', 'Varanasi', 'CWC UP', 'river', 520.0, 420.0, 320.0, 'QR003'),
-    ('SITE004', 'Ram Sagar Reservoir', 'Balrampur, UP', 27.4305, 82.1818, 'Ram Sagar', 'Uttar Pradesh', 'Balrampur', 'CWC UP', 'reservoir', 300.0, 250.0, 200.0, 'QR004'),
-    ('SITE005', 'Sharda Canal', 'Pilibhit, UP', 28.6329, 79.8043, 'Sharda', 'Uttar Pradesh', 'Pilibhit', 'CWC UP', 'canal', 180.0, 150.0, 120.0, 'QR005');
