@@ -1,11 +1,6 @@
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Image } from 'react-native';
-import { useTheme } from '../lib/ThemeContext';
-import {
-  createNeumorphicCard,
-  createNeumorphicIconContainer,
-  NeumorphicTextStyles,
-} from '../lib/neumorphicStyles';
+import { NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { Colors } from '../lib/colors';
 
 interface SidebarProps {
@@ -13,11 +8,25 @@ interface SidebarProps {
   onClose: () => void;
   onNavigate: (screen: string) => void;
   isGuest?: boolean;
+  userProfile?: {
+    fullName: string;
+    role: string;
+    initials: string;
+  };
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, onNavigate, isGuest = false }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  isVisible, 
+  onClose, 
+  onNavigate, 
+  isGuest = false,
+  userProfile = {
+    fullName: 'Field Personnel',
+    role: 'Water Level Operator',
+    initials: 'FP'
+  }
+}) => {
   const translateX = React.useRef(new Animated.Value(-300)).current;
-  const { theme, toggleTheme } = useTheme();
   const styles = React.useMemo(() => createStyles(), []);
 
   React.useEffect(() => {
@@ -28,17 +37,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, onNavigate, isGue
     }).start();
   }, [isVisible]);
 
+  // Core navigation items - keeping only essential features
   const menuItems = [
-    { icon: '📊', label: 'Dashboard', screen: 'Dashboard' },
-    { icon: '📸', label: 'Water Level Capture', screen: 'Capture' },
-    { icon: '📋', label: 'My Readings', screen: 'Readings' },
-    { icon: '🗺️', label: 'Site Locations', screen: 'Sites' },
-    { icon: '📈', label: 'Analytics', screen: 'Analytics' },
-    { icon: '🚨', label: 'Flood Alerts', screen: 'Alerts' },
-    ...(!isGuest ? [{ icon: '👤', label: 'Profile', screen: 'Profile' }] : []),
-    { icon: '⚙️', label: 'Settings', screen: 'Settings' },
-    { icon: theme === 'dark' ? '☀️' : '🌙', label: `${theme === 'dark' ? 'Light' : 'Dark'} Mode`, action: toggleTheme },
-    ...(isGuest ? [{ icon: '🔑', label: 'Sign In', screen: 'Auth' }] : []),
+    { icon: '○', label: 'Dashboard', screen: 'Dashboard' },
+    { icon: '◐', label: 'Capture Reading', screen: 'Capture' },
+    { icon: '◑', label: 'My Readings', screen: 'Readings' },
+    { icon: '◒', label: 'Site Locations', screen: 'Sites' },
+    { icon: '◓', label: 'Analytics', screen: 'Analytics' },
+    { icon: '△', label: 'Flood Alerts', screen: 'Alerts' },
+    { icon: '⚙', label: 'Settings', screen: 'Settings' },
+    ...(isGuest ? [{ icon: '◉', label: 'Sign In', screen: 'Auth' }] : []),
   ];
 
   return (
@@ -60,16 +68,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, onNavigate, isGue
       >
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <View style={styles.logoContainer}>
-              <Image 
-                source={require('../assets/icon.png')}
-                style={styles.logoImage}
-              />
-            </View>
-            <View style={styles.headerInfo}>
-              <Text style={styles.headerText}>HydroSnap</Text>
-              <Text style={styles.headerSubtext}>Water Monitoring</Text>
-            </View>
+            <Text style={styles.headerText}>HydroSnap</Text>
+            <Text style={styles.headerSubtext}>Water Level Monitoring</Text>
           </View>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Text style={styles.closeIcon}>✕</Text>
@@ -77,15 +77,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, onNavigate, isGue
         </View>
 
         {!isGuest && (
-          <View style={styles.userInfo}>
+          <TouchableOpacity 
+            style={styles.userInfo}
+            onPress={() => onNavigate('Profile')}
+            activeOpacity={0.7}
+          >
             <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>👤</Text>
+              <Text style={styles.avatarText}>{userProfile.initials}</Text>
             </View>
             <View style={styles.userDetails}>
-              <Text style={styles.userName}>Field Personnel</Text>
-              <Text style={styles.userStatus}>Online</Text>
+              <Text style={styles.userName}>{userProfile.fullName}</Text>
+              <Text style={styles.userRole}>{userProfile.role}</Text>
             </View>
-          </View>
+            <Text style={styles.profileArrow}>›</Text>
+          </TouchableOpacity>
         )}
 
         <View style={styles.menuItems}>
@@ -95,12 +100,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose, onNavigate, isGue
               style={styles.menuItem}
               activeOpacity={0.7}
               onPress={() => {
-                if (item.action) {
-                  item.action();
-                } else if (item.screen) {
-                  onNavigate(item.screen);
-                  onClose();
-                }
+                onNavigate(item.screen);
               }}
             >
               <Text style={styles.menuItemIcon}>{item.icon}</Text>
@@ -121,149 +121,133 @@ const createStyles = () => StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: Colors.overlay || 'rgba(0,0,0,0.4)',
-    zIndex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 998,
   },
   sidebar: {
     position: 'absolute',
-    top: 35,
+    top: 0,
     left: 0,
     bottom: 0,
-    width: 290,
-    backgroundColor: Colors.softLightGrey, // Soft UI background
-    zIndex: 2,
-    elevation: 15,
-    shadowColor: Colors.darkShadow,
-    shadowOffset: { width: 8, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    paddingTop: 15,
-    // Neumorphic border effect
-    borderRightWidth: 1,
-    borderRightColor: Colors.lightShadow,
+    width: 280,
+    backgroundColor: Colors.white,
+    zIndex: 999,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    paddingTop: 50, // Account for status bar
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
-    marginHorizontal: 15,
-    marginBottom: 20,
-    borderRadius: 20,
-    backgroundColor: Colors.deepSecurityBlue, // Deep Security Blue header
-    // Neumorphic effect on dark background
-    shadowColor: Colors.deepSecurityBlue + '60',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    marginBottom: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightShadow,
   },
   headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 12,
-  },
-  logoContainer: {
-    ...createNeumorphicIconContainer(42),
-    backgroundColor: Colors.aquaTechBlue, // Accent color for logo
-  },
-  logoImage: {
-    width: 26,
-    height: 26,
-    tintColor: Colors.white,
-  },
-  headerInfo: {
-    marginLeft: 16,
     flex: 1,
   },
   headerText: {
     ...NeumorphicTextStyles.heading,
-    fontSize: 20,
-    color: Colors.white,
-    letterSpacing: 0.5,
+    fontSize: 24,
+    color: Colors.deepSecurityBlue,
+    letterSpacing: -0.5,
+    fontWeight: 'bold',
   },
   headerSubtext: {
-    fontSize: 13,
-    color: Colors.aquaTechBlue, // Accent color for subtext
-    fontWeight: '600',
-    marginTop: 3,
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    marginTop: 4,
   },
   closeButton: {
-    ...createNeumorphicCard({ size: 'small', borderRadius: 22 }),
-    padding: 10,
-    backgroundColor: Colors.softLightGrey,
-    width: 44,
-    height: 44,
+    padding: 8,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 18,
+    backgroundColor: Colors.softLightGrey,
   },
   closeIcon: {
-    fontSize: 18,
-    color: Colors.deepSecurityBlue,
+    fontSize: 16,
+    color: Colors.textSecondary,
     fontWeight: 'bold',
   },
   userInfo: {
-    ...createNeumorphicCard({ size: 'medium', borderRadius: 16 }),
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 18,
-    marginHorizontal: 15,
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginBottom: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightShadow,
   },
   avatarContainer: {
-    ...createNeumorphicIconContainer(44),
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: Colors.deepSecurityBlue,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: 18,
     color: Colors.white,
+    fontWeight: 'bold',
   },
   userDetails: {
     marginLeft: 16,
     flex: 1,
   },
   userName: {
-    ...NeumorphicTextStyles.body,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
     marginBottom: 4,
     color: Colors.textPrimary,
   },
-  userStatus: {
-    fontSize: 13,
-    color: Colors.validationGreen,
-    fontWeight: '600',
+  userRole: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontWeight: '400',
+  },
+  profileArrow: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    fontWeight: 'bold',
   },
   menuItems: {
-    paddingHorizontal: 15,
-    paddingBottom: 20,
+    paddingHorizontal: 0,
+    paddingBottom: 30,
   },
   menuItem: {
-    ...createNeumorphicCard({ size: 'small', borderRadius: 14 }),
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 18,
-    marginVertical: 6,
+    paddingHorizontal: 20,
+    marginVertical: 2,
   },
   menuItemIcon: {
-    fontSize: 20,
-    width: 32,
+    fontSize: 18,
+    width: 28,
     textAlign: 'center',
-    color: Colors.aquaTechBlue, // Accent color for icons
+    color: Colors.textSecondary,
   },
   menuItemText: {
-    ...NeumorphicTextStyles.body,
     flex: 1,
-    marginLeft: 14,
+    marginLeft: 16,
     fontSize: 16,
     fontWeight: '500',
     color: Colors.textPrimary,
   },
   menuItemArrow: {
-    fontSize: 18,
-    color: Colors.aquaTechBlue,
+    fontSize: 16,
+    color: Colors.textSecondary,
     fontWeight: 'bold',
   },
 });
