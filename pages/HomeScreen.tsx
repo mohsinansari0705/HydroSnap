@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import NotificationPanel from '../components/NotificationPanel';
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { Profile } from '../types/profile';
@@ -40,7 +41,7 @@ const floodAlerts = [
     location: 'Brahmaputra River - Guwahati',
     date: '2025-10-14',
     type: 'flood_alert' as const,
-    severity: 'high' as const,
+    severity: 'critical' as const,
     waterLevel: 142.5,
     dangerLevel: 145.0,
   },
@@ -51,7 +52,7 @@ const floodAlerts = [
     location: 'Ganges River - Patna',
     date: '2025-10-14',
     type: 'flood_alert' as const,
-    severity: 'medium' as const,
+    severity: 'warning' as const,
     waterLevel: 48.2,
     dangerLevel: 50.0,
   },
@@ -94,6 +95,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'dashboard' | 'sites' | 'profile'>('dashboard');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Use the site cache to prevent repeated fetching
   const { sites: cachedSites, setCachedSites, isCacheValid, clearCache } = useSiteCache();
@@ -233,8 +235,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         Alert.alert('QR Scanner', 'QR code scanning functionality will be implemented here.');
         break;
       case 'notifications':
-        console.log('Notifications will open');
-        Alert.alert('Notifications', 'Notification center will be implemented here.');
+        // Show/hide notifications panel
+        setShowNotifications(!showNotifications);
         break;
       case 'profile':
         // Profile is currently disabled
@@ -337,6 +339,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <Text style={styles.quickStatNumber}>{todaysReadingsCount}</Text>
             <Text style={styles.quickStatLabel}>Readings</Text>
           </View>
+          <View style={styles.quickStatItem}>
+            <Text style={styles.quickStatNumber}>{floodAlertsCount}</Text>
+            <Text style={styles.quickStatLabel}>Alerts</Text>
+          </View>
         </View>
       </View>
     );
@@ -362,28 +368,47 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     </View>
   );
 
-  const renderFloodAlerts = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>🚨 Flood Alert Status</Text>
-        <Text style={styles.sectionSubtitle}>Real-time water level monitoring</Text>
+  const renderFloodAlerts = () => {
+    const mapSeverityForCard = (sev: string): 'low' | 'medium' | 'high' => {
+      switch (sev) {
+        case 'critical':
+          return 'high';
+        case 'warning':
+          return 'medium';
+        case 'low':
+          return 'low';
+        case 'medium':
+          return 'medium';
+        case 'high':
+          return 'high';
+        default:
+          return 'medium';
+      }
+    };
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>🚨 Flood Alert Status</Text>
+          <Text style={styles.sectionSubtitle}>Real-time water level monitoring</Text>
+        </View>
+        {floodAlerts.map(alert => (
+          <Card
+            key={alert.id}
+            type={alert.type}
+            severity={mapSeverityForCard(alert.severity as string)}
+            title={alert.title}
+            description={alert.description}
+            location={alert.location}
+            date={alert.date}
+            waterLevel={alert.waterLevel}
+            dangerLevel={alert.dangerLevel}
+            onPress={() => console.log(`Flood alert ${alert.id} pressed`)}
+          />
+        ))}
       </View>
-      {floodAlerts.map(alert => (
-        <Card
-          key={alert.id}
-          type={alert.type}
-          severity={alert.severity}
-          title={alert.title}
-          description={alert.description}
-          location={alert.location}
-          date={alert.date}
-          waterLevel={alert.waterLevel}
-          dangerLevel={alert.dangerLevel}
-          onPress={() => console.log(`Flood alert ${alert.id} pressed`)}
-        />
-      ))}
-    </View>
-  );
+    );
+  };
 
   const renderRecentReadings = () => (
     <View style={styles.section}>
@@ -432,9 +457,28 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       <Navbar 
         onQRScanPress={() => handleNavbarAction('qr')}
         onNotificationPress={() => handleNavbarAction('notifications')}
-        onProfilePress={() => handleNavbarAction('profile')}
         onSettingsPress={() => handleNavbarAction('settings')}
       />
+
+      {showNotifications && (
+        <NotificationPanel 
+          notifications={floodAlerts.map(alert => ({
+            id: alert.id,
+            siteId: alert.id,
+            siteName: alert.location,
+            location: {
+              latitude: 0, // Replace with actual coordinates when available
+              longitude: 0
+            },
+            severity: alert.severity,
+            waterLevel: alert.waterLevel,
+            threshold: alert.dangerLevel,
+            weatherConditions: alert.description,
+            timestamp: new Date(alert.date)
+          }))}
+          onClose={() => setShowNotifications(false)}
+        />
+      )}
 
       {renderCompactHeader()}
       {renderFixedActions()}

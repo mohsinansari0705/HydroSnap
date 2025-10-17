@@ -7,7 +7,9 @@
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
+    "module": "ESNext",
     "paths": {
       "@/*": [
         "./*"

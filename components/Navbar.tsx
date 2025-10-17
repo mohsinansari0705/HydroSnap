@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { Colors } from '../lib/colors';
+import NotificationPanel from './NotificationPanel';
+import { Alert } from '../types/alerts';
 
 interface NavbarProps {
   onQRScanPress?: () => void;
   onNotificationPress?: () => void;
-  onProfilePress?: () => void;
   onSettingsPress?: () => void;
   userName?: string;
 }
@@ -13,11 +14,57 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({
   onQRScanPress,
   onNotificationPress,
-  onProfilePress,
   onSettingsPress,
 }) => {
   console.log('Navbar: onSettingsPress is', typeof onSettingsPress);
   const [showMenu, setShowMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  // Sample notifications for testing
+  const sampleNotifications: Alert[] = [
+    {
+      id: '1',
+      siteId: 'SITE001',
+      siteName: 'River Valley Station',
+      waterLevel: 5.8,
+      threshold: 5.5,
+      severity: 'warning',
+      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+      location: {
+        latitude: 19.0760,
+        longitude: 72.8777
+      },
+      weatherConditions: 'Heavy rainfall, cloudy'
+    },
+    {
+      id: '2',
+      siteId: 'SITE002',
+      siteName: 'Coastal Monitoring Point',
+      waterLevel: 7.2,
+      threshold: 6.5,
+      severity: 'danger',
+      timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
+      location: {
+        latitude: 19.0177,
+        longitude: 72.8562
+      },
+      weatherConditions: 'Storm conditions, high tide'
+    },
+    {
+      id: '3',
+      siteId: 'SITE003',
+      siteName: 'Lake View Station',
+      waterLevel: 9.1,
+      threshold: 8.0,
+      severity: 'critical',
+      timestamp: new Date(), // Current time
+      location: {
+        latitude: 19.1136,
+        longitude: 72.8697
+      },
+      weatherConditions: 'Extreme rainfall, flooding risk'
+    }
+  ];
 
   const handleMenuPress = () => {
     setShowMenu(!showMenu);
@@ -84,9 +131,32 @@ const Navbar: React.FC<NavbarProps> = ({
           <QRIcon />
         </TouchableOpacity>
         
-        <TouchableOpacity onPress={onNotificationPress} style={styles.iconButton}>
-          <NotificationIcon />
-        </TouchableOpacity>
+        <View style={styles.notificationContainer}>
+          <TouchableOpacity 
+            onPress={() => {
+              setShowNotifications(!showNotifications);
+              if (onNotificationPress) {
+                onNotificationPress();
+              }
+            }} 
+            style={styles.iconButton}
+          >
+            <NotificationIcon />
+            {sampleNotifications.length > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {sampleNotifications.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          {showNotifications && (
+            <NotificationPanel 
+              notifications={sampleNotifications} 
+              onClose={() => setShowNotifications(false)} 
+            />
+          )}
+        </View>
         
         <View style={styles.menuContainer}>
           <TouchableOpacity onPress={handleMenuPress} style={styles.iconButton}>
@@ -307,6 +377,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textPrimary,
     fontWeight: '500',
+  },
+  notificationContainer: {
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: Colors.criticalRed,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.deepSecurityBlue,
+  },
+  notificationBadgeText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   disabledMenuItem: {
     opacity: 0.6,

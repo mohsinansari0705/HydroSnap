@@ -116,9 +116,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       Alert.alert('Error', 'Passwords do not match');
       return false;
     }
-    if (newPassword.length < 12) {
-      Alert.alert('Error', 'Password must be at least 12 characters long');
-      return false;
+      if (newPassword.length < 8) {
+        Alert.alert('Error', 'Password must be at least 8 characters long');
+        return false;
     }
     return true;
   };
