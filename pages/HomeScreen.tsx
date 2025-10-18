@@ -8,7 +8,6 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import NotificationPanel from '../components/NotificationPanel';
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { Profile } from '../types/profile';
@@ -19,6 +18,7 @@ import { useMonitoringSites } from '../hooks/useMonitoringSites';
 import { MonitoringSite } from '../services/monitoringSitesService';
 import { DebugUtils } from '../services/debugUtils';
 import { useSiteCache } from '../lib/SiteCacheContext';
+import { useNavigation } from '../lib/NavigationContext';
 
 interface HomeScreenProps {
   profile: Profile;
@@ -95,7 +95,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'dashboard' | 'sites' | 'profile'>('dashboard');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
-  const [showNotifications, setShowNotifications] = useState(false);
+  // notification visibility moved to global navigation context
+  const { toggleNotifications } = useNavigation();
 
   // Use the site cache to prevent repeated fetching
   const { sites: cachedSites, setCachedSites, isCacheValid, clearCache } = useSiteCache();
@@ -235,8 +236,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         Alert.alert('QR Scanner', 'QR code scanning functionality will be implemented here.');
         break;
       case 'notifications':
-        // Show/hide notifications panel
-        setShowNotifications(!showNotifications);
+        // Show/hide notifications panel (use global navigation state)
+        toggleNotifications();
         break;
       case 'profile':
         // Profile is currently disabled
@@ -460,25 +461,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         onSettingsPress={() => handleNavbarAction('settings')}
       />
 
-      {showNotifications && (
-        <NotificationPanel 
-          notifications={floodAlerts.map(alert => ({
-            id: alert.id,
-            siteId: alert.id,
-            siteName: alert.location,
-            location: {
-              latitude: 0, // Replace with actual coordinates when available
-              longitude: 0
-            },
-            severity: alert.severity,
-            waterLevel: alert.waterLevel,
-            threshold: alert.dangerLevel,
-            weatherConditions: alert.description,
-            timestamp: new Date(alert.date)
-          }))}
-          onClose={() => setShowNotifications(false)}
-        />
-      )}
+      {/* NotificationPanel rendering removed from HomeScreen to avoid duplicate panels.
+          Navbar now handles displaying notifications near the bell icon. */}
 
       {renderCompactHeader()}
       {renderFixedActions()}

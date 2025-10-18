@@ -6,6 +6,7 @@ export type AppScreen =
   | 'auth'
   | 'profile-setup'
   | 'home'
+  | 'my-readings'
   | 'supervisor-dashboard'
   | 'site-details'
   | 'site-locations'
@@ -25,6 +26,12 @@ interface NavigationContextType {
   navigateToHome: () => void;
   navigateToSite: (siteId: string) => void;
   navigateToNewReading: (siteId: string) => void;
+  navigateToMyReadings: () => void;
+  // Notification visibility helpers (global)
+  notificationsVisible: boolean;
+  showNotifications: () => void;
+  hideNotifications: () => void;
+  toggleNotifications: () => void;
   navigateToSettings: () => void;
   navigateToAuth: () => void;
   navigateBack: () => void;
@@ -40,6 +47,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('splash');
   const [selectedSiteId, setSelectedSiteId] = useState<string>('');
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
 
   const navigateToHome = () => {
     setCurrentScreen('home');
@@ -54,6 +62,14 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     setSelectedSiteId(siteId);
     setCurrentScreen('new-reading');
   };
+
+  const navigateToMyReadings = () => {
+    setCurrentScreen('my-readings');
+  };
+
+  const showNotifications = () => setNotificationsVisible(true);
+  const hideNotifications = () => setNotificationsVisible(false);
+  const toggleNotifications = () => setNotificationsVisible(v => !v);
 
   const navigateToSettings = () => {
     setCurrentScreen('settings');
@@ -78,6 +94,11 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     navigateToHome,
     navigateToSite,
     navigateToNewReading,
+    navigateToMyReadings,
+    notificationsVisible,
+    showNotifications,
+    hideNotifications,
+    toggleNotifications,
     navigateToSettings,
     navigateToAuth,
     navigateBack,

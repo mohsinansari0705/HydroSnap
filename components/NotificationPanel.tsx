@@ -78,8 +78,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 8,
-    zIndex: 1000,
+    elevation: 30,
+    zIndex: 3000,
+    // ensure the panel can receive touches and appear above other siblings
+    pointerEvents: 'auto',
   },
   header: {
     flexDirection: 'row',
