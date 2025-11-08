@@ -136,7 +136,6 @@ export default function AppNavigator() {
               onNavigateToNewReading={navigateToNewReadingScreen}
               onNavigateToMyReadings={() => navigateToMyReadings()}
               onNavigateToSiteLocations={() => setCurrentScreen('site-locations')}
-              onNavigateToProfile={() => setCurrentScreen('settings')}
               onNavigateToSettings={navigateToSettings}
             />
           );
@@ -164,11 +163,6 @@ export default function AppNavigator() {
         if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
         return (
           <NewReadingScreen
-            siteId={selectedSiteId}
-            siteName="Sample Site"
-            siteLocation="Sample Location"
-            targetCoordinates={{ latitude: 28.6139, longitude: 77.2090 }}
-            validRadius={500}
             onSubmitReading={(data) => {
               console.log('Reading submitted successfully:', data);
               navigateBack();
