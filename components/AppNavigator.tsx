@@ -9,6 +9,7 @@ import Loading from './Loading';
 import SplashScreen from '../pages/SplashScreen';
 import OnboardingScreen from '../pages/OnboardingScreen';
 import HomeScreen from '../pages/HomeScreen';
+import MyReadingsScreen from '../pages/MyReadingsScreen';
 import SiteDetailsScreen from '../pages/SiteDetailsScreen';
 import SiteLocationsScreen from '../pages/SiteLocationsScreen';
 import NewReadingScreen from '../pages/NewReadingScreen';
@@ -27,6 +28,7 @@ export default function AppNavigator() {
     selectedSiteId,
     navigateToSite,
     navigateToNewReading,
+    navigateToMyReadings,
     navigateToSettings,
     navigateBack
   } = useNavigation();
@@ -132,7 +134,7 @@ export default function AppNavigator() {
               profile={profile}
               onNavigateToSite={navigateToSiteDetails}
               onNavigateToNewReading={navigateToNewReadingScreen}
-              onNavigateToMyReadings={() => console.log('Navigate to My Readings')}
+              onNavigateToMyReadings={() => navigateToMyReadings()}
               onNavigateToSiteLocations={() => setCurrentScreen('site-locations')}
               onNavigateToProfile={() => setCurrentScreen('settings')}
               onNavigateToSettings={navigateToSettings}
@@ -172,6 +174,15 @@ export default function AppNavigator() {
               navigateBack();
             }}
             onCancel={navigateBack}
+          />
+        );
+
+      case 'my-readings':
+        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        return (
+          <MyReadingsScreen
+            profile={profile}
+            onBack={navigateBack}
           />
         );
 

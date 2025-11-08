@@ -43,7 +43,12 @@ export const Colors = {
   success: '#10B981',           // Modern emerald green
   warning: '#F59E0B',           // Modern amber
   error: '#EF4444',             // Modern red
-  info: '#3B82F6',              // Modern blue
+  info: '#3B82F6',             // Modern blue
+  
+  // Alert colors
+  warningYellow: '#F59E0B',    // Warning level alert
+  dangerOrange: '#F97316',     // Danger level alert
+  criticalRed: '#EF4444',      // Critical level alert
   
   // Text colors (updated for modern design)
   textPrimary: '#1F2937',       // Dark gray for primary text

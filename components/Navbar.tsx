@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, TouchableOpacity, StyleSheet, Text, Modal, Pressable, ScrollView, Animated } from 'react-native';
 import { Colors } from '../lib/colors';
+import { Alert } from '../types/alerts';
+import { useNavigation } from '../lib/NavigationContext';
 
 interface NavbarProps {
   onQRScanPress?: () => void;
   onNotificationPress?: () => void;
-  onProfilePress?: () => void;
   onSettingsPress?: () => void;
   userName?: string;
 }
@@ -13,11 +14,83 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({
   onQRScanPress,
   onNotificationPress,
-  onProfilePress,
   onSettingsPress,
 }) => {
   console.log('Navbar: onSettingsPress is', typeof onSettingsPress);
   const [showMenu, setShowMenu] = useState(false);
+  const { notificationsVisible, hideNotifications, toggleNotifications, navigateToSite } = useNavigation();
+
+  // Sample notifications for testing
+  const sampleNotifications: Alert[] = [
+    {
+      id: '1',
+      siteId: 'SITE001',
+      siteName: 'River Valley Station',
+      waterLevel: 5.8,
+      threshold: 5.5,
+      severity: 'warning',
+      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+      location: {
+        latitude: 19.0760,
+        longitude: 72.8777
+      },
+      weatherConditions: 'Heavy rainfall, cloudy'
+    },
+    {
+      id: '2',
+      siteId: 'SITE002',
+      siteName: 'Coastal Monitoring Point',
+      waterLevel: 7.2,
+      threshold: 6.5,
+      severity: 'danger',
+      timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
+      location: {
+        latitude: 19.0177,
+        longitude: 72.8562
+      },
+      weatherConditions: 'Storm conditions, high tide'
+    },
+    {
+      id: '3',
+      siteId: 'SITE003',
+      siteName: 'Lake View Station',
+      waterLevel: 9.1,
+      threshold: 8.0,
+      severity: 'critical',
+      timestamp: new Date(), // Current time
+      location: {
+        latitude: 19.1136,
+        longitude: 72.8697
+      },
+      weatherConditions: 'Extreme rainfall, flooding risk'
+    }
+  ];
+
+  // Local alert state with `read` flag to support marking as read
+  type AlertWithRead = Alert & { read?: boolean };
+  const [alerts, setAlerts] = useState<AlertWithRead[]>(
+    sampleNotifications.map((a) => ({ ...a, read: false }))
+  );
+
+  // Animation values for modal card
+  const scaleAnim = useRef(new Animated.Value(0.96)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (notificationsVisible) {
+      // open animation
+      Animated.parallel([
+        Animated.timing(opacityAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.spring(scaleAnim, { toValue: 1, friction: 8, useNativeDriver: true }),
+      ]).start();
+    } else {
+      // close animation
+      Animated.parallel([
+        Animated.timing(opacityAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 0.96, duration: 120, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [notificationsVisible, opacityAnim, scaleAnim]);
 
   const handleMenuPress = () => {
     setShowMenu(!showMenu);
@@ -84,9 +157,98 @@ const Navbar: React.FC<NavbarProps> = ({
           <QRIcon />
         </TouchableOpacity>
         
-        <TouchableOpacity onPress={onNotificationPress} style={styles.iconButton}>
-          <NotificationIcon />
-        </TouchableOpacity>
+        <View style={styles.notificationContainer}>
+          <TouchableOpacity 
+            onPress={() => {
+              toggleNotifications();
+              if (onNotificationPress) onNotificationPress?.();
+            }} 
+            style={styles.iconButton}
+            accessibilityLabel="Open notifications"
+          >
+            <NotificationIcon />
+            {sampleNotifications.length > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {sampleNotifications.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Modal-based notifications for reliable layering and better UX */}
+          <Modal
+            visible={notificationsVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => hideNotifications()}
+          >
+            <Pressable style={styles.modalBackdrop} onPress={() => hideNotifications()}>
+              <View style={styles.modalContentWrapper} pointerEvents="box-none">
+                <Animated.View style={[styles.modalCard, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}> 
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Flood Alerts</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          // mark all read
+                          setAlerts((prev) => prev.map((a) => ({ ...a, read: true })));
+                        }}
+                        style={[styles.markAllButton]}
+                      >
+                        <Text style={styles.markAllText}>Mark all read</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          hideNotifications();
+                          if (onNotificationPress) onNotificationPress();
+                        }}
+                        style={styles.closeButton}
+                        accessibilityLabel="Close notifications"
+                      >
+                        <Text style={styles.closeButtonText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  {/* Reuse NotificationPanel's content but render inline here for tighter UX control */}
+                  <ScrollView style={styles.notificationListScroll} contentContainerStyle={styles.notificationListContainer}>
+                    {alerts.length === 0 ? (
+                      <Text style={styles.noAlertsText}>No active alerts</Text>
+                    ) : (
+                      alerts.map((alert) => (
+                        <TouchableOpacity
+                          key={alert.id}
+                          style={[styles.alertItem, { borderLeftColor: alert.severity === 'critical' ? Colors.criticalRed : alert.severity === 'danger' ? Colors.dangerOrange : Colors.warningYellow, opacity: alert.read ? 0.6 : 1 }]}
+                          onPress={() => {
+                            // mark as read and navigate to site details
+                            setAlerts((prev) => prev.map((a) => a.id === alert.id ? { ...a, read: true } : a));
+                            hideNotifications();
+                            // navigate to site
+                            try {
+                              navigateToSite(alert.siteId);
+                            } catch (err) {
+                              console.warn('navigateToSite not available:', err);
+                            }
+                          }}
+                        >
+                          <View style={styles.alertHeader}>
+                            <Text style={styles.siteName}>{alert.siteName}</Text>
+                            <Text style={[styles.severity, { color: alert.severity === 'critical' ? Colors.criticalRed : alert.severity === 'danger' ? Colors.dangerOrange : Colors.warningYellow }]}>
+                              {alert.severity.toUpperCase()}
+                            </Text>
+                          </View>
+                          <Text style={styles.waterLevel}>Water Level: {alert.waterLevel}m (Threshold: {alert.threshold}m)</Text>
+                          <Text style={styles.weather}>{alert.weatherConditions}</Text>
+                          <Text style={styles.timestamp}>{new Date(alert.timestamp).toLocaleString()}</Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </ScrollView>
+                </Animated.View>
+              </View>
+            </Pressable>
+          </Modal>
+        </View>
         
         <View style={styles.menuContainer}>
           <TouchableOpacity onPress={handleMenuPress} style={styles.iconButton}>
@@ -138,6 +300,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
+    overflow: 'visible', // allow absolute children (notification panel) to overflow
   },
   leftSection: {
     flex: 1,
@@ -307,6 +470,143 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textPrimary,
     fontWeight: '500',
+  },
+  notificationContainer: {
+    position: 'relative',
+    zIndex: 2000,
+    elevation: 20,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: Colors.criticalRed,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.deepSecurityBlue,
+  },
+  notificationBadgeText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  /* Modal / Notifications styles */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 80,
+  },
+  modalContentWrapper: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalCard: {
+    width: 340,
+    maxHeight: '70%',
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.softLightGrey,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  closeButton: {
+    padding: 6,
+    borderRadius: 12,
+    backgroundColor: Colors.softLightGrey,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+  },
+  notificationListContainer: {
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  notificationListScroll: {
+    maxHeight: 420,
+  },
+  markAllButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: Colors.softLightGrey,
+  },
+  markAllText: {
+    fontSize: 12,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+  alertItem: {
+    padding: 12,
+    borderLeftWidth: 4,
+    backgroundColor: Colors.white,
+    marginVertical: 6,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  alertHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  siteName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  severity: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  waterLevel: {
+    fontSize: 13,
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  weather: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  timestamp: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 6,
+  },
+  noAlertsText: {
+    padding: 16,
+    textAlign: 'center',
+    color: Colors.textSecondary,
   },
   disabledMenuItem: {
     opacity: 0.6,
