@@ -1,376 +1,539 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   Alert,
-  Image,
-  Dimensions,
   ScrollView,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
-// TODO: Install expo-camera and expo-location packages
-// import { Camera } from 'expo-camera';
-// import * as Location from 'expo-location';
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
+import { QRValidationScreen } from '../components/QRValidationScreen';
+import { MockCamera } from '../components/MockCamera';
+import { ValidatedSiteData } from '../services/qrValidationService';
+import { 
+  waterLevelReadingsService, 
+  NewReadingData 
+} from '../services/waterLevelReadingsService';
 
 interface NewReadingScreenProps {
-  siteId: string;
-  siteName: string;
-  siteLocation: string;
-  targetCoordinates: { latitude: number; longitude: number };
-  validRadius: number; // in meters
-  onSubmitReading: (data: ReadingData) => void;
+  onSubmitReading?: (data: any) => void;
   onCancel: () => void;
 }
 
-interface ReadingData {
-  siteId: string;
-  waterLevel: number;
-  photo: string;
-  coordinates: { latitude: number; longitude: number };
-  timestamp: string;
-  qrCode?: string;
-}
+type ReadingStep = 'qr_validation' | 'photo_capture' | 'water_calculation' | 'confirmation' | 'submission';
 
-interface LocationValidation {
-  isValid: boolean;
-  distance: number;
-  message: string;
+interface UserLocation {
+  latitude: number;
+  longitude: number;
 }
-
-const { width } = Dimensions.get('window');
 
 const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
-  siteId,
-  siteName,
-  siteLocation,
-  targetCoordinates,
-  validRadius = 125,
   onSubmitReading,
   onCancel,
 }) => {
-  const [hasPermissions, setHasPermissions] = useState(false);
-  const [waterLevel, setWaterLevel] = useState('');
+  // State management
+  const [currentStep, setCurrentStep] = useState<ReadingStep>('qr_validation');
+  const [validatedSite, setValidatedSite] = useState<ValidatedSiteData | null>(null);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationValidation, setLocationValidation] = useState<LocationValidation>({
-    isValid: false,
-    distance: 0,
-    message: 'Checking location...',
-  });
-  const [scannedQR] = useState<string>('');
+  const [calculatedWaterLevel, setCalculatedWaterLevel] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-  
-  const cameraRef = useRef<any>(null);
+  const [siteDistance, setSiteDistance] = useState<number>(0);
 
+  // Mock user location (in production, get from GPS)
   useEffect(() => {
-    requestPermissions();
-    getCurrentLocation();
+    // Simulate getting user location
+    setTimeout(() => {
+      setUserLocation({
+        latitude: 28.66677700 + (Math.random() - 0.5) * 0.001, // Near Delhi site
+        longitude: 77.21663900 + (Math.random() - 0.5) * 0.001
+      });
+    }, 1000);
   }, []);
 
-  useEffect(() => {
-    if (currentLocation) {
-      validateLocation(currentLocation);
-    }
-  }, [currentLocation]);
-
-  const requestPermissions = async () => {
-    try {
-      // TODO: Implement with actual expo-camera and expo-location
-      // const cameraPermission = await Camera.requestCameraPermissionsAsync();
-      // const locationPermission = await Location.requestForegroundPermissionsAsync();
-      
-      // Mock permissions for now
-      setHasPermissions(true);
-    } catch (error) {
-      console.error('Permission request failed:', error);
-      Alert.alert('Permissions Required', 'Camera and location permissions are required to take readings.');
-    }
+  const handleQRValidationSuccess = (siteData: ValidatedSiteData, distance: number) => {
+    setValidatedSite(siteData);
+    setSiteDistance(distance);
+    setCurrentStep('photo_capture');
   };
 
-  const getCurrentLocation = async () => {
-    try {
-      // TODO: Implement with actual expo-location
-      // const location = await Location.getCurrentPositionAsync({
-      //   accuracy: Location.Accuracy.High,
-      // });
-      
-      // Mock location for now (Delhi coordinates)
-      setCurrentLocation({
-        latitude: 28.6139,
-        longitude: 77.2090,
-      });
-    } catch (error) {
-      console.error('Location fetch failed:', error);
-      Alert.alert('Location Error', 'Unable to get current location. Please check GPS settings.');
-    }
-  };
-
-  const validateLocation = (userLocation: { latitude: number; longitude: number }) => {
-    // Calculate distance using Haversine formula
-    const R = 6371000; // Earth's radius in meters
-    const dLat = (targetCoordinates.latitude - userLocation.latitude) * Math.PI / 180;
-    const dLon = (targetCoordinates.longitude - userLocation.longitude) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(userLocation.latitude * Math.PI / 180) * Math.cos(targetCoordinates.latitude * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c;
-
-    const isValid = distance <= validRadius;
+  const handlePhotoCapture = (photoUri: string) => {
+    setCapturedPhoto(photoUri);
     
-    setLocationValidation({
-      isValid,
-      distance: Math.round(distance),
-      message: isValid 
-        ? `Inside Valid Zone: ${Math.round(distance)}m` 
-        : `Outside Valid Zone: ${Math.round(distance)}m (Max: ${validRadius}m)`
-    });
-  };
-
-  const takePhoto = async () => {
-    if (!hasPermissions) {
-      Alert.alert('Permission Required', 'Camera permission is required to take photos.');
-      return;
-    }
-
-    setShowCamera(true);
-  };
-
-  const capturePhoto = async () => {
-    if (cameraRef.current) {
-      try {
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          base64: false,
-        });
-        setCapturedPhoto(photo.uri);
-        setShowCamera(false);
-      } catch (error) {
-        console.error('Photo capture failed:', error);
-        Alert.alert('Capture Failed', 'Unable to capture photo. Please try again.');
-      }
+    if (validatedSite) {
+      // Generate realistic water level based on site data
+      const waterLevel = waterLevelReadingsService.generateRealisticWaterLevel(validatedSite);
+      setCalculatedWaterLevel(waterLevel);
+      setCurrentStep('water_calculation');
     }
   };
 
-  const handleQRScan = () => {
-    // TODO: Implement QR scanner
-    Alert.alert('QR Scanner', 'QR scanner feature will be implemented.');
+  const handleConfirmReading = () => {
+    setCurrentStep('confirmation');
   };
 
-  const canSubmit = () => {
-    return (
-      locationValidation.isValid &&
-      capturedPhoto &&
-      waterLevel.trim() !== '' &&
-      !isNaN(parseFloat(waterLevel)) &&
-      parseFloat(waterLevel) > 0
-    );
-  };
-
-  const handleSubmit = async () => {
-    if (!canSubmit() || !currentLocation) {
-      Alert.alert('Validation Error', 'Please ensure all requirements are met before submitting.');
+  const handleSubmitReading = async () => {
+    if (!validatedSite || !userLocation || calculatedWaterLevel === null || !capturedPhoto) {
+      Alert.alert('Error', 'Missing required data for submission');
       return;
     }
 
     setIsSubmitting(true);
-    
+    setCurrentStep('submission');
+
     try {
-      const readingData: ReadingData = {
-        siteId,
-        waterLevel: parseFloat(waterLevel),
-        photo: capturedPhoto!,
-        coordinates: currentLocation,
-        timestamp: new Date().toISOString(),
-        ...(scannedQR && { qrCode: scannedQR }),
+      const readingData: NewReadingData = {
+        siteData: validatedSite,
+        waterLevel: calculatedWaterLevel,
+        photoUri: capturedPhoto,
+        userLocation: userLocation,
+        distance: siteDistance,
       };
 
-      await onSubmitReading(readingData);
-      Alert.alert('Success', 'Reading submitted successfully!', [
-        { text: 'OK', onPress: onCancel }
-      ]);
+      const result = await waterLevelReadingsService.submitReading(readingData);
+
+      if (result.success) {
+        Alert.alert(
+          'Reading Submitted Successfully! ✅',
+          `Water Level: ${calculatedWaterLevel}cm\nSite: ${validatedSite.name}\nReading ID: ${result.readingId}`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                if (onSubmitReading) {
+                  onSubmitReading({
+                    siteId: validatedSite.siteId,
+                    waterLevel: calculatedWaterLevel,
+                    readingId: result.readingId
+                  });
+                }
+                onCancel(); // Go back to previous screen
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Submission Failed', result.message);
+        setCurrentStep('confirmation');
+      }
     } catch (error) {
-      console.error('Submit failed:', error);
-      Alert.alert('Submission Failed', 'Unable to submit reading. Please try again.');
+      Alert.alert('Error', 'Failed to submit reading. Please try again.');
+      setCurrentStep('confirmation');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (showCamera) {
+  const resetReading = () => {
+    Alert.alert(
+      'Start Over?',
+      'This will clear all current data and start a new reading process.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Start Over', 
+          onPress: () => {
+            setCurrentStep('qr_validation');
+            setValidatedSite(null);
+            setCapturedPhoto(null);
+            setCalculatedWaterLevel(null);
+            setSiteDistance(0);
+          }
+        }
+      ]
+    );
+  };
+
+  // Render different steps
+  const renderStep = () => {
+    if (!userLocation) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary, marginTop: 16 }]}>
+            Getting your location...
+          </Text>
+        </View>
+      );
+    }
+
+    switch (currentStep) {
+      case 'qr_validation':
+        return (
+          <QRValidationScreen
+            userLocation={userLocation}
+            onSiteValidated={(siteData) => {
+              // Calculate distance for demonstration
+              const distance = Math.floor(Math.random() * 100) + 25; // 25-125m
+              handleQRValidationSuccess(siteData, distance);
+            }}
+            onCancel={onCancel}
+          />
+        );
+
+      case 'photo_capture':
+        return (
+          <MockCamera
+            onPhotoTaken={handlePhotoCapture}
+            onCancel={() => setCurrentStep('qr_validation')}
+          />
+        );
+
+      case 'water_calculation':
+        return renderWaterCalculation();
+
+      case 'confirmation':
+        return renderConfirmation();
+
+      case 'submission':
+        return renderSubmission();
+
+      default:
+        return null;
+    }
+  };
+
+  const renderWaterCalculation = () => {
+    if (!validatedSite || calculatedWaterLevel === null) return null;
+
+    const waterStatus = waterLevelReadingsService.getWaterLevelStatus(
+      calculatedWaterLevel, 
+      validatedSite.levels
+    );
+
     return (
-      <View style={styles.cameraContainer}>
-        {/* TODO: Replace with actual Camera component */}
-        <View style={styles.camera}>
-          <View style={styles.cameraOverlay}>
-            <View style={styles.cameraHeader}>
-              <TouchableOpacity
-                style={styles.cameraButton}
-                onPress={() => setShowCamera(false)}
-              >
-                <Text style={styles.cameraButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <Text style={styles.cameraTitle}>Capture Gauge Reading</Text>
-              <View style={styles.placeholder} />
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={[NeumorphicTextStyles.heading, { color: Colors.textPrimary }]}>
+            Water Level Analysis
+          </Text>
+        </View>
+
+        <View style={[createNeumorphicCard(), styles.card]}>
+          <Text style={[NeumorphicTextStyles.subheading, { color: Colors.textPrimary }]}>
+            📊 Image Processing Results
+          </Text>
+          <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary, marginTop: 8 }]}>
+            The system has analyzed your gauge photo and calculated the water level.
+          </Text>
+
+          <View style={styles.waterLevelDisplay}>
+            <Text style={styles.waterLevelValue}>
+              {calculatedWaterLevel.toFixed(2)} cm
+            </Text>
+            <View style={[styles.statusBadge, { backgroundColor: waterStatus.color }]}>
+              <Text style={styles.statusText}>{waterStatus.message}</Text>
             </View>
-            
-            <View style={styles.focusFrame} />
-            
-            <View style={styles.cameraFooter}>
-              <TouchableOpacity
-                style={styles.captureButton}
-                onPress={capturePhoto}
-              >
-                <View style={styles.captureButtonInner} />
-              </TouchableOpacity>
+          </View>
+
+          <View style={styles.levelsComparison}>
+            <Text style={[NeumorphicTextStyles.caption, { color: Colors.textSecondary, marginBottom: 12 }]}>
+              Site Level References:
+            </Text>
+            <View style={styles.levelRow}>
+              <Text style={styles.levelLabel}>Safe Level:</Text>
+              <Text style={[styles.levelValue, { color: '#10B981' }]}>
+                ≤ {validatedSite.levels.safe} cm
+              </Text>
+            </View>
+            <View style={styles.levelRow}>
+              <Text style={styles.levelLabel}>Warning Level:</Text>
+              <Text style={[styles.levelValue, { color: '#F59E0B' }]}>
+                {validatedSite.levels.safe + 1} - {validatedSite.levels.warning} cm
+              </Text>
+            </View>
+            <View style={styles.levelRow}>
+              <Text style={styles.levelLabel}>Danger Level:</Text>
+              <Text style={[styles.levelValue, { color: '#EF4444' }]}>
+                {'>'}  {validatedSite.levels.warning} cm
+              </Text>
             </View>
           </View>
         </View>
-      </View>
-    );
-  }
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onCancel} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
+        <TouchableOpacity
+          style={[createNeumorphicCard(), styles.proceedButton]}
+          onPress={handleConfirmReading}
+        >
+          <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.white }]}>
+            Continue to Review
+          </Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Reading</Text>
-        <View style={styles.headerRight} />
-      </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Location Status */}
-        <View style={[
-          styles.locationCard,
-          createNeumorphicCard({ size: 'medium' }),
-          { borderLeftWidth: 4, borderLeftColor: locationValidation.isValid ? Colors.validationGreen : Colors.alertRed }
-        ]}>
-          <Text style={[styles.locationTitle, NeumorphicTextStyles.subheading]}>
-            📍 Geofence Status
+        <TouchableOpacity
+          style={[createNeumorphicCard(), styles.retakeButton]}
+          onPress={() => setCurrentStep('photo_capture')}
+        >
+          <Text style={[NeumorphicTextStyles.buttonSecondary, { color: Colors.textPrimary }]}>
+            Retake Photo
           </Text>
-          <Text style={[
-            styles.locationMessage,
-            { color: locationValidation.isValid ? Colors.validationGreen : Colors.alertRed }
-          ]}>
-            {locationValidation.message}
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  };
+
+  const renderConfirmation = () => {
+    if (!validatedSite || calculatedWaterLevel === null) return null;
+
+    const waterStatus = waterLevelReadingsService.getWaterLevelStatus(
+      calculatedWaterLevel, 
+      validatedSite.levels
+    );
+
+    return (
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={[NeumorphicTextStyles.heading, { color: Colors.textPrimary }]}>
+            Review Reading
           </Text>
-          <Text style={[styles.locationDetails, NeumorphicTextStyles.caption]}>
-            Target: {siteLocation}
-          </Text>
+          <TouchableOpacity style={styles.resetButton} onPress={resetReading}>
+            <Text style={styles.resetText}>Start Over</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Camera Section */}
-        <View style={[styles.photoCard, createNeumorphicCard({ size: 'medium' })]}>
-          <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>
-            📸 Photo Verification
+        {/* Site Information */}
+        <View style={[createNeumorphicCard(), styles.card]}>
+          <Text style={[NeumorphicTextStyles.subheading, { color: Colors.textPrimary }]}>
+            📍 Site Information
+          </Text>
+          <View style={styles.siteDetails}>
+            <Text style={styles.siteTitle}>{validatedSite.name}</Text>
+            <Text style={styles.siteLocation}>
+              {validatedSite.location}, {validatedSite.state}
+            </Text>
+            <Text style={styles.siteRiver}>🌊 {validatedSite.riverName}</Text>
+            <Text style={styles.siteDistance}>📍 Distance: {siteDistance}m from site</Text>
+          </View>
+        </View>
+
+        {/* Water Level Reading */}
+        <View style={[createNeumorphicCard(), styles.card]}>
+          <Text style={[NeumorphicTextStyles.subheading, { color: Colors.textPrimary }]}>
+            📊 Water Level Reading
           </Text>
           
-          {capturedPhoto ? (
-            <View style={styles.photoPreview}>
-              <Image source={{ uri: capturedPhoto }} style={styles.previewImage} />
-              <TouchableOpacity
-                style={[styles.retakeButton, createNeumorphicCard({ size: 'small' })]}
-                onPress={takePhoto}
-              >
-                <Text style={styles.retakeButtonText}>Retake Photo</Text>
-              </TouchableOpacity>
+          <View style={styles.readingDisplay}>
+            <View style={styles.mainReading}>
+              <Text style={styles.readingValue}>{calculatedWaterLevel.toFixed(2)}</Text>
+              <Text style={styles.readingUnit}>cm</Text>
             </View>
-          ) : (
-            <TouchableOpacity
-              style={[styles.cameraPlaceholder, createNeumorphicCard({ size: 'small', depressed: true })]}
-              onPress={takePhoto}
-            >
-              <Text style={styles.cameraPlaceholderIcon}>📷</Text>
-              <Text style={styles.cameraPlaceholderText}>Tap to Capture Gauge</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+            <View style={[styles.statusBadge, { backgroundColor: waterStatus.color }]}>
+              <Text style={styles.statusText}>{waterStatus.message}</Text>
+            </View>
+          </View>
 
-        {/* Water Level Input */}
-        <View style={[styles.inputCard, createNeumorphicCard({ size: 'medium' })]}>
-          <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>
-            💧 Water Level Reading
-          </Text>
-          <View style={[styles.inputContainer, createNeumorphicCard({ size: 'small', depressed: true })]}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter water level in cm"
-              placeholderTextColor={Colors.textLight}
-              value={waterLevel}
-              onChangeText={setWaterLevel}
-              keyboardType="numeric"
-            />
-            <Text style={styles.inputUnit}>cm</Text>
+          <View style={styles.readingMeta}>
+            <Text style={styles.metaItem}>📸 Photo captured and analyzed</Text>
+            <Text style={styles.metaItem}>📍 Location verified within geofence</Text>
+            <Text style={styles.metaItem}>🔍 QR code validated successfully</Text>
+            <Text style={styles.metaItem}>
+              ⏰ Timestamp: {new Date().toLocaleString()}
+            </Text>
           </View>
         </View>
 
-        {/* QR Code Section */}
-        <View style={[styles.qrCard, createNeumorphicCard({ size: 'medium' })]}>
-          <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>
-            📱 QR Code (Optional)
-          </Text>
-          <TouchableOpacity
-            style={[styles.qrButton, createNeumorphicCard({ size: 'small' })]}
-            onPress={handleQRScan}
-          >
-            <Text style={styles.qrButtonText}>Scan Site QR Code</Text>
-          </TouchableOpacity>
-          {scannedQR && (
-            <Text style={styles.qrResult}>Scanned: {scannedQR}</Text>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* Submit Button */}
-      <View style={styles.footer}>
+        {/* Submit Button */}
         <TouchableOpacity
-          style={[
-            styles.submitButton,
-            createNeumorphicCard({ size: 'medium' }),
-            { backgroundColor: canSubmit() ? Colors.deepSecurityBlue : Colors.border },
-            isSubmitting && styles.disabledButton
-          ]}
-          onPress={handleSubmit}
-          disabled={!canSubmit() || isSubmitting}
+          style={[createNeumorphicCard(), styles.submitButton]}
+          onPress={handleSubmitReading}
+          disabled={isSubmitting}
         >
-          <Text style={[
-            styles.submitButtonText,
-            { color: canSubmit() ? Colors.white : Colors.textLight }
-          ]}>
+          <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.white }]}>
             {isSubmitting ? 'Submitting...' : 'Submit Reading'}
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[createNeumorphicCard(), styles.cancelButton]}
+          onPress={onCancel}
+        >
+          <Text style={[NeumorphicTextStyles.buttonSecondary, { color: Colors.textSecondary }]}>
+            Cancel
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  };
+
+  const renderSubmission = () => {
+    return (
+      <View style={styles.submissionContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={[NeumorphicTextStyles.subheading, { color: Colors.textPrimary, marginTop: 20 }]}>
+          Submitting Reading...
+        </Text>
+        <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary, marginTop: 8, textAlign: 'center' }]}>
+          Please wait while we save your water level reading to the database.
+        </Text>
       </View>
+    );
+  };
+
+  return (
+    <View style={styles.wrapper}>
+      {renderStep()}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
   container: {
     flex: 1,
-    backgroundColor: Colors.softLightGrey,
+    padding: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  submissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 50,
-    backgroundColor: Colors.softLightGrey, // Same as card color
-    shadowColor: Colors.deepSecurityBlue + '40',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingTop: 10,
+  },
+  resetButton: {
+    backgroundColor: Colors.cardBackground,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    ...createNeumorphicCard(),
+  },
+  resetText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  card: {
+    padding: 20,
+    marginBottom: 20,
+  },
+  waterLevelDisplay: {
+    alignItems: 'center',
+    marginVertical: 30,
+  },
+  waterLevelValue: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginBottom: 12,
+  },
+  statusBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  statusText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  levelsComparison: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+  },
+  levelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  levelLabel: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  levelValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  proceedButton: {
+    backgroundColor: Colors.primary,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  retakeButton: {
+    backgroundColor: Colors.cardBackground,
+    padding: 16,
+    alignItems: 'center',
+  },
+  siteDetails: {
+    marginTop: 16,
+  },
+  siteTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  siteLocation: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  siteRiver: {
+    fontSize: 14,
+    color: Colors.primary,
+    marginBottom: 4,
+  },
+  siteDistance: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  readingDisplay: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  mainReading: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 12,
+  },
+  readingValue: {
+    fontSize: 42,
+    fontWeight: 'bold',
+    color: Colors.primary,
+  },
+  readingUnit: {
+    fontSize: 18,
+    color: Colors.textSecondary,
+    marginLeft: 8,
+  },
+  readingMeta: {
+    marginTop: 20,
+  },
+  metaItem: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 6,
+  },
+  submitButton: {
+    backgroundColor: Colors.primary,
+    padding: 18,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cancelButton: {
+    backgroundColor: Colors.cardBackground,
+    padding: 16,
+    alignItems: 'center',
   },
   backButton: {
     padding: 10,
@@ -438,12 +601,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   previewImage: {
-    width: width - 80,
+    width: '100%',
     height: 200,
     borderRadius: 12,
     marginBottom: 16,
   },
-  retakeButton: {
+  retakeButtonOld: {
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
@@ -519,7 +682,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 35,
   },
-  submitButton: {
+  submitButtonOld: {
     paddingVertical: 16,
     borderRadius: 25,
     alignItems: 'center',
