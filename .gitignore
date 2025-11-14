@@ -98,11 +98,76 @@ jspm_packages/
 # EAS
 .easignore
 
+# Expo CLI
+.expo-shared/
+.expo/
+expo-env.d.ts
+eas.json
+
+# React Native
+react-native-*.tgz
+*.hprof
+
+# Android Studio
+*.iml
+.idea/
+.gradle/
+local.properties
+*.apk
+*.aab
+
+# iOS
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+ios/Pods/
+ios/build/
+
+# Flipper
+ios/Pods/Flipper
+ios/Pods/Flipper-Folly
+ios/Pods/OpenSSL-Universal
+
 # Supabase
 supabase/.branches
 supabase/.temp
 supabase/logs/
+supabase/config.toml
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache/
+*.cache
+
+# Python (for QR generation scripts)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Temporary files
 tmp/
 temp/
+*.tmp
+
+# OS generated files
+.DS_Store?
+.Spotlight-V100
+.Trashes
+Icon?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor backup files
+*~
+*.swp
+*.swo
+.#*
