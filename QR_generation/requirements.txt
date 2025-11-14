@@ -1,0 +1,16 @@
+# HydroSnap QR Code Generator - Required Packages
+
+# QR Code generation with image support
+qrcode[pil]==7.4.2
+
+# Cryptography for data encryption
+cryptography==41.0.7
+
+# Image processing
+Pillow==10.0.1
+
+# Data processing
+pandas==2.0.3
+
+# Installation:
+# pip install -r requirements.txt
