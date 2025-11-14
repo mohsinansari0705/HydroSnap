@@ -1,3 +1,5 @@
+<div align="center">
+
 ![License](https://img.shields.io/github/license/mohsinansari0705/SIH2025-HydroSnap)
 ![Build](https://img.shields.io/github/actions/workflow/status/mohsinansari0705/SIH2025-HydroSnap/ci.yml?label=Build)
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)
@@ -5,11 +7,9 @@
 
 # 🌊 HydroSnap – Secure River Water Level Monitoring
 
-<p align="center">
-  <img src="assets/icons/HydroSnap_logo.png" alt="HydroSnap Application logo" heigt=500 width=500>
-</p>
+<img src="assets/icons/HydroSnap_logo.png" alt="HydroSnap Application logo" heigt=500 width=500>
 
----
+</div>
 
 ## 📌 Overview
 **HydroSnap** is a mobile-first solution to modernize and secure **river water-level monitoring** using **image processing, geofencing, and cloud integration**.  
