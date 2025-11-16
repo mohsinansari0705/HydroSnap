@@ -6,6 +6,7 @@ export type AppScreen =
   | 'auth'
   | 'profile-setup'
   | 'profile'
+  | 'edit-profile'
   | 'home'
   | 'my-readings'
   | 'supervisor-dashboard'
