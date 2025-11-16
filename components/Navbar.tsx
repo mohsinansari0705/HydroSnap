@@ -18,6 +18,7 @@ const Navbar: React.FC<NavbarProps> = ({
 }) => {
   console.log('Navbar: onSettingsPress is', typeof onSettingsPress);
   const [showMenu, setShowMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const { notificationsVisible, hideNotifications, toggleNotifications, navigateToSite, navigateToSettings, navigateToProfile } = useNavigation();
 
   // Sample notifications for testing
@@ -77,20 +78,27 @@ const Navbar: React.FC<NavbarProps> = ({
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (notificationsVisible) {
+    console.log('showNotifications changed to:', showNotifications);
+    if (showNotifications) {
       // open animation
+      console.log('Starting notification open animation');
       Animated.parallel([
         Animated.timing(opacityAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
         Animated.spring(scaleAnim, { toValue: 1, friction: 8, useNativeDriver: true }),
-      ]).start();
+      ]).start(() => {
+        console.log('Notification open animation completed');
+      });
     } else {
       // close animation
+      console.log('Starting notification close animation');
       Animated.parallel([
         Animated.timing(opacityAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 0.96, duration: 120, useNativeDriver: true }),
-      ]).start();
+      ]).start(() => {
+        console.log('Notification close animation completed');
+      });
     }
-  }, [notificationsVisible, opacityAnim, scaleAnim]);
+  }, [showNotifications, opacityAnim, scaleAnim]);
 
   const handleMenuPress = () => {
     setShowMenu(!showMenu);
@@ -161,7 +169,8 @@ const Navbar: React.FC<NavbarProps> = ({
         <View style={styles.notificationContainer}>
           <TouchableOpacity 
             onPress={() => {
-              toggleNotifications();
+              console.log('Notification bell pressed, current state:', showNotifications);
+              setShowNotifications(!showNotifications);
               if (onNotificationPress) onNotificationPress?.();
             }} 
             style={styles.iconButton}
@@ -179,14 +188,17 @@ const Navbar: React.FC<NavbarProps> = ({
 
           {/* Modal-based notifications for reliable layering and better UX */}
           <Modal
-            visible={notificationsVisible}
+            visible={showNotifications}
             transparent
             animationType="fade"
-            onRequestClose={() => hideNotifications()}
+            onRequestClose={() => setShowNotifications(false)}
           >
-            <Pressable style={styles.modalBackdrop} onPress={() => hideNotifications()}>
+            <Pressable style={styles.modalBackdrop} onPress={() => {
+              console.log('Backdrop pressed, hiding notifications');
+              setShowNotifications(false);
+            }}>
               <View style={styles.modalContentWrapper} pointerEvents="box-none">
-                <Animated.View style={[styles.modalCard, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}> 
+                <Animated.View style={[styles.modalCard, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]} pointerEvents="auto"> 
                   <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>Flood Alerts</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -201,7 +213,7 @@ const Navbar: React.FC<NavbarProps> = ({
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => {
-                          hideNotifications();
+                          setShowNotifications(false);
                           if (onNotificationPress) onNotificationPress();
                         }}
                         style={styles.closeButton}
@@ -212,7 +224,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     </View>
                   </View>
                   {/* Reuse NotificationPanel's content but render inline here for tighter UX control */}
-                  <ScrollView style={styles.notificationListScroll} contentContainerStyle={styles.notificationListContainer}>
+                  <ScrollView style={styles.notificationListScroll} contentContainerStyle={styles.notificationListContainer} scrollEnabled={true} nestedScrollEnabled={true}>
                     {alerts.length === 0 ? (
                       <Text style={styles.noAlertsText}>No active alerts</Text>
                     ) : (
@@ -223,7 +235,7 @@ const Navbar: React.FC<NavbarProps> = ({
                           onPress={() => {
                             // mark as read and navigate to site details
                             setAlerts((prev) => prev.map((a) => a.id === alert.id ? { ...a, read: true } : a));
-                            hideNotifications();
+                            setShowNotifications(false);
                             // navigate to site
                             try {
                               navigateToSite(alert.siteId);
@@ -524,10 +536,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 80,
+    zIndex: 2000,
+    elevation: 20,
   },
   modalContentWrapper: {
     width: '100%',
     alignItems: 'center',
+    flex: 1,
   },
   modalCard: {
     width: 340,
@@ -540,6 +555,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 20,
+    zIndex: 2001,
   },
   modalHeader: {
     flexDirection: 'row',
