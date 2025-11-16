@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useAuth } from '../lib/AuthContext';
 import { useNavigation } from '../lib/NavigationContext';
@@ -9,6 +8,7 @@ import Loading from './Loading';
 import SplashScreen from '../pages/SplashScreen';
 import OnboardingScreen from '../pages/OnboardingScreen';
 import HomeScreen from '../pages/HomeScreen';
+import ProfileScreen from '../pages/ProfileScreen';
 import MyReadingsScreen from '../pages/MyReadingsScreen';
 import SiteDetailsScreen from '../pages/SiteDetailsScreen';
 import SiteLocationsScreen from '../pages/SiteLocationsScreen';
@@ -30,6 +30,7 @@ export default function AppNavigator() {
     navigateToNewReading,
     navigateToMyReadings,
     navigateToSettings,
+    navigateToProfile,
     navigateBack
   } = useNavigation();
 
@@ -136,6 +137,7 @@ export default function AppNavigator() {
               onNavigateToNewReading={navigateToNewReadingScreen}
               onNavigateToMyReadings={() => navigateToMyReadings()}
               onNavigateToSiteLocations={() => setCurrentScreen('site-locations')}
+                onNavigateToProfile={() => navigateToProfile()}
               onNavigateToSettings={navigateToSettings}
             />
           );
@@ -147,6 +149,16 @@ export default function AppNavigator() {
             siteId={selectedSiteId}
             onNavigateBack={navigateBack}
             onNavigateToNewReading={navigateToNewReadingScreen}
+          />
+        );
+
+      case 'profile':
+        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        return (
+          <ProfileScreen
+            profile={profile}
+            onEditProfile={() => setCurrentScreen('profile-setup')}
+            onBack={navigateBack}
           />
         );
 

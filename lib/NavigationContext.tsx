@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
 export type AppScreen = 
   | 'splash'
   | 'onboarding' 
   | 'auth'
   | 'profile-setup'
+  | 'profile'
   | 'home'
   | 'my-readings'
   | 'supervisor-dashboard'
@@ -27,6 +28,7 @@ interface NavigationContextType {
   navigateToSite: (siteId: string) => void;
   navigateToNewReading: (siteId: string) => void;
   navigateToMyReadings: () => void;
+  navigateToProfile: () => void;
   // Notification visibility helpers (global)
   notificationsVisible: boolean;
   showNotifications: () => void;
@@ -67,6 +69,10 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     setCurrentScreen('my-readings');
   };
 
+  const navigateToProfile = () => {
+    setCurrentScreen('profile');
+  };
+
   const showNotifications = () => setNotificationsVisible(true);
   const hideNotifications = () => setNotificationsVisible(false);
   const toggleNotifications = () => setNotificationsVisible(v => !v);
@@ -95,6 +101,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     navigateToSite,
     navigateToNewReading,
     navigateToMyReadings,
+    navigateToProfile,
     notificationsVisible,
     showNotifications,
     hideNotifications,
