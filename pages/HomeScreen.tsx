@@ -26,7 +26,6 @@ interface HomeScreenProps {
   onNavigateToNewReading: (siteId: string) => void;
   onNavigateToMyReadings: () => void;
   onNavigateToSiteLocations: () => void;
-  onNavigateToProfile: () => void;
   onNavigateToSettings: () => void;
 }
 
@@ -90,13 +89,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToNewReading,
   onNavigateToMyReadings,
   onNavigateToSiteLocations,
-  onNavigateToProfile,
   onNavigateToSettings,
 }) => {
   const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'dashboard' | 'sites' | 'profile'>('dashboard');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
   // notification visibility moved to global navigation context
-  const { toggleNotifications } = useNavigation();
+  const { toggleNotifications, setCurrentScreen } = useNavigation();
 
   // Use the site cache to prevent repeated fetching
   const { sites: cachedSites, setCachedSites, isCacheValid, clearCache } = useSiteCache();
@@ -224,7 +222,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         onNavigateToSiteLocations();
         break;
       case 'profile':
-        onNavigateToProfile();
+        setCurrentScreen('profile');
         break;
     }
   };
