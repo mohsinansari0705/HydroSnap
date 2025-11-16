@@ -44,7 +44,7 @@ HydroSnap ensures **authentic and secure water-level reporting** by combining:
 - 📡 **Offline Mode** – Readings saved locally & synced when online.  
 - 👥 **Role-based Access** – Field staff, supervisors, analysts, public.  
 - 🔒 **Tamper Detection** – Alerts for skipped/fake readings or GPS spoofing.  
-- 📊 **Cloud Dashboard** – Supervisors track data across multiple sites.  
+- 📊 **Readings Dashboard** – Supervisors track data across multiple sites.  
 
 ---
 
@@ -53,8 +53,7 @@ HydroSnap ensures **authentic and secure water-level reporting** by combining:
 **Backend**: FastAPI / Node.js, REST APIs, JWT Auth  
 **Database**: PostgreSQL + PostGIS, Cloud Object Storage (S3/GCS/Azure)  
 **Image Processing**: OpenCV, Tesseract OCR, ML (YOLO/CRNN for gauge reading)  
-**Dashboard**: React, Mapbox/Leaflet, TailwindCSS  
-**Cloud Infra**: AWS / GCP / Azure (Dockerized, CI/CD via GitHub Actions)  
+**Dashboard**: React, Mapbox/Leaflet, TailwindCSS    
 
 ---
 

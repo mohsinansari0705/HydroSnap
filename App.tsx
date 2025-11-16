@@ -1,4 +1,4 @@
-import React from 'react';
+// React is used in JSX, but not in this file's direct code
 import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider } from './lib/ThemeContext';
 import { AuthProvider } from './lib/AuthContext';
