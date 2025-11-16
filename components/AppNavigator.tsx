@@ -16,6 +16,7 @@ import NewReadingScreen from '../pages/NewReadingScreen';
 import SupervisorDashboard from '../pages/SupervisorDashboard';
 import PublicUploadScreen from '../pages/PublicUploadScreen';
 import SettingsPage from '../pages/SettingsPage';
+import ProfilePage from '../pages/ProfilePage';
 import { Colors } from '../lib/colors';
 
 export default function AppNavigator() {
@@ -198,10 +199,20 @@ export default function AppNavigator() {
             onNavigate={(screen: string) => {
               if (screen === 'Auth') {
                 handleSignOut();
+              } else if (screen === 'Profile') {
+                setCurrentScreen('profile');
               } else {
                 navigateBack();
               }
             }}
+            onBack={navigateBack}
+          />
+        );
+
+      case 'profile':
+        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        return (
+          <ProfilePage
             onBack={navigateBack}
           />
         );

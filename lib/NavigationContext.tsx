@@ -5,6 +5,7 @@ export type AppScreen =
   | 'onboarding' 
   | 'auth'
   | 'profile-setup'
+  | 'profile'
   | 'home'
   | 'my-readings'
   | 'supervisor-dashboard'
@@ -32,6 +33,7 @@ interface NavigationContextType {
   showNotifications: () => void;
   hideNotifications: () => void;
   toggleNotifications: () => void;
+  navigateToProfile: () => void;
   navigateToSettings: () => void;
   navigateToAuth: () => void;
   navigateBack: () => void;
@@ -71,6 +73,10 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   const hideNotifications = () => setNotificationsVisible(false);
   const toggleNotifications = () => setNotificationsVisible(v => !v);
 
+  const navigateToProfile = () => {
+    setCurrentScreen('profile');
+  };
+
   const navigateToSettings = () => {
     setCurrentScreen('settings');
   };
@@ -99,6 +105,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     showNotifications,
     hideNotifications,
     toggleNotifications,
+    navigateToProfile,
     navigateToSettings,
     navigateToAuth,
     navigateBack,
