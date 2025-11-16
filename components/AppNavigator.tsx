@@ -16,7 +16,6 @@ import NewReadingScreen from '../pages/NewReadingScreen';
 import SupervisorDashboard from '../pages/SupervisorDashboard';
 import PublicUploadScreen from '../pages/PublicUploadScreen';
 import SettingsPage from '../pages/SettingsPage';
-import ProfilePage from '../pages/ProfilePage';
 import { Colors } from '../lib/colors';
 
 export default function AppNavigator() {
@@ -224,7 +223,9 @@ export default function AppNavigator() {
       case 'profile':
         if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
         return (
-          <ProfilePage
+          <ProfileScreen
+            profile={profile}
+            onEditProfile={() => setCurrentScreen('profile-setup')}
             onBack={navigateBack}
           />
         );
