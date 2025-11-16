@@ -18,7 +18,7 @@ const Navbar: React.FC<NavbarProps> = ({
 }) => {
   console.log('Navbar: onSettingsPress is', typeof onSettingsPress);
   const [showMenu, setShowMenu] = useState(false);
-  const { notificationsVisible, hideNotifications, toggleNotifications, navigateToSite } = useNavigation();
+  const { notificationsVisible, hideNotifications, toggleNotifications, navigateToSite, navigateToSettings, navigateToProfile } = useNavigation();
 
   // Sample notifications for testing
   const sampleNotifications: Alert[] = [
@@ -139,6 +139,7 @@ const Navbar: React.FC<NavbarProps> = ({
     </View>
   );
 
+
   return (
     <View style={styles.navbar}>
       {/* Left Section - App Name with Logo */}
@@ -251,31 +252,53 @@ const Navbar: React.FC<NavbarProps> = ({
         </View>
         
         <View style={styles.menuContainer}>
-          <TouchableOpacity onPress={handleMenuPress} style={styles.iconButton}>
+          <TouchableOpacity onPress={handleMenuPress} style={styles.iconButton} accessibilityLabel="Open menu">
             <MenuIcon />
           </TouchableOpacity>
-          
-          {/* Dropdown Menu */}
-          {showMenu && (
-            <View style={styles.dropdownMenu}>
-              <View 
-                style={[styles.menuItem, styles.disabledMenuItem]}
-              >
-                <Text style={[styles.menuItemText, styles.disabledMenuText]}>👤 Profile</Text>
-                <Text style={styles.comingSoonText}>Coming Soon</Text>
+
+          {/* Use a Modal for reliable layering and to allow tapping outside to close */}
+          <Modal
+            visible={showMenu}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowMenu(false)}
+          >
+            <Pressable style={styles.menuModalBackdrop} onPress={() => setShowMenu(false)}>
+              <View style={styles.menuModalWrapper} pointerEvents="box-none">
+                <View style={styles.dropdownModalContent}>
+                  {(
+                    [
+                      { key: 'profile', label: '👤 Profile', disabled: false, action: navigateToProfile },
+                      { key: 'settings', label: '⚙️ Settings', disabled: false, action: onSettingsPress || navigateToSettings },
+                    ] as Array<any>
+                  ).map((item) => (
+                    item.disabled ? (
+                      <View key={item.key} style={[styles.menuItem, styles.disabledMenuItem]}>
+                        <Text style={[styles.menuItemText, styles.disabledMenuText]}>{item.label}</Text>
+                        {item.note && <Text style={styles.comingSoonText}>{item.note}</Text>}
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        key={item.key}
+                        style={styles.menuItem}
+                        onPress={() => {
+                          console.log(`${item.label} pressed`);
+                          setShowMenu(false);
+                          try {
+                            item.action();
+                          } catch (err) {
+                            console.warn('menu action failed', err);
+                          }
+                        }}
+                      >
+                        <Text style={styles.menuItemText}>{item.label}</Text>
+                      </TouchableOpacity>
+                    )
+                  ))}
+                </View>
               </View>
-              
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => {
-                  console.log('Settings menu item pressed');
-                  handleMenuItemPress(onSettingsPress || (() => {}));
-                }}
-              >
-                <Text style={styles.menuItemText}>⚙️ Settings</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+            </Pressable>
+          </Modal>
         </View>
       </View>
     </View>
@@ -619,6 +642,30 @@ const styles = StyleSheet.create({
     color: Colors.aquaTechBlue,
     fontWeight: '600',
     marginTop: 2,
+  },
+  /* Modal menu styles */
+  menuModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  menuModalWrapper: {
+    width: '100%',
+    alignItems: 'flex-end',
+    paddingTop: 52, // match navbar paddingTop + some offset
+    paddingRight: 20,
+    pointerEvents: 'box-none',
+  },
+  dropdownModalContent: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    paddingVertical: 8,
+    minWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 24,
+    zIndex: 3000,
   },
 });
 
