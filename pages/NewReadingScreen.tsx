@@ -11,7 +11,7 @@ import {
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { QRValidationScreen } from '../components/QRValidationScreen';
-import { MockCamera } from '../components/MockCamera';
+import { RealCamera } from '../components/RealCamera';
 import { ValidatedSiteData } from '../services/qrValidationService';
 import { 
   waterLevelReadingsService, 
@@ -176,7 +176,7 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
 
       case 'photo_capture':
         return (
-          <MockCamera
+          <RealCamera
             onPhotoTaken={handlePhotoCapture}
             onCancel={() => setCurrentStep('qr_validation')}
           />
