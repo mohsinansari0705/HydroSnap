@@ -14,7 +14,11 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to capture water gauge readings for monitoring purposes.",
+        "NSPhotoLibraryUsageDescription": "This app saves captured gauge photos to your photo library for record keeping."
+      }
     },
     "android": {
       "adaptiveIcon": {
