@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, BackHandler } from 'react-native';
 import { useAuth } from '../lib/AuthContext';
 import { useNavigation } from '../lib/NavigationContext';
 import { Colors } from '../lib/colors';
@@ -19,8 +19,20 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
     setCurrentScreen('edit-profile');
   };
 
+  useEffect(() => {
+    const backAction = () => {
+      onBack();
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+
+    return () => backHandler.remove();
+  }, [onBack]);
+
   return (
     <View style={styles.container}>
+      <StatusBar backgroundColor={Colors.deepSecurityBlue} barStyle="light-content" />
       <View style={styles.header}>
         <TouchableOpacity
           onPress={onBack}
@@ -57,7 +69,21 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.softLightGrey },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 45, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: Colors.deepSecurityBlue, gap: 12 },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    marginTop: StatusBar.currentHeight || 24,
+    paddingTop: 20, 
+    paddingHorizontal: 20, 
+    paddingBottom: 20, 
+    backgroundColor: Colors.deepSecurityBlue, 
+    shadowColor: Colors.deepSecurityBlue + '40',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8
+  },
   backButton: { width: 54, height: 54, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.softLightGrey, borderRadius: 27, elevation: 4 },
   backIcon: { fontSize: 24, color: Colors.deepSecurityBlue, fontWeight: '700' },
   editButtonPressed: { opacity: 0.95, transform: [{ scale: 0.995 }], backgroundColor: Colors.softLightGrey },
