@@ -35,6 +35,28 @@ export interface QRValidationResult {
 
 // Mock QR validation data - In production, this would come from your QR generation system
 const MOCK_QR_DATABASE: Record<string, ValidatedSiteData> = {
+  "QR-YML-DEL-001": {
+    siteId: "CWC-YML-DEL-001",
+    name: "Yamuna Test Station (No Geofencing)",
+    location: "Delhi",
+    coordinates: {
+      lat: 28.6139,
+      lng: 77.2090
+    },
+    riverName: "Yamuna",
+    state: "Delhi",
+    district: "New Delhi",
+    siteType: "river",
+    levels: {
+      safe: 200.00,
+      warning: 203.50,
+      danger: 205.00
+    },
+    geofenceRadius: 0, // Disabled for testing
+    organization: "Central Water Commission",
+    qrCode: "QR-YML-DEL-001",
+    isActive: true
+  },
   "QR-YMN-DEL-002": {
     siteId: "CWC-YMN-001",
     name: "Yamuna Bridge Station",
@@ -144,6 +166,28 @@ const MOCK_QR_DATABASE: Record<string, ValidatedSiteData> = {
     organization: "Central Water Commission",
     qrCode: "QR-KRS-MND-005",
     isActive: true
+  },
+  "QR-TST-DEL-999": {
+    siteId: "CWC-TST-DEL-999", 
+    name: "Test Site (Development Only)",
+    location: "Delhi",
+    coordinates: {
+      lat: 28.6139,
+      lng: 77.2090
+    },
+    riverName: "Yamuna",
+    state: "Delhi", 
+    district: "Central Delhi",
+    siteType: "river",
+    levels: {
+      safe: 150.00,
+      warning: 170.00,
+      danger: 180.00
+    },
+    geofenceRadius: 0, // Disabled for testing
+    organization: "Central Water Commission",
+    qrCode: "QR-TST-DEL-999",
+    isActive: true
   }
 };
 
@@ -197,8 +241,9 @@ export const validateQRCode = async (
       siteData.coordinates.lng
     );
 
-    // Check if user is within geofence
-    if (distance > siteData.geofenceRadius) {
+    // Check if user is within geofence (skip for test sites)
+    const testSites = ['CWC-YML-DEL-001', 'CWC-TST-DEL-999'];
+    if (!testSites.includes(siteData.siteId) && distance > siteData.geofenceRadius) {
       return {
         success: false,
         message: `You are ${Math.round(distance)}m away from the monitoring site. You must be within ${siteData.geofenceRadius}m to take readings.`,
