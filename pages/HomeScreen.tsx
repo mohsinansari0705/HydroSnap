@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { QRScanner } from '../components/QRScanner';
 import {
   View,
   Text,
@@ -93,6 +94,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'dashboard' | 'sites' | 'profile'>('dashboard');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
+  const [qrScannerVisible, setQRScannerVisible] = useState(false);
   // notification visibility moved to global navigation context
   const { toggleNotifications, setCurrentScreen } = useNavigation();
 
@@ -230,19 +232,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const handleNavbarAction = (action: 'qr' | 'notifications' | 'profile' | 'settings') => {
     switch (action) {
       case 'qr':
-        console.log('QR Scanner will open');
-        Alert.alert('QR Scanner', 'QR code scanning functionality will be implemented here.');
+        setQRScannerVisible(true);
         break;
       case 'notifications':
-        // Show/hide notifications panel (use global navigation state)
         toggleNotifications();
         break;
       case 'profile':
-        // Profile is currently disabled
-        console.log('Profile feature coming soon');
+        setCurrentScreen('profile');
         break;
       case 'settings':
-        console.log('Settings button pressed, calling onNavigateToSettings');
         onNavigateToSettings();
         break;
     }
@@ -297,9 +295,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const renderCompactHeader = () => {
     const currentHour = new Date().getHours();
     const getGreeting = () => {
-      if (currentHour < 12) return 'Good Morning';
-      if (currentHour < 17) return 'Good Afternoon';
-      return 'Good Evening';
+      if (currentHour < 12) return 'Good Morning!';
+      if (currentHour < 17) return 'Good Afternoon!';
+      return 'Good Evening!';
     };
 
     const getWaterLevelStatus = () => {
@@ -320,8 +318,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     return (
       <View style={styles.compactHeader}>
         <View style={styles.greetingSection}>
-          <Text style={styles.compactGreeting}>{getGreeting()}, {profile.full_name.split(' ')[0]}</Text>
-          <View style={styles.compactStatusContainer}>
+          <Text style={[styles.compactGreeting, { fontWeight: 'bold', fontSize: 28, fontStyle: 'italic', textShadowColor: '#222', textShadowOffset: { width: 1, height: 2 }, textShadowRadius: 3, color: '#FFD700' }]}>
+            {getGreeting()} <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 28, fontStyle: 'italic', textShadowColor: '#222', textShadowOffset: { width: 1, height: 2 }, textShadowRadius: 3 }}>{profile.full_name.split(' ')[0]}</Text>
+          </Text>
+          <View style={styles.statusContainer}>
             <Text style={styles.compactStatusIcon}>{waterStatus.icon}</Text>
             <Text style={[styles.compactStatusText, { color: waterStatus.color }]}>
               {waterStatus.status}
@@ -459,18 +459,38 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         onSettingsPress={() => handleNavbarAction('settings')}
       />
 
+      {/* QR Scanner Modal */}
+      {qrScannerVisible && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, backgroundColor: '#00000099', justifyContent: 'center', alignItems: 'center' }}>
+          <QRScanner
+            onSiteValidated={(siteData: any) => {
+              setQRScannerVisible(false);
+              // Navigate to site details or show info
+              if (siteData && siteData.siteId) {
+                onNavigateToSite(siteData.siteId);
+              } else {
+                Alert.alert('Invalid QR', 'Could not validate site data.');
+              }
+            }}
+            onCancel={() => setQRScannerVisible(false)}
+          />
+        </View>
+      )}
+
       {/* NotificationPanel rendering removed from HomeScreen to avoid duplicate panels.
           Navbar now handles displaying notifications near the bell icon. */}
 
-      {renderCompactHeader()}
-      {renderFixedActions()}
-      
+      {/* Welcome heading and action buttons below */}
       <ScrollView
         style={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}
       >
+        {/* Hero Section: greeting and quick actions */}
+        {renderCompactHeader()}
+        {renderFixedActions()}
+
         {/* Monitoring Sites Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderWithAction}>
@@ -519,8 +539,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Recent Readings Section */}
         {renderRecentReadings()}
 
-        {/* AI Insights Section */}
-        {renderAIInsights()}
+        // ...existing code...
       </ScrollView>
       
       <BottomNavigation
@@ -538,7 +557,7 @@ const styles = StyleSheet.create({
     paddingTop: 0, // Remove top padding since navbar handles it
   },
   scrollContainer: {
-    paddingBottom: 100, // Add bottom padding to prevent collision with bottom navigation
+    paddingBottom: 0, // No padding for zero gap
   },
   // Hero Section Styles
   heroContainer: {
@@ -554,7 +573,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   greetingContainer: {
-    flex: 1,
+    flex:1,
   },
   greeting: {
     ...NeumorphicTextStyles.body,
@@ -888,14 +907,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   compactGreeting: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.white,
-    marginBottom: 4,
-  },
-  compactStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFD700', // golden yellow
+    marginBottom: 10,
+    letterSpacing: 1,
+    fontFamily: 'sans-serif-condensed',
+    textAlign: 'center',
   },
   compactStatusIcon: {
     fontSize: 16,
@@ -914,13 +932,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quickStatNumber: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.white,
+    color: 'white',
+    fontStyle: 'italic',
+    textShadowColor: '#222',
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 3,
   },
   quickStatLabel: {
     fontSize: 12,
-    color: Colors.white + 'CC',
+    color: 'white',
+    fontWeight: 'bold',
+    fontStyle: 'italic',
+    textShadowColor: '#222',
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 3,
     marginTop: 2,
   },
   // Fixed Actions Styles
