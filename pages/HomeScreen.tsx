@@ -539,7 +539,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Recent Readings Section */}
         {renderRecentReadings()}
 
-        // ...existing code...
+        {/* AI Insights Section */}
+        {/* {renderAIInsights()} */} {/* Temporarily disabled until feature is ready */}
       </ScrollView>
       
       <BottomNavigation
