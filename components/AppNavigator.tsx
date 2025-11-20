@@ -8,7 +8,6 @@ import Loading from './Loading';
 import SplashScreen from '../pages/SplashScreen';
 import OnboardingScreen from '../pages/OnboardingScreen';
 import HomeScreen from '../pages/HomeScreen';
-import ProfileScreen from '../pages/ProfileScreen';
 import MyReadingsScreen from '../pages/MyReadingsScreen';
 import SiteDetailsScreen from '../pages/SiteDetailsScreen';
 import SiteLocationsScreen from '../pages/SiteLocationsScreen';
@@ -151,16 +150,6 @@ export default function AppNavigator() {
           />
         );
 
-      case 'profile':
-        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
-        return (
-          <ProfileScreen
-            profile={profile}
-            onEditProfile={() => setCurrentScreen('profile-setup')}
-            onBack={navigateBack}
-          />
-        );
-
       case 'site-locations':
         return (
           <SiteLocationsScreen
@@ -209,22 +198,10 @@ export default function AppNavigator() {
             onNavigate={(screen: string) => {
               if (screen === 'Auth') {
                 handleSignOut();
-              } else if (screen === 'Profile') {
-                setCurrentScreen('profile');
               } else {
                 navigateBack();
               }
             }}
-            onBack={navigateBack}
-          />
-        );
-
-      case 'profile':
-        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
-        return (
-          <ProfileScreen
-            profile={profile}
-            onEditProfile={() => setCurrentScreen('profile-setup')}
             onBack={navigateBack}
           />
         );
