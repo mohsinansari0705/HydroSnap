@@ -43,7 +43,12 @@ export const Colors = {
   success: '#10B981',           // Modern emerald green
   warning: '#F59E0B',           // Modern amber
   error: '#EF4444',             // Modern red
+  danger: '#EF4444',            // Alias for error
   info: '#3B82F6',             // Modern blue
+  
+  // Background variants
+  backgroundSecondary: '#FFFFFF',   // Secondary background (cards)
+  backgroundTertiary: '#F8FAFC',    // Tertiary background (sections)
   
   // Alert colors
   warningYellow: '#F59E0B',    // Warning level alert
