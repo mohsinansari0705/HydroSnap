@@ -165,9 +165,7 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
         return (
           <QRValidationScreen
             userLocation={userLocation}
-            onSiteValidated={(siteData) => {
-              // Calculate distance for demonstration
-              const distance = Math.floor(Math.random() * 100) + 25; // 25-125m
+            onSiteValidated={(siteData, distance) => {
               handleQRValidationSuccess(siteData, distance);
             }}
             onCancel={onCancel}
