@@ -11,6 +11,3 @@ Pillow==10.0.1
 
 # Data processing
 pandas==2.0.3
-
-# Installation:
-# pip install -r requirements.txt
