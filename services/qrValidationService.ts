@@ -3,6 +3,8 @@
  * Handles QR code validation without external crypto dependencies
  */
 
+import { isEncryptedQRData, decryptQRData } from './qrDecryptionService';
+
 export interface ValidatedSiteData {
   siteId: string;
   name: string;
@@ -33,163 +35,7 @@ export interface QRValidationResult {
   distance?: number;
 }
 
-// Mock QR validation data - In production, this would come from your QR generation system
-const MOCK_QR_DATABASE: Record<string, ValidatedSiteData> = {
-  "QR-YML-DEL-001": {
-    siteId: "CWC-YML-DEL-001",
-    name: "Yamuna Test Station (No Geofencing)",
-    location: "Delhi",
-    coordinates: {
-      lat: 28.6139,
-      lng: 77.2090
-    },
-    riverName: "Yamuna",
-    state: "Delhi",
-    district: "New Delhi",
-    siteType: "river",
-    levels: {
-      safe: 200.00,
-      warning: 203.50,
-      danger: 205.00
-    },
-    geofenceRadius: 0, // Disabled for testing
-    organization: "Central Water Commission",
-    qrCode: "QR-YML-DEL-001",
-    isActive: true
-  },
-  "QR-YMN-DEL-002": {
-    siteId: "CWC-YMN-001",
-    name: "Yamuna Bridge Station",
-    location: "Delhi",
-    coordinates: {
-      lat: 28.66677700,
-      lng: 77.21663900
-    },
-    riverName: "Yamuna",
-    state: "Delhi",
-    district: "Central Delhi",
-    siteType: "river",
-    levels: {
-      safe: 203.00,
-      warning: 204.80,
-      danger: 205.50
-    },
-    geofenceRadius: 125,
-    organization: "Central Water Commission",
-    qrCode: "QR-YMN-DEL-002",
-    isActive: true
-  },
-  "QR-GNG-HRD-001": {
-    siteId: "CWC-GNG-002",
-    name: "Old Railway Bridge Gauge",
-    location: "Haridwar",
-    coordinates: {
-      lat: 29.94591800,
-      lng: 78.16402600
-    },
-    riverName: "Ganges",
-    state: "Uttarakhand",
-    district: "Haridwar",
-    siteType: "river",
-    levels: {
-      safe: 600.00,
-      warning: 750.00,
-      danger: 850.00
-    },
-    geofenceRadius: 125,
-    organization: "Central Water Commission",
-    qrCode: "QR-GNG-HRD-001",
-    isActive: true
-  },
-  "QR-BRM-GWT-003": {
-    siteId: "CWC-BRM-003",
-    name: "Brahmaputra Ghat",
-    location: "Guwahati",
-    coordinates: {
-      lat: 26.18440400,
-      lng: 91.74761700
-    },
-    riverName: "Brahmaputra",
-    state: "Assam",
-    district: "Kamrup",
-    siteType: "river",
-    levels: {
-      safe: 1400.00,
-      warning: 1550.00,
-      danger: 1650.00
-    },
-    geofenceRadius: 150,
-    organization: "Central Water Commission",
-    qrCode: "QR-BRM-GWT-003",
-    isActive: true
-  },
-  "QR-GDV-RJM-004": {
-    siteId: "CWC-GDV-004",
-    name: "Dowleswaram Barrage",
-    location: "Rajahmundry",
-    coordinates: {
-      lat: 17.00517400,
-      lng: 81.78305800
-    },
-    riverName: "Godavari",
-    state: "Andhra Pradesh",
-    district: "East Godavari",
-    siteType: "river",
-    levels: {
-      safe: 1100.00,
-      warning: 1230.00,
-      danger: 1310.00
-    },
-    geofenceRadius: 125,
-    organization: "Central Water Commission",
-    qrCode: "QR-GDV-RJM-004",
-    isActive: true
-  },
-  "QR-KRS-MND-005": {
-    siteId: "CWC-KRS-005",
-    name: "Krishna Raja Sagara Dam",
-    location: "Mandya",
-    coordinates: {
-      lat: 12.42513900,
-      lng: 76.57080800
-    },
-    riverName: "Cauvery",
-    state: "Karnataka",
-    district: "Mandya",
-    siteType: "reservoir",
-    levels: {
-      safe: 3700.00,
-      warning: 3850.00,
-      danger: 3950.00
-    },
-    geofenceRadius: 200,
-    organization: "Central Water Commission",
-    qrCode: "QR-KRS-MND-005",
-    isActive: true
-  },
-  "QR-TST-DEL-999": {
-    siteId: "CWC-TST-DEL-999", 
-    name: "Test Site (Development Only)",
-    location: "Delhi",
-    coordinates: {
-      lat: 28.6139,
-      lng: 77.2090
-    },
-    riverName: "Yamuna",
-    state: "Delhi", 
-    district: "Central Delhi",
-    siteType: "river",
-    levels: {
-      safe: 150.00,
-      warning: 170.00,
-      danger: 180.00
-    },
-    geofenceRadius: 0, // Disabled for testing
-    organization: "Central Water Commission",
-    qrCode: "QR-TST-DEL-999",
-    isActive: true
-  }
-};
+// All site data now comes dynamically from decrypted QR codes - no hardcoded data
 
 /**
  * Calculate distance between two coordinates using Haversine formula
@@ -213,18 +59,20 @@ export const validateQRCode = async (
   userLocation: { latitude: number; longitude: number }
 ): Promise<QRValidationResult> => {
   try {
-    // In a real implementation, you would decrypt the QR data
-    // For now, we'll treat the QR data as the site code
-    const siteData = MOCK_QR_DATABASE[qrData];
+    console.log('🎯 Validating QR code with user location...');
     
+    // Parse the QR metadata (either encrypted or JSON)
+    const siteData = await parseQRMetadata(qrData);
+
     if (!siteData) {
+      console.error('❌ Could not extract valid site data from QR code');
       return {
         success: false,
-        message: "Invalid QR code. This monitoring site is not recognized."
+        message: "Invalid QR code. Could not extract monitoring site data. Please ensure you are scanning a valid monitoring site QR code."
       };
     }
 
-    // Check if site is active
+    console.log('✅ Site data extracted:', siteData.siteId, '-', siteData.name);    // Check if site is active
     if (!siteData.isActive) {
       return {
         success: false,
@@ -241,9 +89,8 @@ export const validateQRCode = async (
       siteData.coordinates.lng
     );
 
-    // Check if user is within geofence (skip for test sites)
-    const testSites = ['CWC-YML-DEL-001', 'CWC-TST-DEL-999'];
-    if (!testSites.includes(siteData.siteId) && distance > siteData.geofenceRadius) {
+    // Check if user is within geofence (skip if geofence is disabled/zero)
+    if (siteData.geofenceRadius > 0 && distance > siteData.geofenceRadius) {
       return {
         success: false,
         message: `You are ${Math.round(distance)}m away from the monitoring site. You must be within ${siteData.geofenceRadius}m to take readings.`,
@@ -269,30 +116,130 @@ export const validateQRCode = async (
   }
 };
 
-/**
- * Get site data by QR code (without location validation)
- */
-export const getSiteByQRCode = (qrCode: string): ValidatedSiteData | null => {
-  return MOCK_QR_DATABASE[qrCode] || null;
-};
+// No more mock data - all site information comes from decrypted QR codes
+
+
 
 /**
- * Get all available monitoring sites (for testing/development)
+ * Parse JSON metadata from scanned QR code
  */
-export const getAllMockSites = (): ValidatedSiteData[] => {
-  return Object.values(MOCK_QR_DATABASE);
+/**
+ * Validate site data structure
+ */
+const validateSiteData = (data: any): boolean => {
+  if (!data || typeof data !== 'object') return false;
+  
+  // Check required fields
+  const requiredFields = ['siteId', 'name', 'coordinates', 'levels'];
+  for (const field of requiredFields) {
+    if (!data[field]) {
+      console.error(`❌ Missing required field: ${field}`);
+      return false;
+    }
+  }
+  
+  // Validate coordinates
+  if (!data.coordinates.lat || !data.coordinates.lng) {
+    console.error('❌ Invalid coordinates');
+    return false;
+  }
+  
+  // Validate levels
+  if (!data.levels.safe || !data.levels.warning || !data.levels.danger) {
+    console.error('❌ Invalid water levels');
+    return false;
+  }
+  
+  return true;
 };
 
-/**
- * Mock QR codes for testing (use these in your QR scanner)
- */
-export const MOCK_QR_CODES = Object.keys(MOCK_QR_DATABASE);
+export const parseQRMetadata = async (qrData: string): Promise<ValidatedSiteData | null> => {
+  try {
+    // Check if it's encrypted data first
+    if (isEncryptedQRData(qrData)) {
+      console.log('🔐 Processing encrypted QR data...');
+      const decryptedData = await decryptQRData(qrData);
+      if (decryptedData && validateSiteData(decryptedData)) {
+        // Convert DecryptedQRData to ValidatedSiteData format
+        console.log('✅ Successfully decrypted site data:', decryptedData.siteId);
+        return {
+          siteId: decryptedData.siteId,
+          name: decryptedData.name,
+          location: decryptedData.location,
+          coordinates: decryptedData.coordinates,
+          riverName: decryptedData.riverName,
+          state: decryptedData.state,
+          district: decryptedData.district,
+          siteType: decryptedData.siteType,
+          levels: decryptedData.levels,
+          geofenceRadius: decryptedData.geofenceRadius,
+          organization: decryptedData.organization,
+          qrCode: decryptedData.qrCode,
+          isActive: decryptedData.isActive,
+        };
+      } else {
+        console.error('❌ Failed to decrypt or validate site data');
+        return null;
+      }
+    }
+    
+    // Try to parse as JSON (for plain JSON QR codes)
+    console.log('📝 Trying to parse as plain JSON...');
+    const metadata = JSON.parse(qrData);
+    
+    if (validateSiteData(metadata)) {
+      console.log('✅ Valid JSON site data found');
+      // Convert to our ValidatedSiteData format
+      return {
+        siteId: metadata.siteId,
+        name: metadata.name,
+        location: metadata.location || '',
+        coordinates: {
+          lat: metadata.coordinates.lat,
+          lng: metadata.coordinates.lng,
+        },
+        riverName: metadata.riverName || '',
+        state: metadata.state || '',
+        district: metadata.district || '',
+        siteType: metadata.siteType || 'river',
+        levels: {
+          safe: metadata.levels.safe,
+          warning: metadata.levels.warning,
+          danger: metadata.levels.danger,
+        },
+        geofenceRadius: metadata.geofenceRadius || 125,
+        organization: metadata.organization || 'Central Water Commission',
+        qrCode: metadata.qrCode,
+        isActive: metadata.isActive !== false, // Default to true if not specified
+      };
+    } else {
+      console.error('❌ Invalid site data structure');
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Failed to parse QR data:', error);
+    return null;
+  }
+};
 
 /**
  * Simple QR code validator (checks format)
  */
-export const isValidQRFormat = (qrData: string): boolean => {
-  // Basic format validation for monitoring site QR codes
-  const qrRegex = /^QR-[A-Z]{3}-[A-Z]{3}-\d{3}$/;
+export const isValidQRFormat = async (qrData: string): Promise<boolean> => {
+  // Check if it's encrypted data (likely valid QR from your system)
+  if (isEncryptedQRData(qrData)) {
+    console.log('Detected encrypted QR code, considering as valid');
+    return true;
+  }
+  
+  // Check if it's JSON metadata
+  const parsedData = await parseQRMetadata(qrData);
+  if (parsedData) {
+    return true;
+  }
+  
+  // Otherwise check basic format validation for monitoring site QR codes
+  // Format: QR-XXX-XX-000 (e.g., QR-YMN-DI-001)
+  const qrRegex = /^QR-[A-Z]{3}-[A-Z]{2}-\d{3}$/;
   return qrRegex.test(qrData);
 };
