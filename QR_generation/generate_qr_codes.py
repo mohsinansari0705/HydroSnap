@@ -12,12 +12,11 @@ import base64
 from datetime import datetime, timedelta
 import os
 import pandas as pd
-import zlib
 from cryptography.fernet import Fernet
 from PIL import Image, ImageDraw, ImageFont
 
 # Configuration
-SECRET_KEY = "HydroSnap_QR_graycode@070505"  # Change this to your secret key
+SECRET_KEY = "HydroSnap_QR_2025@GrayCode"  # Change this to your secret key
 
 # Get the directory where this script is located
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,7 +26,7 @@ QR_OUTPUT_DIR = os.path.join(SCRIPT_DIR, "qr_codes")
 QR_SIZE = 8
 BORDER_SIZE = 4
 CSV_FILE = os.path.join(
-    SCRIPT_DIR, "a.csv"
+    SCRIPT_DIR, "../database/monitoring_sites.csv"
 )  # CSV file with monitoring sites data
 
 
@@ -40,7 +39,7 @@ class QRCodeGenerator:
 
     def create_validation_hash(self, site_data: dict) -> str:
         """Create a validation hash for the site"""
-        # Combine critical site info for hash - using siteId instead of id
+        # Combine critical site info for hash using the exact payload structure
         try:
             hash_string = f"{site_data['siteId']}{site_data['name']}{site_data['coordinates']['lat']}{site_data['coordinates']['lng']}"
             return hashlib.sha256(hash_string.encode()).hexdigest()[:16]
@@ -48,19 +47,15 @@ class QRCodeGenerator:
             print(f"❌ Missing key in site_data: {e}")
             print(f"Available keys: {list(site_data.keys())}")
             raise
-
-    def encrypt_site_data(self, site_data: dict) -> str:
-        """Encrypt the site data"""
-        # Compact JSON
+    
+    def encrypt_site_data_simple(self, site_data: dict) -> str:
+        """Encrypt site data using simple base64 encoding for React Native compatibility"""
+        # For React Native compatibility, use simple base64 encoding
+        # This is less secure but works without crypto dependencies
         json_bytes = json.dumps(site_data, separators=(",", ":")).encode()
-        # Compress to reduce payload length (helps keep QR version small)
-        try:
-            compressed = zlib.compress(json_bytes, level=9)
-        except Exception:
-            compressed = json_bytes
-        # Fernet returns URL-safe base64 bytes already; avoid double-encoding
-        token = self.cipher.encrypt(compressed)
-        return token.decode()
+        # Use base64url encoding (URL-safe base64)
+        encoded = base64.urlsafe_b64encode(json_bytes).decode()
+        return encoded
 
     def generate_qr_data(self, site_info: dict) -> dict:
         """Generate QR data payload for a monitoring site"""
@@ -82,12 +77,7 @@ class QRCodeGenerator:
                     "danger": float(site_info["danger_level"]),
                 },
                 "geofenceRadius": int(site_info["geofence_radius"]),
-                "qrCode": str(site_info["qr_code"]),
                 "isActive": bool(site_info["is_active"]),
-                "generatedAt": datetime.now().isoformat(),
-                "expiresAt": (
-                    datetime.now() + timedelta(days=365)
-                ).isoformat(),  # Valid for 1 year
                 "validationHash": "",
             }
 
@@ -108,8 +98,8 @@ class QRCodeGenerator:
         """Generate QR code image with site ID, name, and location labels"""
 
         try:
-            # Encrypt compact payload for tamper-proof validation
-            qr_data = self.encrypt_site_data(data)
+            # Use simple encoding for React Native compatibility
+            qr_data = self.encrypt_site_data_simple(data)
 
             # Create QR code with lower error correction for simpler pattern
             qr = qrcode.QRCode(
@@ -245,8 +235,8 @@ class QRCodeGenerator:
         """Generate simple QR code without label as fallback"""
 
         try:
-            # Encrypt compact payload for tamper-proof validation
-            qr_data = self.encrypt_site_data(data)
+            # Use simple encoding for React Native compatibility
+            qr_data = self.encrypt_site_data_simple(data)
 
             # Create QR code with lower error correction for simpler pattern
             qr = qrcode.QRCode(
