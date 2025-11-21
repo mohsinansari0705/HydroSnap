@@ -78,9 +78,11 @@ const MyReadingsScreen: React.FC<MyReadingsScreenProps> = ({ profile, onBack }) 
         {reading ? (
           <View style={styles.readingRow}>
             <Text style={styles.waterLevel}>Water Level: {reading.water_level} m</Text>
-            <Text style={[styles.status, { color: item.danger_level && reading.water_level >= item.danger_level ? Colors.criticalRed : Colors.textSecondary }]}>
-              {item.danger_level && reading.water_level >= item.danger_level ? ' DANGER' : ''}
-            </Text>
+            {item.danger_level && reading.water_level >= item.danger_level && (
+              <Text style={[styles.status, { color: Colors.criticalRed }]}>
+                DANGER
+              </Text>
+            )}
           </View>
         ) : (
           <Text style={styles.noReading}>No recent readings available</Text>
