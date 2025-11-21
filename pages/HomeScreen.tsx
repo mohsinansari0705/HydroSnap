@@ -319,7 +319,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       <View style={styles.compactHeader}>
         <View style={styles.greetingSection}>
           <Text style={[styles.compactGreeting, { fontWeight: 'bold', fontSize: 28, fontStyle: 'italic', textShadowColor: '#222', textShadowOffset: { width: 1, height: 2 }, textShadowRadius: 3, color: '#FFD700' }]}>
-            {getGreeting()} <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 28, fontStyle: 'italic', textShadowColor: '#222', textShadowOffset: { width: 1, height: 2 }, textShadowRadius: 3 }}>{profile.full_name.split(' ')[0]}</Text>
+            {getGreeting()}{' '}<Text style={{ color: 'white', fontWeight: 'bold', fontSize: 28, fontStyle: 'italic', textShadowColor: '#222', textShadowOffset: { width: 1, height: 2 }, textShadowRadius: 3 }}>{profile.full_name.split(' ')[0]}</Text>
           </Text>
           <View style={styles.statusContainer}>
             <Text style={styles.compactStatusIcon}>{waterStatus.icon}</Text>
