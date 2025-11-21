@@ -14,7 +14,8 @@ export type AppScreen =
   | 'site-locations'
   | 'new-reading'
   | 'public-upload'
-  | 'settings';
+  | 'settings'
+  | 'dashboard';
 
 interface NavigationContextType {
   currentScreen: AppScreen;
@@ -30,6 +31,7 @@ interface NavigationContextType {
   navigateToNewReading: (siteId: string) => void;
   navigateToMyReadings: () => void;
   navigateToProfile: () => void;
+  navigateToDashboard: () => void;
   // Notification visibility helpers (global)
   notificationsVisible: boolean;
   showNotifications: () => void;
@@ -54,6 +56,10 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 
   const navigateToHome = () => {
     setCurrentScreen('home');
+  };
+
+  const navigateToDashboard = () => {
+    setCurrentScreen('dashboard');
   };
 
   const navigateToSite = (siteId: string) => {
@@ -99,6 +105,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     hasSeenOnboarding,
     setHasSeenOnboarding,
     navigateToHome,
+    navigateToDashboard,
     navigateToSite,
     navigateToNewReading,
     navigateToMyReadings,
