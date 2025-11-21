@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { Colors } from '../lib/colors';
@@ -26,6 +27,7 @@ export const QRScannerPopup: React.FC<QRScannerPopupProps> = ({
 }) => {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const getCameraPermissions = async () => {
@@ -36,8 +38,32 @@ export const QRScannerPopup: React.FC<QRScannerPopupProps> = ({
     if (visible) {
       getCameraPermissions();
       setScanned(false); // Reset scanned state when popup opens
+      
+      // Start corner animation with more intensity
+      const animateCorners = () => {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(scaleAnim, {
+              toValue: 1.3,
+              duration: 800,
+              useNativeDriver: true,
+            }),
+            Animated.timing(scaleAnim, {
+              toValue: 0.9,
+              duration: 800,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      };
+      
+      animateCorners();
+    } else {
+      // Stop animation when popup closes
+      scaleAnim.stopAnimation();
+      scaleAnim.setValue(1);
     }
-  }, [visible]);
+  }, [visible, scaleAnim]);
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned) return; // Prevent multiple scans
@@ -115,10 +141,10 @@ export const QRScannerPopup: React.FC<QRScannerPopupProps> = ({
             <View style={styles.overlay}>
               {/* Scanning frame */}
               <View style={styles.scanFrame}>
-                <View style={[styles.corner, styles.topLeft]} />
-                <View style={[styles.corner, styles.topRight]} />
-                <View style={[styles.corner, styles.bottomLeft]} />
-                <View style={[styles.corner, styles.bottomRight]} />
+                <Animated.View style={[styles.corner, styles.topLeft, { transform: [{ scale: scaleAnim }] }]} />
+                <Animated.View style={[styles.corner, styles.topRight, { transform: [{ scale: scaleAnim }] }]} />
+                <Animated.View style={[styles.corner, styles.bottomLeft, { transform: [{ scale: scaleAnim }] }]} />
+                <Animated.View style={[styles.corner, styles.bottomRight, { transform: [{ scale: scaleAnim }] }]} />
               </View>
 
               {/* Instructions */}
@@ -218,10 +244,11 @@ const styles = StyleSheet.create({
   },
   corner: {
     position: 'absolute',
-    width: 30,
-    height: 30,
-    borderColor: Colors.primary,
-    borderWidth: 3,
+    width: 40,
+    height: 40,
+    borderColor: Colors.aquaTechBlue,
+    borderWidth: 8,
+    borderRadius: 10
   },
   topLeft: {
     top: 0,
