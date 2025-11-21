@@ -249,7 +249,7 @@ export const QRResultPopup: React.FC<QRResultPopupProps> = ({
               style={[createNeumorphicCard(), styles.button, styles.cancelButton]}
               onPress={onClose}
             >
-              <Text style={[NeumorphicTextStyles.buttonSecondary, styles.buttonText]}>
+              <Text style={[NeumorphicTextStyles.buttonSecondary, styles.buttonText, styles.cancelButtonText]}>
                 Cancel
               </Text>
             </TouchableOpacity>
@@ -428,7 +428,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: Colors.backgroundTertiary,
+    backgroundColor: Colors.cardBackground,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   proceedButton: {
     backgroundColor: Colors.primary,
@@ -442,6 +444,9 @@ const styles = StyleSheet.create({
   },
   disabledButtonText: {
     color: Colors.textSecondary,
+  },
+  cancelButtonText: {
+    color: Colors.textPrimary,
   },
   // Icon styles
   iconContainer: {
