@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, FlatList, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard } from '../lib/neumorphicStyles';
@@ -83,6 +83,8 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
 
   return (
     <View style={styles.container}>
+      <StatusBar backgroundColor={Colors.deepSecurityBlue} barStyle="light-content" translucent={false} />
+      <View style={styles.topSpacer} />
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>← Back</Text>
@@ -142,22 +144,54 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: Colors.background },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.softLightGrey
+  },
+  topSpacer: {
+    height: StatusBar.currentHeight || 24,
+    backgroundColor: Colors.deepSecurityBlue,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    backgroundColor: Colors.deepSecurityBlue,
+    shadowColor: Colors.deepSecurityBlue + '40',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  backButton: {},
-  backText: { color: Colors.deepSecurityBlue },
-  headerTitle: { fontSize: 18, fontWeight: '700' },
-  editButton: {},
-  editText: { color: Colors.deepSecurityBlue, fontWeight: '600' },
+  backButton: {
+    ...createNeumorphicCard({ size: 'small', borderRadius: 22 }),
+    padding: 10,
+    backgroundColor: Colors.softLightGrey,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backText: { color: Colors.deepSecurityBlue, fontSize: 16, fontWeight: 'bold' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.white, flex: 1, textAlign: 'center' },
+  editButton: {
+    ...createNeumorphicCard({ size: 'small', borderRadius: 22 }),
+    padding: 10,
+    backgroundColor: Colors.softLightGrey,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editText: { color: Colors.deepSecurityBlue, fontWeight: '600', fontSize: 14 },
   profileCardContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
   },
   avatarCircle: {
     width: 72,
@@ -173,14 +207,15 @@ const styles = StyleSheet.create({
   nameText: { fontSize: 20, fontWeight: '700' },
   emailText: { color: Colors.textSecondary, marginTop: 4 },
   metaText: { color: Colors.textSecondary, marginTop: 2 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, marginHorizontal: 16 },
   sectionTitle: { fontSize: 16, fontWeight: '700' },
   refreshText: { color: Colors.deepSecurityBlue, fontWeight: '600' },
-  emptyContainer: { padding: 20, alignItems: 'center' },
+  emptyContainer: { padding: 20, alignItems: 'center', marginHorizontal: 16 },
   emptyText: { color: Colors.textSecondary },
   readingCard: {
     padding: 12,
     marginVertical: 6,
+    marginHorizontal: 16,
     borderRadius: 12,
   },
   editInput: {
