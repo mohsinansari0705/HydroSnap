@@ -44,8 +44,10 @@ export const QRValidationScreen: React.FC<QRValidationScreenProps> = ({
     console.log('🔍 Data preview:', scannedData.substring(0, 50) + '...');
     console.log('🔐 Is encrypted?', scannedData.startsWith('gAAAAA'));
     
-    // Show the actual scanned QR code data in the input field
-    setQrInput(scannedData);
+    // Show generic message immediately for fast response
+    setQrInput('Scanned QR Code');
+    
+    // Start validation process immediately
     handleValidateQR(scannedData);
   };
 
@@ -77,6 +79,9 @@ export const QRValidationScreen: React.FC<QRValidationScreenProps> = ({
       const result = await validateQRCode(qrData, userLocation);
       
       if (result.siteData) {
+        // Update input field with site ID once we have the data
+        setQrInput(result.siteData.siteId);
+        
         // Always show the popup with site data, regardless of validation success
         setValidatedSiteData(result.siteData);
         setSiteDistance(result.distance || null);
