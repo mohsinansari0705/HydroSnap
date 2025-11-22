@@ -12,6 +12,7 @@ CREATE TABLE profiles (
   organization TEXT NOT NULL,
   location TEXT NOT NULL,
   site_id TEXT, -- Only needed for field_personnel
+  profile_image_url TEXT, -- URL for user profile image
   last_login_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -126,7 +127,7 @@ CREATE POLICY "Users can update own water level readings" ON water_level_reading
 
 -- RLS POLICIES FOR MONITORING SITES
 CREATE POLICY "Public can view sites" ON monitoring_sites
-    FOR SELECT USING (is_active = TRUE);
+  FOR SELECT USING (is_active = TRUE);
 
 -- UPDATE TRIGGER FOR PROFILES
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -144,5 +145,10 @@ CREATE TRIGGER update_profiles_updated_at
 
 CREATE TRIGGER update_monitoring_sites_updated_at
   BEFORE UPDATE ON monitoring_sites
+  FOR EACH ROW
+  EXECUTE PROCEDURE update_updated_at_column();
+
+CREATE TRIGGER update_water_level_readings_updated_at
+  BEFORE UPDATE ON water_level_readings
   FOR EACH ROW
   EXECUTE PROCEDURE update_updated_at_column();
