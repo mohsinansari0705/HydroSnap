@@ -12,8 +12,9 @@ interface ProfileScreenProps {
   onBack: () => void;
 }
 
+const defaultProfileImage = 'https://example.com/default-profile.png'; // Add your default image URL here
+
 export default function ProfileScreen({ profile: initialProfile, onEditProfile, onBack }: ProfileScreenProps) {
-  const defaultProfileImage = 'https://via.placeholder.com/120'; // Fallback image URL
   const [profile, setProfile] = useState<Profile | null>(initialProfile || null);
 
   useEffect(() => {
@@ -28,18 +29,23 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
           style={styles.avatar}
         />
       );
-    } else {
-      const initials = profile?.full_name
-        ? profile.full_name
-            .split(' ')
-            .map((name) => name[0])
-            .join('')
-            .toUpperCase()
-        : 'U';
+    } else if (profile?.full_name) {
+      const initials = profile.full_name
+        .split(' ')
+        .map((name) => name[0])
+        .join('')
+        .toUpperCase();
       return (
         <View style={styles.fallbackAvatar}>
           <Text style={styles.fallbackAvatarText}>{initials}</Text>
         </View>
+      );
+    } else {
+      return (
+        <Image
+          source={{ uri: defaultProfileImage }}
+          style={styles.avatar}
+        />
       );
     }
   };
