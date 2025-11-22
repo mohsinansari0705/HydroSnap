@@ -19,7 +19,7 @@ const Navbar: React.FC<NavbarProps> = ({
   console.log('Navbar: onSettingsPress is', typeof onSettingsPress);
   const [showMenu, setShowMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const { notificationsVisible, hideNotifications, toggleNotifications, navigateToSite, navigateToSettings, navigateToProfile } = useNavigation();
+  const { notificationsVisible, hideNotifications, toggleNotifications, navigateToSite, navigateToSettings, navigateToProfile, navigateToDashboard } = useNavigation();
 
   // Sample notifications for testing
   const sampleNotifications: Alert[] = [
@@ -143,6 +143,18 @@ const Navbar: React.FC<NavbarProps> = ({
         <View style={styles.dot} />
         <View style={styles.dot} />
         <View style={styles.dot} />
+      </View>
+    </View>
+  );
+
+  // Dashboard Icon SVG - Grid Layout
+  const DashboardIcon = () => (
+    <View style={styles.dashboardIconContainer}>
+      <View style={styles.dashboardGrid}>
+        <View style={styles.dashboardSquare} />
+        <View style={styles.dashboardSquare} />
+        <View style={styles.dashboardSquare} />
+        <View style={styles.dashboardSquare} />
       </View>
     </View>
   );
@@ -280,8 +292,9 @@ const Navbar: React.FC<NavbarProps> = ({
                 <View style={styles.dropdownModalContent}>
                   {(
                     [
-                      { key: 'profile', label: '👤 Profile', disabled: false, action: navigateToProfile },
-                      { key: 'settings', label: '⚙️ Settings', disabled: false, action: onSettingsPress || navigateToSettings },
+                      { key: 'profile', label: '👤 Profile', disabled: false, action: navigateToProfile, icon: null },
+                      { key: 'dashboard', label: 'Dashboard', disabled: false, action: navigateToDashboard, icon: <DashboardIcon /> },
+                      { key: 'settings', label: '⚙️ Settings', disabled: false, action: onSettingsPress || navigateToSettings, icon: null },
                     ] as Array<any>
                   ).map((item) => (
                     item.disabled ? (
@@ -303,6 +316,7 @@ const Navbar: React.FC<NavbarProps> = ({
                           }
                         }}
                       >
+                        {item.icon && <View style={styles.menuItemIcon}>{item.icon}</View>}
                         <Text style={styles.menuItemText}>{item.label}</Text>
                       </TouchableOpacity>
                     )
@@ -500,11 +514,37 @@ const styles = StyleSheet.create({
   menuItem: {
     paddingHorizontal: 16,
     paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuItemIcon: {
+    marginRight: 12,
   },
   menuItemText: {
     fontSize: 16,
     color: Colors.textPrimary,
     fontWeight: '500',
+  },
+  // Dashboard Icon Styles
+  dashboardIconContainer: {
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dashboardGrid: {
+    width: 16,
+    height: 16,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  dashboardSquare: {
+    width: 6,
+    height: 6,
+    backgroundColor: Colors.aquaTechBlue,
+    borderRadius: 2,
+    margin: 1,
   },
   notificationContainer: {
     position: 'relative',

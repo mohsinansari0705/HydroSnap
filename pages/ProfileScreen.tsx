@@ -124,10 +124,10 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
               <View style={styles.readingRow}>
                 <View style={styles.readingLeft}>
                   <Text style={styles.readingSite}>{item.site_name || 'Site'}</Text>
-                  <Text style={styles.readingMeta}>{item.created_at ? new Date(item.created_at).toLocaleString() : ''}</Text>
+                  <Text style={styles.readingMeta}>{item.created_at ? new Date(item.created_at).toLocaleString() : 'No date'}</Text>
                 </View>
                 <View style={styles.readingRight}>
-                  <Text style={styles.readingValue}>{item.water_level ?? ''}</Text>
+                  <Text style={styles.readingValue}>{item.water_level ?? 'N/A'}</Text>
                 </View>
               </View>
             </View>

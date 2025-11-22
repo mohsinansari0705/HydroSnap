@@ -17,6 +17,7 @@ import SupervisorDashboard from '../pages/SupervisorDashboard';
 import PublicUploadScreen from '../pages/PublicUploadScreen';
 import SettingsPage from '../pages/SettingsPage';
 import EditProfileScreen from '../pages/EditProfileScreen';
+import DashboardScreen from '../pages/DashboardScreen';
 import { Colors } from '../lib/colors';
 
 export default function AppNavigator() {
@@ -233,6 +234,15 @@ export default function AppNavigator() {
         if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
         return (
           <EditProfileScreen
+            onBack={navigateBack}
+          />
+        );
+
+      case 'dashboard':
+        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        return (
+          <DashboardScreen
+            profile={profile}
             onBack={navigateBack}
           />
         );
