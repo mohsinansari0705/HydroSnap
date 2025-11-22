@@ -1,10 +1,10 @@
+import { SafeAreaView, StatusBar, Platform, ScrollView } from 'react-native';
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, FlatList, ActivityIndicator } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Colors } from '../lib/colors';
-import { createNeumorphicCard } from '../lib/neumorphicStyles';
-import { Profile, WaterLevelReading } from '../types/profile';
-import { useAuth } from '../lib/AuthContext';
+import { Profile } from '../types/profile';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { format } from 'date-fns';
 
 interface ProfileScreenProps {
   profile: Profile;
@@ -13,230 +13,257 @@ interface ProfileScreenProps {
 }
 
 export default function ProfileScreen({ profile: initialProfile, onEditProfile, onBack }: ProfileScreenProps) {
-  const { refreshProfile } = useAuth();
+  const defaultProfileImage = 'https://via.placeholder.com/120'; // Fallback image URL
   const [profile, setProfile] = useState<Profile | null>(initialProfile || null);
-  const [loading, setLoading] = useState(false);
-  const [readings, setReadings] = useState<WaterLevelReading[]>([]);
-  
 
   useEffect(() => {
     setProfile(initialProfile);
   }, [initialProfile]);
 
-  // Fetch recent readings for this user
-  const fetchRecentReadings = async (userId: string) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('water_level_readings')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) {
-        console.error('Failed to fetch recent readings:', error);
-        setReadings([]);
-      } else {
-        setReadings(data as WaterLevelReading[]);
-      }
-    } catch (e) {
-      console.error('Unexpected error fetching readings:', e);
-      setReadings([]);
-    } finally {
-      setLoading(false);
+  const renderAvatar = () => {
+    if (profile?.profile_image_url) {
+      return (
+        <Image
+          source={{ uri: profile.profile_image_url }}
+          style={styles.avatar}
+        />
+      );
+    } else {
+      const initials = profile?.full_name
+        ? profile.full_name
+            .split(' ')
+            .map((name) => name[0])
+            .join('')
+            .toUpperCase()
+        : 'U';
+      return (
+        <View style={styles.fallbackAvatar}>
+          <Text style={styles.fallbackAvatarText}>{initials}</Text>
+        </View>
+      );
     }
   };
 
-
-  useEffect(() => {
-    if (!profile?.id) return;
-
-    // initial fetch
-    fetchRecentReadings(profile.id);
-
-    // subscribe to profile updates
-    const profileSub = supabase
-      .channel('public:profiles')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${profile.id}` }, (_payload) => {
-        // payload received - refresh local profile from server
-        refreshProfile().catch(console.error);
-      })
-      .subscribe();
-
-    // subscribe to readings for this user
-    const readingsSub = supabase
-      .channel('public:water_level_readings')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'water_level_readings', filter: `user_id=eq.${profile.id}` }, (_payload) => {
-        // when new reading inserted/updated/deleted, refresh the list
-        fetchRecentReadings(profile.id);
-      })
-      .subscribe();
-
-    return () => {
-      try { supabase.removeChannel(profileSub); } catch (e) {}
-      try { supabase.removeChannel(readingsSub); } catch (e) {}
-    };
-  }, [profile?.id]);
-
-  const initials = profile?.full_name ? profile.full_name.split(' ').map(n => n[0]).slice(0,2).join('') : 'U';
-
   return (
-    <View style={styles.container}>
-      <StatusBar backgroundColor={Colors.deepSecurityBlue} barStyle="light-content" translucent={false} />
-      <View style={styles.topSpacer} />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar
+        backgroundColor={Colors.deepSecurityBlue}
+        barStyle="light-content"
+        translucent={Platform.OS === 'android'}
+      />
+
+      {/* NAVIGATION BAR */}
+      <View style={styles.navigationBar}>
+        <TouchableOpacity onPress={onBack} style={styles.navButton}>
+          <Text style={styles.navButtonText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity onPress={onEditProfile} style={styles.editButton}>
-          <Text style={styles.editText}>Edit</Text>
+        <Text style={styles.navTitle}>Profile</Text>
+        <TouchableOpacity onPress={onEditProfile} style={styles.navButton}>
+          <Text style={styles.navButtonText}>Edit</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.profileCardContainer}>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarInitials}>{initials}</Text>
+      {/* MAIN CONTENT */}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* TOP SECTION */}
+        <View style={styles.topSection}>
+          <View style={styles.avatarContainer}>
+            {renderAvatar()}
+            <TouchableOpacity style={styles.editAvatarButton} onPress={onEditProfile}>
+              <MaterialCommunityIcons name="pencil" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.fullName}>{profile?.full_name || 'Unknown User'}</Text>
+          <Text style={styles.role}>{`Role: ${profile?.role || 'N/A'}`}</Text>
         </View>
-        <View style={styles.profileInfo}>
-          <Text style={styles.nameText}>{profile?.full_name || 'Unknown User'}</Text>
-          <Text style={styles.emailText}>{profile?.email || ''}</Text>
-          <Text style={styles.metaText}>{profile?.role || ''} • {profile?.organization || ''}</Text>
+
+        {/* INFO & CONTACT SECTION */}
+        <View style={styles.infoSection}>
+          <Text style={styles.sectionTitle}>Info & Contact</Text>
+          <View style={styles.infoItem}>
+            <MaterialCommunityIcons name="ruler-square" size={24} color="gray" />
+            <Text style={styles.infoText}>Site ID: {profile?.site_id || 'N/A'}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <MaterialCommunityIcons name="phone" size={24} color="gray" />
+            <Text style={styles.infoText}>Phone No: {profile?.phone || 'N/A'}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <MaterialCommunityIcons name="gender-male-female" size={24} color="gray" />
+            <Text style={styles.infoText}>Gender: {profile?.gender || 'N/A'}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <MaterialCommunityIcons name="email" size={24} color="gray" />
+            <Text style={styles.infoText}>Email: {profile?.email || 'N/A'}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <MaterialCommunityIcons name="map-marker" size={24} color="gray" />
+            <Text style={styles.infoText}>Location: {profile?.location || 'N/A'}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <MaterialCommunityIcons name="office-building" size={24} color="gray" />
+            <Text style={styles.infoText}>Organization: {profile?.organization || 'N/A'}</Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent Readings</Text>
-          <TouchableOpacity onPress={() => { if (profile?.id) { fetchRecentReadings(profile.id); refreshProfile().catch(console.error); } }}>
-          <Text style={styles.refreshText}>Refresh</Text>
-        </TouchableOpacity>
-      </View>
-
-      {loading ? (
-        <ActivityIndicator size="large" color={Colors.deepSecurityBlue} />
-      ) : (
-        <FlatList
-          data={readings}
-          keyExtractor={(item: any) => item.id}
-          renderItem={({ item }) => (
-            <View style={[styles.readingCard, createNeumorphicCard()]}> 
-              <View style={styles.readingRow}>
-                <View style={styles.readingLeft}>
-                  <Text style={styles.readingSite}>{item.site_name || 'Site'}</Text>
-                  <Text style={styles.readingMeta}>{item.created_at ? new Date(item.created_at).toLocaleString() : 'No date'}</Text>
-                </View>
-                <View style={styles.readingRight}>
-                  <Text style={styles.readingValue}>{item.water_level ?? 'N/A'}</Text>
-                </View>
-              </View>
-            </View>
-          )}
-          ListEmptyComponent={() => (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No recent readings</Text>
-            </View>
-          )}
-        />
-      )}
-    </View>
+        {/* SYSTEM & ACCOUNT METADATA SECTION */}
+        <View style={styles.metadataSection}>
+          <Text style={styles.sectionTitle}>System & Account Metadata</Text>
+          <View style={styles.metadataItem}>
+            <MaterialCommunityIcons name="account" size={24} color="gray" />
+            <Text style={styles.metadataText}>User ID: {profile?.id || 'N/A'}</Text>
+          </View>
+          <View style={styles.metadataItem}>
+            <MaterialCommunityIcons name="check-circle" size={24} color={profile?.is_active ? 'green' : 'red'} />
+            <Text style={styles.metadataText}>Account Status: {profile?.is_active ? 'Active' : 'Inactive'}</Text>
+          </View>
+          <View style={styles.metadataItem}>
+            <MaterialCommunityIcons name="calendar" size={24} color="gray" />
+            <Text style={styles.metadataText}>Profile Created: {profile?.created_at ? format(new Date(profile.created_at), 'PPpp') : 'N/A'}</Text>
+          </View>
+          <View style={styles.metadataItem}>
+            <MaterialCommunityIcons name="update" size={24} color="gray" />
+            <Text style={styles.metadataText}>Last Updated: {profile?.updated_at ? format(new Date(profile.updated_at), 'PPpp') : 'N/A'}</Text>
+          </View>
+          <View style={styles.metadataItem}>
+            <MaterialCommunityIcons name="login" size={24} color="gray" />
+            <Text style={styles.metadataText}>Last Login: {profile?.last_login_at ? format(new Date(profile.last_login_at), 'PPpp') : 'N/A'}</Text>
+          </View>
+          <View style={styles.metadataItem}>
+            <MaterialCommunityIcons name="clock" size={24} color="gray" />
+            <Text style={styles.metadataText}>Last Activity: {profile?.last_activity_at ? format(new Date(profile.last_activity_at), 'PPpp') : 'N/A'}</Text>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: Colors.softLightGrey
+    backgroundColor: Colors.softLightGrey,
   },
-  topSpacer: {
-    height: StatusBar.currentHeight || 24,
-    backgroundColor: Colors.deepSecurityBlue,
-  },
-  header: {
+  navigationBar: {
+    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0, // Adjust for status bar height
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
     backgroundColor: Colors.deepSecurityBlue,
-    shadowColor: Colors.deepSecurityBlue + '40',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    elevation: 4,
   },
-  backButton: {
-    ...createNeumorphicCard({ size: 'small', borderRadius: 22 }),
-    padding: 10,
-    backgroundColor: Colors.softLightGrey,
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
+  navButton: {
+    padding: 8,
+  },
+  navButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+  },
+  navTitle: {
+    color: Colors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32, // Ensure extra space at the bottom for scrolling
+  },
+  topSection: {
     alignItems: 'center',
+    marginBottom: 24,
   },
-  backText: { color: Colors.deepSecurityBlue, fontSize: 16, fontWeight: 'bold' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.white, flex: 1, textAlign: 'center' },
-  editButton: {
-    ...createNeumorphicCard({ size: 'small', borderRadius: 22 }),
-    padding: 10,
-    backgroundColor: Colors.softLightGrey,
-    width: 44,
-    height: 44,
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 16,
+  },
+  fallbackAvatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.deepSecurityBlue,
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  editText: { color: Colors.deepSecurityBlue, fontWeight: '600', fontSize: 14 },
-  profileCardContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    marginHorizontal: 16,
-    marginTop: 16,
   },
-  avatarCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  fallbackAvatarText: {
+    color: Colors.white,
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  editAvatarButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: Colors.deepSecurityBlue,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  avatarInitials: { color: Colors.white, fontSize: 22, fontWeight: '700' },
-  profileInfo: { flex: 1 },
-  nameText: { fontSize: 20, fontWeight: '700' },
-  emailText: { color: Colors.textSecondary, marginTop: 4 },
-  metaText: { color: Colors.textSecondary, marginTop: 2 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, marginHorizontal: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '700' },
-  refreshText: { color: Colors.deepSecurityBlue, fontWeight: '600' },
-  emptyContainer: { padding: 20, alignItems: 'center', marginHorizontal: 16 },
-  emptyText: { color: Colors.textSecondary },
-  readingCard: {
-    padding: 12,
-    marginVertical: 6,
-    marginHorizontal: 16,
-    borderRadius: 12,
-  },
-  editInput: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 10,
-    borderRadius: 8,
+  fullName: {
+    fontSize: 24,
+    fontWeight: 'bold',
     marginBottom: 8,
-    backgroundColor: Colors.cardBackground,
   },
-  smallButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  role: {
+    fontSize: 16,
+    color: 'gray',
+  },
+  infoSection: {
+    backgroundColor: '#fff',
     borderRadius: 8,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    marginBottom: 16, // Add spacing below this section
   },
-  smallButtonText: { color: Colors.white, fontWeight: '700' },
-  readingRow: { flexDirection: 'row', alignItems: 'center' },
-  readingLeft: { flex: 1 },
-  readingRight: { alignItems: 'flex-end' },
-  readingSite: { fontWeight: '700' },
-  readingMeta: { color: Colors.textSecondary, marginTop: 4 },
-  readingValue: { fontSize: 16, fontWeight: '800', color: Colors.deepSecurityBlue }
+  metadataSection: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10, // Clear vertical separation
+  },
+  metadataItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  icon: {
+    fontSize: 24,
+    marginRight: 12, // Consistent spacing between icon and text
+  },
+  infoText: {
+    fontSize: 16,
+    marginLeft: 12, // Consistent spacing between icon and text
+  },
+  metadataText: {
+    fontSize: 14,
+    marginLeft: 12,
+    color: 'gray',
+  },
 });
