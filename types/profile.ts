@@ -11,6 +11,9 @@ export interface Profile {
   created_at?: string;
   updated_at?: string;
   is_active?: boolean;
+  gender?: string; // Added missing property
+  profile_image_url?: string; // Added missing property
+  last_activity_at?: string; // Added missing property
 }
 
 export interface MonitoringSite {
