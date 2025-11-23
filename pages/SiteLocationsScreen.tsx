@@ -202,71 +202,12 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Site Locations ({sortedSites.length})</Text>
-        <TouchableOpacity onPress={refresh} style={styles.refreshButton}>
-          <Text style={styles.refreshIcon}>↻</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Search and Filters */}
-      <View style={styles.searchSection}>
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search sites by name, location, or river..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={Colors.textSecondary}
-          />
-          {searchQuery !== '' && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Text style={styles.clearIcon}>✕</Text>
-            </TouchableOpacity>
-          )}
+        <View style={styles.headerLeftRow}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Site Locations ({sortedSites.length})</Text>
         </View>
-
-        {/* Filter Chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer}>
-          {renderFilterChip('All Sites', 'all', '🏗️')}
-          {renderFilterChip('Rivers', 'river', '🌊')}
-          {renderFilterChip('Reservoirs', 'reservoir', '🏞️')}
-          {renderFilterChip('Canals', 'canal', '🚰')}
-          {renderFilterChip('Lakes', 'lake', '🏔️')}
-        </ScrollView>
-
-        {/* Sort Options */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortContainer}>
-          <Text style={styles.sortLabel}>Sort by:</Text>
-          <TouchableOpacity
-            style={[styles.sortChip, sortBy === 'name' && styles.sortChipActive]}
-            onPress={() => setSortBy('name')}
-          >
-            <Text style={[styles.sortChipText, sortBy === 'name' && styles.sortChipTextActive]}>
-              Name
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.sortChip, sortBy === 'distance' && styles.sortChipActive]}
-            onPress={() => setSortBy('distance')}
-          >
-            <Text style={[styles.sortChipText, sortBy === 'distance' && styles.sortChipTextActive]}>
-              Distance
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.sortChip, sortBy === 'status' && styles.sortChipActive]}
-            onPress={() => setSortBy('status')}
-          >
-            <Text style={[styles.sortChipText, sortBy === 'status' && styles.sortChipTextActive]}>
-              Status
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
       </View>
 
       {/* Content */}
@@ -292,6 +233,69 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={renderEmptyState}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ListHeaderComponent={
+              <>
+                {/* Search and Filters - now scrollable */}
+                <View style={styles.searchSection}>
+                  {/* Search Bar */}
+                  <View style={styles.searchBar}>
+                    <Text style={styles.searchIcon}>🔍</Text>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search sites by name, location, or river..."
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      placeholderTextColor={Colors.textSecondary}
+                      numberOfLines={1}
+                    />
+                    {searchQuery !== '' && (
+                      <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <Text style={styles.clearIcon}>✕</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Filter Chips */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer}>
+                    {renderFilterChip('All Sites', 'all', '🏗️')}
+                    {renderFilterChip('Rivers', 'river', '🌊')}
+                    {renderFilterChip('Reservoirs', 'reservoir', '🏞️')}
+                    {renderFilterChip('Canals', 'canal', '🚰')}
+                    {renderFilterChip('Lakes', 'lake', '🏔️')}
+                  </ScrollView>
+
+                  {/* Sort Options */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortContainer}>
+                    <Text style={styles.sortLabel}>Sort by:</Text>
+                    <TouchableOpacity
+                      style={[styles.sortChip, sortBy === 'name' && styles.sortChipActive]}
+                      onPress={() => setSortBy('name')}
+                    >
+                      <Text style={[styles.sortChipText, sortBy === 'name' && styles.sortChipTextActive]}>
+                        Name
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.sortChip, sortBy === 'distance' && styles.sortChipActive]}
+                      onPress={() => setSortBy('distance')}
+                    >
+                      <Text style={[styles.sortChipText, sortBy === 'distance' && styles.sortChipTextActive]}>
+                        Distance
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.sortChip, sortBy === 'status' && styles.sortChipActive]}
+                      onPress={() => setSortBy('status')}
+                    >
+                      <Text style={[styles.sortChipText, sortBy === 'status' && styles.sortChipTextActive]}>
+                        Status
+                      </Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+                <View style={{ height: 16 }} />
+              </>
+            }
           />
         )}
       </View>
@@ -299,23 +303,29 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
       {/* Stats Footer */}
       <View style={styles.statsFooter}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{sortedSites.length}</Text>
+          <View style={styles.statCircle}>
+            <Text style={styles.statNumber}>{sortedSites.length}</Text>
+          </View>
           <Text style={styles.statLabel}>Sites Found</Text>
         </View>
-        
+
         {userLocation && (
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>
-              {sortedSites.filter((site: MonitoringSite) => (site.distanceFromUser || 0) <= 10000).length}
-            </Text>
+            <View style={styles.statCircle}>
+              <Text style={styles.statNumber}>
+                {sortedSites.filter((site: MonitoringSite) => (site.distanceFromUser || 0) <= 10000).length}
+              </Text>
+            </View>
             <Text style={styles.statLabel}>Within 10km</Text>
           </View>
         )}
 
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>
-            {sortedSites.filter((site: MonitoringSite) => site.status === 'danger' || site.status === 'warning').length}
-          </Text>
+          <View style={styles.statCircle}>
+            <Text style={styles.statNumber}>
+              {sortedSites.filter((site: MonitoringSite) => site.status === 'danger' || site.status === 'warning').length}
+            </Text>
+          </View>
           <Text style={styles.statLabel}>Alerts</Text>
         </View>
       </View>
@@ -324,55 +334,55 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+    backButton: {
+      padding: 8,
+      marginRight: 8,
+      borderRadius: 8,
+      backgroundColor: Colors.softLightGrey,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    content: {
+      flex: 1,
+      backgroundColor: Colors.softLightGrey,
+    },
   container: {
     flex: 1,
     backgroundColor: Colors.softLightGrey,
     paddingTop: 40, // Account for status bar
   },
+  // Removed duplicate header style
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.lightShadow,
   },
-  backButton: {
-    padding: 8,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.softLightGrey,
-    justifyContent: 'center',
+  headerLeftRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+    flex: 1,
   },
   backIcon: {
-    fontSize: 20,
+    fontSize: 24,
     color: Colors.deepSecurityBlue,
+    fontWeight: 'bold',
+    textShadowColor: Colors.deepSecurityBlue,
+    textShadowRadius: 2,
+    marginTop: -6,
   },
   headerTitle: {
     ...NeumorphicTextStyles.heading,
     fontSize: 20,
     color: Colors.deepSecurityBlue,
+    marginLeft: 8,
   },
-  refreshButton: {
-    padding: 8,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.softLightGrey,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  refreshIcon: {
-    fontSize: 18,
-    color: Colors.deepSecurityBlue,
-  },
-  content: {
-    flex: 1,
-  },
+  // Removed refreshButton and refreshIcon styles
   listContainer: {
     padding: 20,
     paddingBottom: 100, // Space for stats footer
@@ -401,6 +411,7 @@ const styles = StyleSheet.create({
     ...NeumorphicTextStyles.body,
     color: Colors.textSecondary,
     marginBottom: 4,
+    fontWeight: '600',
   },
   riverName: {
     ...NeumorphicTextStyles.caption,
@@ -435,6 +446,7 @@ const styles = StyleSheet.create({
     ...NeumorphicTextStyles.caption,
     color: Colors.textSecondary,
     marginBottom: 8,
+    fontWeight: '600',
   },
   levelsInfo: {
     flexDirection: 'row',
@@ -444,6 +456,7 @@ const styles = StyleSheet.create({
     ...NeumorphicTextStyles.caption,
     fontSize: 11,
     color: Colors.textSecondary,
+    fontWeight: '600',
   },
   separator: {
     height: 8,
@@ -540,15 +553,31 @@ const styles = StyleSheet.create({
   statItem: {
     alignItems: 'center',
   },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.aquaTechBlue,
+  statCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: Colors.deepSecurityBlue,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 4,
+    borderWidth: 2,
+    borderColor: Colors.deepSecurityBlue,
+    shadowColor: Colors.lightShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+  },
+  statNumber: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: Colors.white,
+    textAlign: 'center',
   },
   statLabel: {
     ...NeumorphicTextStyles.caption,
     color: Colors.textSecondary,
+    fontWeight: '600',
   },
   // Search and Filter Styles
   searchSection: {
@@ -574,7 +603,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 13,
     color: Colors.textPrimary,
   },
   clearIcon: {
