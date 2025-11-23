@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Modal,
+  Animated,
+  RefreshControl,
 } from 'react-native';
 import { PieChart, BarChart, LineChart } from 'react-native-gifted-charts';
 import { Colors } from '../lib/colors';
@@ -22,7 +25,7 @@ interface DashboardScreenProps {
   onBack: () => void;
 }
 
-type ChartType = 'pie' | 'graph' | 'bar';
+type ChartType = 'pie' | 'line' | 'bar' | 'area' | 'donut' | 'stackedBar';
 
 interface ChartData {
   labels: string[];
@@ -38,13 +41,21 @@ interface ChartData {
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) => {
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [chartLoading, setChartLoading] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState<'overview' | 'sites' | 'readings'>('overview');
   const [viewMode, setViewMode] = useState<'dashboard' | 'charts'>('dashboard');
+  const [chartModalVisible, setChartModalVisible] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const dashboardFadeAnim = useRef(new Animated.Value(1)).current;
+  const pinAnimations = useRef<{[key: number]: {scale: Animated.Value, opacity: Animated.Value}}>({}).current;
   
   // Profile is used for user context
   console.log('Dashboard loaded for user:', profile.id);
   const [selectedChart, setSelectedChart] = useState<ChartType>('pie');
   const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [focusedPieIndex, setFocusedPieIndex] = useState<{[key: number]: number}>({});
   const [stats, setStats] = useState({
     totalSites: 0,
     totalReadings: 0,
@@ -55,13 +66,44 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
   useEffect(() => {
     fetchDashboardData();
+    // Initial fade-in animation
+    Animated.timing(dashboardFadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   useEffect(() => {
     if (stats.totalSites > 0) {
       generateChartData(selectedChart, selectedDataset);
+      
+
     }
   }, [selectedChart, stats, selectedDataset]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    
+    // Quick fade out
+    Animated.timing(dashboardFadeAnim, {
+      toValue: 0.4,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+    
+    // Fetch new data
+    await fetchDashboardData();
+    
+    // Quick fade back in
+    Animated.timing(dashboardFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    
+    setRefreshing(false);
+  };
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -116,6 +158,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
   };
 
   const generateChartData = async (chartType: ChartType, dataset: 'overview' | 'sites' | 'readings') => {
+    setChartLoading(true);
+    fadeAnim.setValue(0);
+    scaleAnim.setValue(0.9);
+    
     try {
       if (dataset === 'sites') {
         // Monitoring Sites data
@@ -133,7 +179,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
         switch (chartType) {
           case 'bar':
-          case 'graph':
+          case 'line':
+          case 'area':
+          case 'stackedBar':
             // Keep original order - no sorting
             setChartData({
               labels: sites.map(s => s.name.split(' ')[0]),
@@ -144,9 +192,59 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                 Colors.validationGreen
               ),
             });
+            
+            // Trigger animation
+            Animated.parallel([
+              Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+              }),
+              Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: true,
+              })
+            ]).start();
             break;
 
           case 'pie':
+          case 'donut':
+            // Helper function to assign colors ensuring no adjacent segments have the same color
+            const assignNonAdjacentColors = (count: number) => {
+              const baseColors = [
+                Colors.aquaTechBlue,
+                Colors.validationGreen,
+                Colors.warningYellow,
+                Colors.criticalRed,
+                Colors.deepSecurityBlue,
+                '#8B5CF6',
+                '#F97316',
+                '#14B8A6',
+                '#EC4899',
+                '#10B981'
+              ];
+              
+              // Shuffle colors array to get different color arrangements each time
+              const shuffledColors = [...baseColors].sort(() => Math.random() - 0.5);
+              
+              const colors: string[] = [];
+              for (let i = 0; i < count; i++) {
+                let color = shuffledColors[i % shuffledColors.length];
+                let attempts = 0;
+                
+                // If this color is same as previous, try next colors until we find a different one
+                while (i > 0 && color === colors[i - 1] && attempts < shuffledColors.length) {
+                  attempts++;
+                  color = shuffledColors[(i + attempts) % shuffledColors.length];
+                }
+                
+                colors.push(color);
+              }
+              return colors;
+            };
+            
             // Pie Chart 1: Site Types Distribution
             const siteTypes = sites.reduce((acc: any, site) => {
               const type = site.site_type || 'other';
@@ -161,21 +259,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             );
             const riverLabels = riverSitesData.map(s => s.name.split(' ')[0]);
             const riverValues = riverSitesData.map(s => s.danger_level || 1);
-            const riverColors = riverSitesData.map((_s, i) => {
-              const baseColors = [
-                Colors.aquaTechBlue,
-                Colors.validationGreen,
-                Colors.warningYellow,
-                Colors.criticalRed,
-                Colors.deepSecurityBlue,
-                '#8B5CF6',
-                '#F97316',
-                '#14B8A6',
-                '#EC4899',
-                '#10B981'
-              ];
-              return baseColors[i % baseColors.length];
-            });
+            const riverColors = assignNonAdjacentColors(riverLabels.length);
             
             // Pie Chart 3: Individual Reservoir Sites with their danger levels
             const reservoirSitesData = sites.filter(s => 
@@ -185,39 +269,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             );
             const reservoirLabels = reservoirSitesData.map(s => s.name.split(' ')[0]);
             const reservoirValues = reservoirSitesData.map(s => s.danger_level || 1);
-            const reservoirColors = reservoirSitesData.map((_s, i) => {
-              const baseColors = [
-                Colors.deepSecurityBlue,
-                Colors.aquaTechBlue,
-                Colors.criticalRed,
-                Colors.warningYellow,
-                Colors.validationGreen,
-                '#8B5CF6',
-                '#F97316',
-                '#14B8A6',
-                '#EC4899',
-                '#10B981'
-              ];
-              return baseColors[i % baseColors.length];
-            });
+            const reservoirColors = assignNonAdjacentColors(reservoirLabels.length);
             
-            const siteColors = [
-              Colors.aquaTechBlue, 
-              Colors.validationGreen, 
-              Colors.warningYellow, 
-              Colors.criticalRed,
-              Colors.deepSecurityBlue,
-              '#8B5CF6',
-              '#F97316',
-              '#14B8A6'
-            ];
+            const siteColors = assignNonAdjacentColors(Object.keys(siteTypes).length);
             
             const pieCharts = [
               {
                 title: 'Site Types Distribution',
                 labels: Object.keys(siteTypes),
                 values: Object.values(siteTypes) as number[],
-                colors: Object.keys(siteTypes).map((_, i) => siteColors[i % siteColors.length]),
+                colors: siteColors,
               }
             ];
             
@@ -241,12 +302,44 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
               });
             }
             
+            // Sort pie charts data by value (descending)
+            const sortedPieCharts = pieCharts.map(chart => {
+              const combined = chart.labels.map((label, idx) => ({
+                label,
+                value: chart.values[idx],
+                color: chart.colors[idx]
+              }));
+              combined.sort((a, b) => b.value - a.value);
+              
+              return {
+                title: chart.title,
+                labels: combined.map(c => c.label),
+                values: combined.map(c => c.value),
+                colors: combined.map(c => c.color)
+              };
+            });
+            
             setChartData({
               labels: Object.keys(siteTypes),
               values: Object.values(siteTypes),
               colors: Object.keys(siteTypes).map((_, i) => siteColors[i % siteColors.length]),
-              pieCharts: pieCharts
+              pieCharts: sortedPieCharts
             });
+            
+            // Trigger animation
+            Animated.parallel([
+              Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+              }),
+              Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: true,
+              })
+            ]).start();
             break;
         }
       } else if (dataset === 'readings') {
@@ -266,7 +359,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
         switch (chartType) {
           case 'bar':
-          case 'graph':
+          case 'line':
+          case 'area':
+          case 'stackedBar':
             // Keep original order for water level readings
             setChartData({
               labels: readings.map((_r, i) => `R${readings.length - i}`),
@@ -277,9 +372,25 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                 Colors.validationGreen
               ),
             });
+            
+            // Trigger animation
+            Animated.parallel([
+              Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+              }),
+              Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: true,
+              })
+            ]).start();
             break;
 
           case 'pie':
+          case 'donut':
             // Pie Chart 1: Reading Methods Distribution
             const methodCounts = readings.reduce((acc: any, reading) => {
               const method = reading.reading_method || 'unknown';
@@ -302,25 +413,49 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
               '#F97316'
             ];
             
+            // Sort pie chart data
+            const methodLabels = Object.keys(methodCounts);
+            const methodValues = Object.values(methodCounts) as number[];
+            const methodData = methodLabels.map((label, idx) => ({
+              label,
+              value: methodValues[idx],
+              color: readingColors[idx % readingColors.length]
+            })).sort((a, b) => b.value - a.value);
+            
             setChartData({
-              labels: Object.keys(methodCounts),
-              values: Object.values(methodCounts),
-              colors: Object.keys(methodCounts).map((_, i) => readingColors[i % readingColors.length]),
+              labels: methodData.map(d => d.label),
+              values: methodData.map(d => d.value),
+              colors: methodData.map(d => d.color),
               pieCharts: [
                 {
                   title: 'Reading Methods',
-                  labels: Object.keys(methodCounts),
-                  values: Object.values(methodCounts),
-                  colors: Object.keys(methodCounts).map((_, i) => readingColors[i % readingColors.length]),
+                  labels: methodData.map(d => d.label),
+                  values: methodData.map(d => d.value),
+                  colors: methodData.map(d => d.color),
                 },
                 {
                   title: 'Water Level Status',
-                  labels: ['Normal', 'Warning', 'Danger'],
-                  values: [normalReadings, warningReadings, dangerReadings],
-                  colors: [Colors.validationGreen, Colors.warningYellow, Colors.criticalRed],
+                  labels: ['Danger', 'Warning', 'Normal'],
+                  values: [dangerReadings, warningReadings, normalReadings],
+                  colors: [Colors.criticalRed, Colors.warningYellow, Colors.validationGreen],
                 }
               ]
             });
+            
+            // Trigger animation
+            Animated.parallel([
+              Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+              }),
+              Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: true,
+              })
+            ]).start();
             break;
         }
       } else {
@@ -340,7 +475,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
         switch (chartType) {
           case 'bar':
-          case 'graph':
+          case 'line':
+          case 'area':
+          case 'stackedBar':
             // Keep original order for overview readings
             setChartData({
               labels: readings.map((_r, i) => `R${readings.length - i}`),
@@ -351,9 +488,25 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                 Colors.validationGreen
               ),
             });
+            
+            // Trigger animation
+            Animated.parallel([
+              Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+              }),
+              Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: true,
+              })
+            ]).start();
             break;
 
           case 'pie':
+          case 'donut':
             const statusCounts = {
               normal: 0,
               warning: 0,
@@ -366,16 +519,46 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
               else statusCounts.normal++;
             });
 
+            // Sort by status priority (danger > warning > normal)
+            const statusData = [
+              { label: 'Danger', value: statusCounts.danger, color: Colors.criticalRed },
+              { label: 'Warning', value: statusCounts.warning, color: Colors.warningYellow },
+              { label: 'Normal', value: statusCounts.normal, color: Colors.validationGreen },
+            ].sort((a, b) => b.value - a.value);
+            
             setChartData({
-              labels: ['Normal', 'Warning', 'Danger'],
-              values: [statusCounts.normal, statusCounts.warning, statusCounts.danger],
-              colors: [Colors.validationGreen, Colors.warningYellow, Colors.criticalRed],
+              labels: statusData.map(d => d.label),
+              values: statusData.map(d => d.value),
+              colors: statusData.map(d => d.color),
+              pieCharts: [{
+                title: 'Water Level Status Distribution',
+                labels: statusData.map(d => d.label),
+                values: statusData.map(d => d.value),
+                colors: statusData.map(d => d.color),
+              }]
             });
+            
+            // Trigger animation
+            Animated.parallel([
+              Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+              }),
+              Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: true,
+              })
+            ]).start();
             break;
         }
       }
     } catch (error) {
       console.error('Error generating chart data:', error);
+    } finally {
+      setTimeout(() => setChartLoading(false), 300);
     }
   };
 
@@ -400,6 +583,23 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
     setChartData(null);
   };
 
+  const handleBackNavigation = () => {
+    // Step-by-step navigation:
+    // 1. If in charts view -> go back to dashboard AND reset to overview
+    // 2. If on specific dataset (sites/readings) dashboard -> go back to overview
+    // 3. If on overview -> go back to home page
+    if (viewMode === 'charts') {
+      setViewMode('dashboard');
+      setSelectedDataset('overview');
+      setChartData(null);
+    } else if (selectedDataset !== 'overview') {
+      // Reset to overview when going back from sites/readings
+      setSelectedDataset('overview');
+    } else {
+      onBack();
+    }
+  };
+
   const renderStatCard = (title: string, value: string | number, icon: string, color: string) => (
     <View style={[styles.statCard, createNeumorphicCard({ size: 'small' })]}>
       <Text style={styles.statIcon}>{icon}</Text>
@@ -408,34 +608,85 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
     </View>
   );
 
+  const chartTypes: Array<{ type: ChartType; icon: string; label: string; description: string }> = [
+    { type: 'pie', icon: '🥧', label: 'Pie Chart', description: 'Show data as portions of a whole' },
+    { type: 'donut', icon: '🍩', label: 'Donut Chart', description: 'Ring-shaped pie chart' },
+    { type: 'line', icon: '📈', label: 'Line Chart', description: 'Display trends over time' },
+    { type: 'area', icon: '🌊', label: 'Area Chart', description: 'Filled line chart' },
+    { type: 'bar', icon: '📊', label: 'Bar Chart', description: 'Compare values side by side' },
+    { type: 'stackedBar', icon: '📚', label: 'Stacked Bar', description: 'Layered bar comparison' },
+  ];
+
+  const getChartLabel = (type: ChartType) => {
+    const chart = chartTypes.find(c => c.type === type);
+    return chart ? `${chart.icon} ${chart.label}` : type;
+  };
+
   const renderChartTypeSelector = () => (
     <View style={[styles.chartSelector, createNeumorphicCard({ size: 'medium' })]}>
-      <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>
-        📊 Chart Type
-      </Text>
-      <View style={styles.chartButtons}>
-        {(['pie', 'graph', 'bar'] as ChartType[]).map(type => (
-          <TouchableOpacity
-            key={type}
-            style={[
-              styles.chartButton,
-              selectedChart === type && styles.chartButtonActive,
-            ]}
-            onPress={() => {
-              setSelectedChart(type);
-              generateChartData(type, selectedDataset);
-            }}
-          >
-            <Text style={[
-              styles.chartButtonText,
-              selectedChart === type && styles.chartButtonTextActive,
-            ]}>
-              {type === 'pie' ? '🥧 Pie' : type === 'graph' ? '📈 Graph' : '📊 Bar'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>📊 Chart Type</Text>
+      <TouchableOpacity
+        style={[styles.selectButton, createNeumorphicButton('primary', { size: 'medium', borderRadius: 12 })]}
+        onPress={() => setChartModalVisible(true)}
+      >
+        <Text style={styles.selectButtonText}>{getChartLabel(selectedChart)}</Text>
+        <Text style={styles.selectButtonArrow}>▼</Text>
+      </TouchableOpacity>
     </View>
+  );
+
+  const renderChartSelectionModal = () => (
+    <Modal
+      visible={chartModalVisible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setChartModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, createNeumorphicCard({ size: 'large' })]}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, NeumorphicTextStyles.heading]}>Select Chart Type</Text>
+            <TouchableOpacity onPress={() => setChartModalVisible(false)} style={styles.modalCloseButton}>
+              <Text style={styles.modalCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.chartTypesGrid}>
+              {chartTypes.map((chart) => (
+                <TouchableOpacity
+                  key={chart.type}
+                  style={[
+                    styles.chartTypeCard,
+                    createNeumorphicCard({ size: 'small' }),
+                    selectedChart === chart.type && styles.chartTypeCardActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedChart(chart.type);
+                    generateChartData(chart.type, selectedDataset);
+                    setChartModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.chartTypeIcon}>{chart.icon}</Text>
+                  <Text style={[
+                    styles.chartTypeLabel,
+                    selectedChart === chart.type && styles.chartTypeLabelActive,
+                  ]}>
+                    {chart.label}
+                  </Text>
+                  <Text style={styles.chartTypeDescription}>{chart.description}</Text>
+                  {selectedChart === chart.type && (
+                    <View style={styles.selectedBadge}>
+                      <Text style={styles.selectedBadgeText}>✓ Selected</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 
   const renderChart = () => {
@@ -452,6 +703,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
       return (
         <View style={[styles.chartContainer, createNeumorphicCard({ size: 'large' })]}>
           <Text style={styles.noDataText}>No data available for chart</Text>
+        </View>
+      );
+    }
+    
+    if (chartLoading) {
+      return (
+        <View style={[styles.chartContainer, createNeumorphicCard({ size: 'large' })]}>
+          <ActivityIndicator size="large" color={Colors.aquaTechBlue} />
+          <Text style={styles.noDataText}>Preparing chart...</Text>
         </View>
       );
     }
@@ -475,6 +735,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
     switch (selectedChart) {
       case 'pie':
+      case 'donut':
         const pieChartsToRender = chartData.pieCharts || [
           {
             title: selectedDataset === 'sites' ? 'Site Type Distribution' : selectedDataset === 'readings' ? 'Reading Method Distribution' : 'Status Distribution',
@@ -487,69 +748,287 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
         return (
           <ScrollView horizontal={false} showsVerticalScrollIndicator={false}>
             {pieChartsToRender.map((pieChartData, chartIndex) => {
-              const pieDataForChart = pieChartData.labels.map((label, index) => ({
+              // Initialize animation values for this chart if not exists
+              if (!pinAnimations[chartIndex]) {
+                pinAnimations[chartIndex] = {
+                  scale: new Animated.Value(0),
+                  opacity: new Animated.Value(0),
+                };
+                
+                // Animate in the default label after a delay
+                setTimeout(() => {
+                  if (pinAnimations[chartIndex]) {
+                    Animated.parallel([
+                      Animated.spring(pinAnimations[chartIndex].scale, {
+                        toValue: 1,
+                        friction: 8,
+                        tension: 100,
+                        useNativeDriver: true,
+                      }),
+                      Animated.timing(pinAnimations[chartIndex].opacity, {
+                        toValue: 1,
+                        duration: 600,
+                        useNativeDriver: true,
+                      })
+                    ]).start();
+                  }
+                }, 1800); // Wait for pie chart animation to complete
+              }
+              
+              // Sort pie data by value descending for better visualization
+              const combined = pieChartData.labels.map((label, index) => ({
                 value: pieChartData.values[index],
                 color: pieChartData.colors[index],
                 text: label,
-                focused: false,
+                focused: focusedPieIndex[chartIndex] === index,
               }));
+              combined.sort((a, b) => b.value - a.value);
+              const pieDataForChart = combined;
+
+              const handleLegendPress = (legendIndex: number) => {
+                setFocusedPieIndex(prev => ({
+                  ...prev,
+                  [chartIndex]: prev[chartIndex] === legendIndex ? -1 : legendIndex
+                }));
+                
+                // Animate pin appearance for this specific chart
+                const chartAnim = pinAnimations[chartIndex];
+                chartAnim.scale.setValue(0);
+                chartAnim.opacity.setValue(0);
+                Animated.parallel([
+                  Animated.spring(chartAnim.scale, {
+                    toValue: 1,
+                    friction: 8,
+                    tension: 100,
+                    useNativeDriver: true,
+                  }),
+                  Animated.timing(chartAnim.opacity, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                  })
+                ]).start();
+              };
+
+              const totalValue = pieDataForChart.reduce((sum, item) => sum + item.value, 0);
+              
+              // Set default focus to highest value (index 0) if nothing is selected
+              const currentFocus = focusedPieIndex[chartIndex];
+              const shouldShowLabel = currentFocus !== undefined ? currentFocus : 0;
+
+              // Calculate angle for pin positioning
+              const getSegmentAngle = (index: number) => {
+                let accumulatedValue = 0;
+                for (let i = 0; i < index; i++) {
+                  accumulatedValue += pieDataForChart[i].value;
+                }
+                const startAngle = (accumulatedValue / totalValue) * 360;
+                const segmentAngle = (pieDataForChart[index].value / totalValue) * 360;
+                const midAngle = startAngle + segmentAngle / 2;
+                return (midAngle - 90) * (Math.PI / 180); // Convert to radians, -90 to start from top
+              };
+
+              // Calculate pin position based on segment with boundary constraints
+              const getPinPosition = (index: number) => {
+                const angle = getSegmentAngle(index);
+                const radius = selectedChart === 'donut' ? 130 : 120;
+                const pinDistance = radius + 40; // Distance from center to pin start
+                
+                const x = Math.cos(angle) * pinDistance;
+                const y = Math.sin(angle) * pinDistance;
+                
+                // Determine label position (left or right side)
+                const isRightSide = x > 0;
+                const labelDistance = 55; // Distance from pin to label
+                
+                // Calculate ideal label position
+                let idealLabelX = x + (isRightSide ? labelDistance : -labelDistance);
+                let idealLabelY = y;
+                
+                // Apply boundary constraints to keep label inside view
+                // For donut chart, account for center offset
+                const centerOffset = selectedChart === 'donut' ? 170 : 180;
+                const containerHalfWidth = (screenWidth - 100) / 2; // More margin for safety
+                const containerHalfHeight = 180; // Increased height allowance
+                
+                // Clamp label X position with extra padding for label width
+                const labelWidth = 65; // Slightly more than half of minWidth (120px)
+                const maxX = containerHalfWidth - labelWidth - 10; // Extra 10px padding
+                const minX = -containerHalfWidth + labelWidth + 10; // Extra 10px padding on left
+                const clampedLabelX = Math.max(minX, Math.min(maxX, idealLabelX));
+                
+                // Clamp label Y position with extra space at bottom
+                const labelHeight = 45; // Increased for bottom labels
+                const maxY = containerHalfHeight - labelHeight - 15; // Extra padding at bottom
+                const minY = -containerHalfHeight + labelHeight + 5; // Extra padding at top
+                const clampedLabelY = Math.max(minY, Math.min(maxY, idealLabelY));
+                
+                return {
+                  pinX: x,
+                  pinY: y,
+                  labelX: clampedLabelX,
+                  labelY: clampedLabelY,
+                  isRightSide,
+                };
+              };
+
+              const pinPosition = shouldShowLabel >= 0 ? getPinPosition(shouldShowLabel) : null;
 
               return (
-                <View
+                <Animated.View
                   key={chartIndex}
                   style={[
                     styles.chartContainer,
                     createNeumorphicCard({ size: 'large' }),
-                    { marginBottom: 16 },
+                    {
+                      marginBottom: 16,
+                      opacity: fadeAnim,
+                      transform: [{ scale: scaleAnim }],
+                    },
                   ]}
                 >
-                  <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
-                    {pieChartData.title}
-                  </Text>
-                  <View style={styles.giftedChartWrapper}>
-                    <PieChart
-                      data={pieDataForChart}
-                      radius={100}
-                      innerRadius={40}
-                      centerLabelComponent={() => (
-                        <View>
-                          <Text style={styles.centerLabelText}>Total</Text>
-                          <Text style={styles.centerLabelValue}>
-                            {pieChartData.values.reduce((sum, val) => sum + val, 0)}
-                          </Text>
-                        </View>
-                      )}
-                      showValuesAsLabels
-                      showText
-                      textColor={Colors.white}
-                      textSize={12}
-                      focusOnPress
-                    />
-                    <View style={styles.legendContainer}>
-                      {pieDataForChart.map((item, index) => (
-                        <View key={index} style={styles.legendItem}>
-                          <View style={[styles.legendColor, { backgroundColor: item.color }]} />
-                          <Text style={styles.legendText}>
+                  <View style={styles.chartHeader}>
+                    <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
+                      {pieChartData.title}
+                    </Text>
+                    <Text style={styles.chartHelperText}>Tap chart or legend items to highlight</Text>
+                  </View>
+                  <View style={styles.pieChartContainer}>
+                    <View style={styles.pieChartCenter}>
+                      <PieChart
+                        data={pieDataForChart}
+                        radius={selectedChart === 'donut' ? 130 : 120}
+                        innerRadius={selectedChart === 'donut' ? 80 : 0}
+                        showValuesAsLabels={false}
+                        showText={false}
+                        focusOnPress
+                        isAnimated
+                        animationDuration={1600}
+                        onPress={(item: any, index: number) => {
+                          setFocusedPieIndex(prev => ({
+                            ...prev,
+                            [chartIndex]: prev[chartIndex] === index ? -1 : index
+                          }));
+                          
+                          // Animate pin appearance for this specific chart
+                          const chartAnim = pinAnimations[chartIndex];
+                          chartAnim.scale.setValue(0);
+                          chartAnim.opacity.setValue(0);
+                          Animated.parallel([
+                            Animated.spring(chartAnim.scale, {
+                              toValue: 1,
+                              friction: 8,
+                              tension: 100,
+                              useNativeDriver: true,
+                            }),
+                            Animated.timing(chartAnim.opacity, {
+                              toValue: 1,
+                              duration: 400,
+                              useNativeDriver: true,
+                            })
+                          ]).start();
+                        }}
+                        centerLabelComponent={() => {
+                          if (selectedChart === 'donut' && shouldShowLabel >= 0 && pieDataForChart[shouldShowLabel]) {
+                            const item = pieDataForChart[shouldShowLabel];
+                            const percentage = ((item.value / totalValue) * 100).toFixed(1);
+                            return (
+                              <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={styles.centerLabelName}>{item.text}</Text>
+                                <Text style={styles.centerLabelValue}>{percentage}%</Text>
+                                <Text style={styles.centerLabelCount}>{item.value}</Text>
+                              </View>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                    </View>
+                    
+                    {/* Label box only (without pin line and dot) */}
+                    {shouldShowLabel >= 0 && pieDataForChart[shouldShowLabel] && pinPosition && (
+                      <Animated.View 
+                        style={[
+                          styles.dynamicLabelBox,
+                          { 
+                            borderColor: pieDataForChart[shouldShowLabel].color,
+                            left: pinPosition.labelX + (selectedChart === 'donut' ? 125 : 120),
+                            top: pinPosition.labelY + 170,
+                            opacity: pinAnimations[chartIndex].opacity,
+                            transform: [{ scale: pinAnimations[chartIndex].scale }],
+                          }
+                        ]}
+                      >
+                        <Text style={styles.labelName}>{pieDataForChart[shouldShowLabel].text}</Text>
+                        <Text style={styles.labelValue}>
+                          {pieDataForChart[shouldShowLabel].value} ({((pieDataForChart[shouldShowLabel].value / totalValue) * 100).toFixed(1)}%)
+                        </Text>
+                      </Animated.View>
+                    )}
+                  </View>
+                  
+                  {/* Legend below the chart */}
+                  <View style={styles.legendContainer}>
+                    {pieDataForChart.map((item, index) => {
+                      // Show first item (highest value) as focused by default if nothing is selected
+                      const isFocused = focusedPieIndex[chartIndex] === undefined 
+                        ? index === 0 
+                        : focusedPieIndex[chartIndex] === index;
+                      return (
+                        <TouchableOpacity 
+                          key={index} 
+                          style={[
+                            styles.legendItem,
+                            isFocused && styles.legendItemFocused
+                          ]}
+                          onPress={() => handleLegendPress(index)}
+                          activeOpacity={0.7}
+                        >
+                          <Animated.View 
+                            style={[
+                              styles.legendColor, 
+                              { 
+                                backgroundColor: item.color,
+                                transform: [{ scale: isFocused ? 1.2 : 1 }]
+                              }
+                            ]} 
+                          />
+                          <Text style={[
+                            styles.legendText,
+                            isFocused && styles.legendTextFocused
+                          ]}>
                             {item.text}: {item.value} (
-                            {((item.value / pieChartData.values.reduce((s, v) => s + v, 0)) * 100).toFixed(1)}
+                            {((item.value / totalValue) * 100).toFixed(1)}
                             %)
                           </Text>
-                        </View>
-                      ))}
-                    </View>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
-                </View>
+                </Animated.View>
               );
             })}
           </ScrollView>
         );
       
-      case 'graph':
+      case 'line':
         return (
-          <View style={[styles.chartContainer, createNeumorphicCard({ size: 'large' })]}>
-            <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
-              {selectedDataset === 'sites' ? 'Danger Level Trend' : selectedDataset === 'readings' ? 'Water Level Trend' : 'Data Trend'}
-            </Text>
+          <Animated.View 
+            style={[
+              styles.chartContainer, 
+              createNeumorphicCard({ size: 'large' }),
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: scaleAnim }],
+              }
+            ]}
+          >
+            <View style={styles.chartHeader}>
+              <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
+                {selectedDataset === 'sites' ? 'Danger Level Trend' : selectedDataset === 'readings' ? 'Water Level Trend' : 'Data Trend'}
+              </Text>
+              <Text style={styles.chartHelperText}>Swipe left/right • Long press for details</Text>
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={true}>
               <View style={styles.giftedChartWrapper}>
                 <LineChart
@@ -562,11 +1041,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                   endSpacing={30}
                   color={Colors.aquaTechBlue}
                   thickness={3}
-                  startFillColor={Colors.aquaTechBlue}
-                  endFillColor={Colors.softLightGrey}
-                  startOpacity={0.4}
-                  endOpacity={0.1}
-                  areaChart
                   curved
                   hideDataPoints={false}
                   dataPointsRadius={6}
@@ -581,6 +1055,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                   yAxisColor={Colors.border}
                   yAxisTextStyle={{ color: Colors.textSecondary, fontSize: 10 }}
                   xAxisLabelTextStyle={{ color: Colors.textSecondary, fontSize: 10 }}
+                  isAnimated
+                  animationDuration={1800}
+                  animateOnDataChange
+                  onDataChangeAnimationDuration={1200}
+                  animationBeginFromIndex={0}
                   pointerConfig={{
                     pointerStripHeight: 200,
                     pointerStripColor: Colors.deepSecurityBlue,
@@ -603,15 +1082,98 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                 />
               </View>
             </ScrollView>
-          </View>
+          </Animated.View>
+        );
+      
+      case 'area':
+        return (
+          <Animated.View 
+            style={[
+              styles.chartContainer, 
+              createNeumorphicCard({ size: 'large' }),
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: scaleAnim }],
+              }
+            ]}
+          >
+            <View style={styles.chartHeader}>
+              <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
+                {selectedDataset === 'sites' ? 'Danger Level Trend' : selectedDataset === 'readings' ? 'Water Level Trend' : 'Data Trend'}
+              </Text>
+              <Text style={styles.chartHelperText}>Swipe left/right • Long press for details</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              <View style={styles.giftedChartWrapper}>
+                <LineChart
+                  data={lineData}
+                  width={Math.max(screenWidth - 80, lineData.length * 50)}
+                  height={280}
+                  maxValue={Math.max(...chartData.values) * 1.25}
+                  spacing={lineData.length > 10 ? 40 : 50}
+                  initialSpacing={20}
+                  endSpacing={30}
+                  color={Colors.aquaTechBlue}
+                  thickness={3}
+                  startFillColor={Colors.aquaTechBlue}
+                  endFillColor={Colors.softLightGrey}
+                  startOpacity={0.6}
+                  endOpacity={0.3}
+                  areaChart={true}
+                  curved
+                  hideDataPoints={false}
+                  dataPointsRadius={6}
+                  dataPointsColor={Colors.aquaTechBlue}
+                  textShiftY={-18}
+                  textShiftX={-5}
+                  textFontSize={12}
+                  textColor={Colors.deepSecurityBlue}
+                  showVerticalLines
+                  verticalLinesColor={Colors.border}
+                  xAxisColor={Colors.border}
+                  yAxisColor={Colors.border}
+                  yAxisTextStyle={{ color: Colors.textSecondary, fontSize: 10 }}
+                  xAxisLabelTextStyle={{ color: Colors.textSecondary, fontSize: 10 }}
+                  isAnimated
+                  animationDuration={1800}
+                  animateOnDataChange
+                  onDataChangeAnimationDuration={1200}
+                  animationBeginFromIndex={0}
+                  pointerConfig={{
+                    pointerStripHeight: 200,
+                    pointerStripColor: Colors.deepSecurityBlue,
+                    pointerStripWidth: 2,
+                    pointerColor: Colors.deepSecurityBlue,
+                    radius: 6,
+                    pointerLabelWidth: 100,
+                    pointerLabelHeight: 90,
+                    activatePointersOnLongPress: false,
+                    autoAdjustPointerLabelPosition: true,
+                    pointerLabelComponent: (items: any) => {
+                      return (
+                        <View style={styles.tooltipContainer}>
+                          <Text style={styles.tooltipLabel}>{items[0].label}</Text>
+                          <Text style={styles.tooltipValue}>{items[0].value}</Text>
+                        </View>
+                      );
+                    },
+                  }}
+                />
+              </View>
+            </ScrollView>
+          </Animated.View>
         );
       
       case 'bar':
+      case 'stackedBar':
         return (
           <View style={[styles.chartContainer, createNeumorphicCard({ size: 'large' })]}>
-            <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
-              {selectedDataset === 'sites' ? 'Danger Level Distribution' : selectedDataset === 'readings' ? 'Water Level Distribution' : 'Data Distribution'}
-            </Text>
+            <View style={styles.chartHeader}>
+              <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
+                {selectedDataset === 'sites' ? 'Danger Level Distribution' : selectedDataset === 'readings' ? 'Water Level Distribution' : 'Data Distribution'}
+              </Text>
+              <Text style={styles.chartHelperText}>Swipe to view all bars</Text>
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={true}>
               <View style={styles.giftedChartWrapper}>
                 <BarChart
@@ -631,7 +1193,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                   showVerticalLines
                   verticalLinesColor={Colors.border}
                   isAnimated
-                  animationDuration={800}
+                  animationDuration={600}
+                  animateOnDataChange
+                  onDataChangeAnimationDuration={400}
+                  cappedBars={selectedChart === 'stackedBar'}
+                  capThickness={selectedChart === 'stackedBar' ? 4 : 0}
                 />
               </View>
             </ScrollView>
@@ -645,9 +1211,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
   const renderDatasetButtons = () => (
     <View style={[styles.exportSection, createNeumorphicCard({ size: 'medium' })]}>
-      <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>
-        📊 View Dataset Charts
-      </Text>
+      <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>📊 View Dataset Charts</Text>
       <Text style={styles.exportDescription}>
         Click to view detailed charts for specific datasets
       </Text>
@@ -704,29 +1268,42 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, createNeumorphicCard({ size: 'medium' })]}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBackNavigation} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={[styles.headerTitle, NeumorphicTextStyles.heading]}>
-            Analytics Dashboard
+            {selectedDataset === 'sites' 
+              ? 'Monitoring Sites' 
+              : selectedDataset === 'readings' 
+              ? 'Water Level Readings' 
+              : 'Analytics Dashboard'}
           </Text>
           <Text style={[styles.headerSubtitle, NeumorphicTextStyles.caption]}>
             Data Insights & Export
           </Text>
         </View>
-        <TouchableOpacity onPress={fetchDashboardData} style={styles.refreshButton}>
-          <Text style={styles.refreshIcon}>🔄</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.aquaTechBlue]}
+            tintColor={Colors.aquaTechBlue}
+          />
+        }
       >
+        <Animated.View style={{ opacity: dashboardFadeAnim }}>
         {viewMode === 'dashboard' ? (
           <>
+            {/* Dataset Selection Buttons */}
+            {renderDatasetButtons()}
+
             {/* Statistics Cards */}
             <View style={styles.statsGrid}>
           {renderStatCard('Total Sites', stats.totalSites, '🏗️', Colors.aquaTechBlue)}
@@ -734,36 +1311,20 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
           {renderStatCard('Danger Alerts', stats.dangerSites, '🚨', Colors.criticalRed)}
           {renderStatCard('Warnings', stats.warningSites, '⚠️', Colors.warningYellow)}
         </View>
-
-            {/* Average Water Level Card */}
-            <View style={[styles.avgCard, createNeumorphicCard({ size: 'medium' })]}>
-              <Text style={styles.avgLabel}>Average Water Level</Text>
-              <Text style={styles.avgValue}>{stats.avgWaterLevel.toFixed(2)} m</Text>
-            </View>
-
-            {/* Dataset Selection Buttons */}
-            {renderDatasetButtons()}
           </>
         ) : (
           <>
-            {/* Charts View */}
-            <View style={[styles.chartsViewHeader, createNeumorphicCard({ size: 'medium' })]}>
-              <TouchableOpacity onPress={handleBackToDashboard} style={styles.backToChartButton}>
-                <Text style={styles.backIcon}>←</Text>
-                <Text style={styles.backToChartText}>Back to Dashboard</Text>
-              </TouchableOpacity>
-              <Text style={[styles.chartsViewTitle, NeumorphicTextStyles.heading]}>
-                {selectedDataset === 'sites' ? '🗺️ Monitoring Sites' : '📊 Water Level Readings'}
-              </Text>
-            </View>
-
             {/* Chart Type Selector */}
             {renderChartTypeSelector()}
+
+            {/* Chart Selection Modal */}
+            {renderChartSelectionModal()}
 
             {/* Chart Display */}
             {renderChart()}
           </>
         )}
+        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -809,22 +1370,14 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
-  refreshButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  refreshIcon: {
-    fontSize: 20,
-  },
+
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 8,
   },
   loadingContainer: {
     padding: 40,
@@ -920,12 +1473,22 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     minHeight: 300,
   },
+  chartHeader: {
+    marginBottom: 16,
+    alignItems: 'center',
+  },
   chartTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.deepSecurityBlue,
-    marginBottom: 20,
+    marginBottom: 4,
     textAlign: 'center',
+  },
+  chartHelperText: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   noDataText: {
     textAlign: 'center',
@@ -1088,6 +1651,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    transition: 'all 0.3s ease',
+  },
+  legendItemFocused: {
+    backgroundColor: Colors.softLightGrey,
+    shadowColor: Colors.deepSecurityBlue,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   legendColor: {
     width: 16,
@@ -1098,6 +1673,80 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 14,
     color: Colors.textPrimary,
+    flex: 1,
+  },
+  legendTextFocused: {
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+  },
+  pieChartContainer: {
+    position: 'relative',
+    width: '100%',
+    height: 400,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 0,
+    overflow: 'hidden',
+  },
+  pieChartCenter: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dynamicPinContainer: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    zIndex: 10,
+  },
+  dynamicPinDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: Colors.white,
+    position: 'absolute',
+    left: -5,
+    top: -5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  dynamicPinLine: {
+    position: 'absolute',
+    height: 2,
+    backgroundColor: Colors.deepSecurityBlue,
+    opacity: 0.6,
+    left: 0,
+    top: 0,
+  },
+  dynamicLabelBox: {
+    position: 'absolute',
+    backgroundColor: Colors.white,
+    borderWidth: 2,
+    borderRadius: 10,
+    padding: 12,
+    minWidth: 120,
+    alignItems: 'center',
+    shadowColor: Colors.deepSecurityBlue,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  labelName: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  labelValue: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
   exportSection: {
     padding: 20,
@@ -1144,6 +1793,7 @@ const styles = StyleSheet.create({
   },
   chartsViewHeader: {
     padding: 20,
+    marginTop: 0,
     marginBottom: 16,
     borderRadius: 16,
     alignItems: 'center',
@@ -1178,15 +1828,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  centerLabelValue: {
-    fontSize: 18,
+  centerLabelName: {
+    fontSize: 13,
     color: Colors.deepSecurityBlue,
     fontWeight: 'bold',
     textAlign: 'center',
+    marginBottom: 4,
+  },
+  centerLabelValue: {
+    fontSize: 24,
+    color: Colors.aquaTechBlue,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  centerLabelCount: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 2,
   },
   legendContainer: {
-    marginTop: 20,
+    marginTop: 10,
     width: '100%',
+    paddingHorizontal: 10,
+    paddingBottom: 10,
   },
   barTopLabel: {
     fontSize: 10,
@@ -1207,6 +1872,119 @@ const styles = StyleSheet.create({
   },
   tooltipValue: {
     fontSize: 14,
+    color: Colors.white,
+    fontWeight: 'bold',
+  },
+  selectButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+  },
+  selectButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.white,
+    flex: 1,
+  },
+  selectButtonArrow: {
+    fontSize: 16,
+    color: Colors.white,
+    marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxHeight: '80%',
+    backgroundColor: Colors.softLightGrey,
+    borderRadius: 20,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    fontSize: 20,
+    color: Colors.deepSecurityBlue,
+    fontWeight: 'bold',
+  },
+  modalScroll: {
+    maxHeight: 500,
+  },
+  chartTypesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  chartTypeCard: {
+    width: '48%',
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 16,
+    alignItems: 'center',
+    minHeight: 140,
+    position: 'relative',
+  },
+  chartTypeCardActive: {
+    borderWidth: 3,
+    borderColor: Colors.aquaTechBlue,
+    backgroundColor: Colors.white,
+  },
+  chartTypeIcon: {
+    fontSize: 40,
+    marginBottom: 8,
+  },
+
+  chartTypeLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  chartTypeLabelActive: {
+    color: Colors.aquaTechBlue,
+  },
+  chartTypeDescription: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  selectedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: Colors.validationGreen,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  selectedBadgeText: {
+    fontSize: 10,
     color: Colors.white,
     fontWeight: 'bold',
   },
