@@ -52,18 +52,13 @@ CREATE TABLE water_level_readings (
   user_role TEXT NOT NULL CHECK (user_role IN ('central_analyst', 'supervisor', 'field_personnel', 'public')),
   site_id VARCHAR(100) REFERENCES monitoring_sites(id) NOT NULL,
   site_name TEXT NOT NULL,
-  water_level DECIMAL(10,2) NOT NULL,
   
   -- Site Selection & Location Validation
-  site_selection_method TEXT NOT NULL CHECK (site_selection_method IN ('qr_scan', 'manual_selection')),
   latitude DECIMAL(10,8) NOT NULL,
   longitude DECIMAL(11,8) NOT NULL,
   geofence_radius_used INTEGER NOT NULL, -- Radius used for validation
-  is_location_valid BOOLEAN NOT NULL, -- Geofencing validation result
   
   -- QR Code Details (if QR method used)
-  qr_code_scanned VARCHAR(100), -- QR code value if scanned
-  qr_validation_status TEXT CHECK (qr_validation_status IN ('valid', 'invalid')),
   qr_scanned_at TIMESTAMP WITH TIME ZONE, -- When QR was scanned
   
   -- Photo Analysis (MANDATORY)
@@ -87,7 +82,6 @@ CREATE TABLE water_level_readings (
   lighting_conditions TEXT CHECK (lighting_conditions IN ('excellent', 'good', 'fair', 'poor')),
   image_quality_score DECIMAL(3,1), -- 0-10 score for image quality
   reading_method VARCHAR(50) CHECK (reading_method IN ('photo_analysis', 'manual_override')) DEFAULT 'photo_analysis',
-  verification_required BOOLEAN DEFAULT FALSE, -- If reading needs supervisor verification
   notes TEXT, -- Additional observations
   
   -- Timestamps for Analytics
@@ -95,9 +89,7 @@ CREATE TABLE water_level_readings (
   photo_taken_at TIMESTAMP WITH TIME ZONE NOT NULL, -- When photo was captured
   analysis_started_at TIMESTAMP WITH TIME ZONE, -- When ML analysis began
   analysis_completed_at TIMESTAMP WITH TIME ZONE, -- When ML analysis finished
-  submission_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  submission_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- ENABLE ROW LEVEL SECURITY
@@ -106,8 +98,9 @@ ALTER TABLE monitoring_sites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE water_level_readings ENABLE ROW LEVEL SECURITY;
 
 -- RLS POLICIES FOR PROFILES
-CREATE POLICY "Users can view own profile" ON profiles
-  FOR SELECT USING (auth.uid() = id);
+-- Allow public read access for login phone/email lookup
+CREATE POLICY "Public can view profiles" ON profiles
+  FOR SELECT USING (true);
 
 CREATE POLICY "Users can insert own profile" ON profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
@@ -145,10 +138,5 @@ CREATE TRIGGER update_profiles_updated_at
 
 CREATE TRIGGER update_monitoring_sites_updated_at
   BEFORE UPDATE ON monitoring_sites
-  FOR EACH ROW
-  EXECUTE PROCEDURE update_updated_at_column();
-
-CREATE TRIGGER update_water_level_readings_updated_at
-  BEFORE UPDATE ON water_level_readings
   FOR EACH ROW
   EXECUTE PROCEDURE update_updated_at_column();
