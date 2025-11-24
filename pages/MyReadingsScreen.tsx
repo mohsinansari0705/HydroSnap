@@ -5,6 +5,7 @@ import { Profile } from '../types/profile';
 import { MonitoringSitesService } from '../services/monitoringSitesService';
 import { WaterLevelReading, MonitoringSite } from '../services/monitoringSitesService';
 import { useNavigation } from '../lib/NavigationContext';
+import SafeScreen from '../components/SafeScreen';
 
 interface MyReadingsScreenProps {
   profile: Profile;
@@ -108,14 +109,15 @@ const MyReadingsScreen: React.FC<MyReadingsScreenProps> = ({ profile, onBack }) 
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>My Readings</Text>
-        <View style={{width: 60}} />
-      </View>
+    <SafeScreen>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>My Readings</Text>
+          <View style={{width: 60}} />
+        </View>
 
       <FlatList
         data={sites}
@@ -139,7 +141,8 @@ const MyReadingsScreen: React.FC<MyReadingsScreenProps> = ({ profile, onBack }) 
           </View>
         )}
       />
-    </View>
+      </View>
+    </SafeScreen>
   );
 };
 
@@ -149,8 +152,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.softLightGrey,
   },
   header: {
-    height: 90,
-    paddingTop: 40,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',

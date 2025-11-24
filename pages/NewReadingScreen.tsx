@@ -13,6 +13,7 @@ import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicSty
 import { QRValidationScreen } from '../components/QRValidationScreen';
 import { RealCamera } from '../components/RealCamera';
 import { ValidatedSiteData } from '../services/qrValidationService';
+import SafeScreen from '../components/SafeScreen';
 import { 
   waterLevelReadingsService, 
   NewReadingData 
@@ -371,9 +372,11 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
   };
 
   return (
-    <View style={styles.wrapper}>
-      {renderStep()}
-    </View>
+    <SafeScreen>
+      <View style={styles.wrapper}>
+        {renderStep()}
+      </View>
+    </SafeScreen>
   );
 };
 

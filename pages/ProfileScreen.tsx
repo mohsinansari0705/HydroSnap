@@ -1,10 +1,11 @@
-import { SafeAreaView, StatusBar, Platform, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Colors } from '../lib/colors';
 import { Profile } from '../types/profile';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import SafeScreen from '../components/SafeScreen';
 
 interface ProfileScreenProps {
   profile: Profile;
@@ -51,12 +52,7 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        backgroundColor={Colors.deepSecurityBlue}
-        barStyle="light-content"
-        translucent={Platform.OS === 'android'}
-      />
+    <SafeScreen backgroundColor={Colors.softLightGrey} statusBarStyle="dark">
 
       {/* NAVIGATION BAR */}
       <View style={styles.navigationBar}>
@@ -141,7 +137,7 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeScreen>
   );
 }
 
@@ -151,7 +147,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.softLightGrey,
   },
   navigationBar: {
-    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0, // Adjust for status bar height
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

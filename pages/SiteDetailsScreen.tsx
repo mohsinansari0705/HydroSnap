@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
+import SafeScreen from '../components/SafeScreen';
 
 interface SiteDetailsScreenProps {
   siteId: string;
@@ -351,8 +352,9 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
   }
 
   return (
-    <View style={styles.container}>
-      {renderHeader()}
+    <SafeScreen>
+      <View style={styles.container}>
+        {renderHeader()}
       
       <ScrollView
         style={styles.content}
@@ -372,7 +374,8 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
           <Text style={styles.newReadingButtonText}>📸 Take New Reading</Text>
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+    </SafeScreen>
   );
 };
 

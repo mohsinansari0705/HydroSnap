@@ -349,7 +349,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.softLightGrey,
-    paddingTop: 40, // Account for status bar
   },
   // Removed duplicate header style
   header: {
@@ -466,7 +465,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 60,
     ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
-    marginTop: 40,
     marginHorizontal: 20,
   },
   loadingTitle: {
@@ -486,7 +484,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 40,
     ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
-    marginTop: 40,
   },
   emptyIcon: {
     fontSize: 48,
@@ -508,7 +505,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 40,
     ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
-    marginTop: 40,
     marginHorizontal: 20,
   },
   errorIcon: {

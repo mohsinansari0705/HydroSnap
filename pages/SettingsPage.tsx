@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../lib/ThemeContext';
 import { supabase } from '../lib/supabase';
+import SafeScreen from '../components/SafeScreen';
 import {
   createNeumorphicCard,
   createNeumorphicButton,
@@ -223,7 +224,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
   ];
 
   return (
-    <View style={styles.container}>
+    <SafeScreen>
+      <View style={styles.container}>
       {/* Header with Back Button */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -321,7 +323,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
           </View>
         </View>
       </Modal>
-    </View>
+      </View>
+    </SafeScreen>
   );
 };
 
