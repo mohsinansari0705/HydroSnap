@@ -15,6 +15,7 @@ import { Profile } from '../types/profile';
 import Card from '../components/Card';
 import Navbar from '../components/Navbar';
 import BottomNavigation from '../components/BottomNavigation';
+import SafeScreen from '../components/SafeScreen';
 import { useMonitoringSites } from '../hooks/useMonitoringSites';
 import { MonitoringSite } from '../services/monitoringSitesService';
 import { DebugUtils } from '../services/debugUtils';
@@ -432,6 +433,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     </View>
   );
 
+  /* Temporarily disabled AI Insights feature
   const renderAIInsights = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -450,32 +452,34 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       </View>
     </View>
   );
+  */
 
   return (
-    <View style={styles.container}>
-      <Navbar 
-        onQRScanPress={() => handleNavbarAction('qr')}
-        onNotificationPress={() => handleNavbarAction('notifications')}
-        onSettingsPress={() => handleNavbarAction('settings')}
-      />
+    <SafeScreen>
+      <View style={styles.container}>
+        <Navbar 
+          onQRScanPress={() => handleNavbarAction('qr')}
+          onNotificationPress={() => handleNavbarAction('notifications')}
+          onSettingsPress={() => handleNavbarAction('settings')}
+        />
 
-      {/* QR Scanner Modal */}
-      {qrScannerVisible && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, backgroundColor: '#00000099', justifyContent: 'center', alignItems: 'center' }}>
-          <QRScanner
-            onSiteValidated={(siteData: any) => {
-              setQRScannerVisible(false);
-              // Navigate to site details or show info
-              if (siteData && siteData.siteId) {
-                onNavigateToSite(siteData.siteId);
-              } else {
-                Alert.alert('Invalid QR', 'Could not validate site data.');
-              }
-            }}
-            onCancel={() => setQRScannerVisible(false)}
-          />
-        </View>
-      )}
+        {/* QR Scanner Modal */}
+        {qrScannerVisible && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, backgroundColor: '#00000099', justifyContent: 'center', alignItems: 'center' }}>
+            <QRScanner
+              onSiteValidated={(siteData: any) => {
+                setQRScannerVisible(false);
+                // Navigate to site details or show info
+                if (siteData && siteData.siteId) {
+                  onNavigateToSite(siteData.siteId);
+                } else {
+                  Alert.alert('Invalid QR', 'Could not validate site data.');
+                }
+              }}
+              onCancel={() => setQRScannerVisible(false)}
+            />
+          </View>
+        )}
 
       {/* NotificationPanel rendering removed from HomeScreen to avoid duplicate panels.
           Navbar now handles displaying notifications near the bell icon. */}
@@ -543,11 +547,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* {renderAIInsights()} */} {/* Temporarily disabled until feature is ready */}
       </ScrollView>
       
-      <BottomNavigation
-        activeTab={activeTab}
-        onTabPress={handleTabPress}
-      />
-    </View>
+        <BottomNavigation
+          activeTab={activeTab}
+          onTabPress={handleTabPress}
+        />
+      </View>
+    </SafeScreen>
   );
 };
 
@@ -555,7 +560,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.softLightGrey,
-    paddingTop: 0, // Remove top padding since navbar handles it
   },
   scrollContainer: {
     paddingBottom: 0, // No padding for zero gap
