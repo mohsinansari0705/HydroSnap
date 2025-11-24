@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { PieChart, BarChart, LineChart } from 'react-native-gifted-charts';
 import { Colors } from '../lib/colors';
+import SafeScreen from '../components/SafeScreen';
 import { createNeumorphicCard, createNeumorphicButton, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types/profile';
@@ -577,11 +578,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
     }
   };
 
-  const handleBackToDashboard = () => {
-    setViewMode('dashboard');
-    setSelectedDataset('overview');
-    setChartData(null);
-  };
+  // const handleBackToDashboard = () => {
+  //   setViewMode('dashboard');
+  //   setSelectedDataset('overview');
+  //   setChartData(null);
+  // };
 
   const handleBackNavigation = () => {
     // Step-by-step navigation:
@@ -847,7 +848,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                 
                 // Apply boundary constraints to keep label inside view
                 // For donut chart, account for center offset
-                const centerOffset = selectedChart === 'donut' ? 170 : 180;
+                // const centerOffset = selectedChart === 'donut' ? 170 : 180;
                 const containerHalfWidth = (screenWidth - 100) / 2; // More margin for safety
                 const containerHalfHeight = 180; // Increased height allowance
                 
@@ -904,7 +905,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                         focusOnPress
                         isAnimated
                         animationDuration={1600}
-                        onPress={(item: any, index: number) => {
+                        onPress={(_item: any, index: number) => {
                           setFocusedPieIndex(prev => ({
                             ...prev,
                             [chartIndex]: prev[chartIndex] === index ? -1 : index
@@ -1059,7 +1060,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                   animationDuration={1800}
                   animateOnDataChange
                   onDataChangeAnimationDuration={1200}
-                  animationBeginFromIndex={0}
                   pointerConfig={{
                     pointerStripHeight: 200,
                     pointerStripColor: Colors.deepSecurityBlue,
@@ -1138,7 +1138,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                   animationDuration={1800}
                   animateOnDataChange
                   onDataChangeAnimationDuration={1200}
-                  animationBeginFromIndex={0}
                   pointerConfig={{
                     pointerStripHeight: 200,
                     pointerStripColor: Colors.deepSecurityBlue,
@@ -1194,8 +1193,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                   verticalLinesColor={Colors.border}
                   isAnimated
                   animationDuration={600}
-                  animateOnDataChange
-                  onDataChangeAnimationDuration={400}
                   cappedBars={selectedChart === 'stackedBar'}
                   capThickness={selectedChart === 'stackedBar' ? 4 : 0}
                 />
@@ -1265,7 +1262,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
   );
 
   return (
-    <View style={styles.container}>
+    <SafeScreen>
+      <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, createNeumorphicCard({ size: 'medium' })]}>
         <TouchableOpacity onPress={handleBackNavigation} style={styles.backButton}>
@@ -1326,7 +1324,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
         )}
         </Animated.View>
       </ScrollView>
-    </View>
+      </View>
+    </SafeScreen>
   );
 };
 
@@ -1654,7 +1653,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     backgroundColor: 'transparent',
-    transition: 'all 0.3s ease',
   },
   legendItemFocused: {
     backgroundColor: Colors.softLightGrey,
