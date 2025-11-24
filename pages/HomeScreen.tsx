@@ -93,7 +93,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToSiteLocations,
   onNavigateToSettings,
 }) => {
-  const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'dashboard' | 'sites' | 'profile'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'home' | 'sites' | 'profile'>('home');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
   const [qrScannerVisible, setQRScannerVisible] = useState(false);
   // notification visibility moved to global navigation context
@@ -208,7 +208,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     return (site.isAccessible ?? true) && (site.distanceFromUser ?? 0) <= 500; // Within 500 meters
   };
 
-  const handleTabPress = (tab: 'capture' | 'readings' | 'dashboard' | 'sites' | 'profile') => {
+  const handleTabPress = (tab: 'capture' | 'readings' | 'home' | 'sites' | 'profile') => {
     setActiveTab(tab);
     switch (tab) {
       case 'capture':
@@ -217,8 +217,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       case 'readings':
         onNavigateToMyReadings();
         break;
-      case 'dashboard':
-        // Already on dashboard - do nothing
+      case 'home':
+        // Already on home - do nothing
         break;
       case 'sites':
         console.log('Navigating to site locations');
@@ -242,6 +242,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         setCurrentScreen('profile');
         break;
       case 'settings':
+        console.log('Settings button pressed, calling onNavigateToSettings');
         onNavigateToSettings();
         break;
     }
@@ -296,9 +297,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const renderCompactHeader = () => {
     const currentHour = new Date().getHours();
     const getGreeting = () => {
-      if (currentHour < 12) return 'Good Morning!';
-      if (currentHour < 17) return 'Good Afternoon!';
-      return 'Good Evening!';
+      if (currentHour < 12) return 'Good Morning';
+      if (currentHour < 17) return 'Good Afternoon';
+      return 'Good Evening';
     };
 
     const getWaterLevelStatus = () => {
@@ -319,15 +320,36 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     return (
       <View style={styles.compactHeader}>
         <View style={styles.greetingSection}>
-          <Text style={[styles.compactGreeting, { fontWeight: 'bold', fontSize: 28, fontStyle: 'italic', textShadowColor: '#222', textShadowOffset: { width: 1, height: 2 }, textShadowRadius: 3, color: '#FFD700' }]}>
-            {getGreeting()}{' '}<Text style={{ color: 'white', fontWeight: 'bold', fontSize: 28, fontStyle: 'italic', textShadowColor: '#222', textShadowOffset: { width: 1, height: 2 }, textShadowRadius: 3 }}>{profile.full_name.split(' ')[0]}</Text>
-          </Text>
-          <View style={styles.statusContainer}>
+          <View style={styles.greetingRow}>
+            {/* Avatar / Initials */}
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarGradient}>
+                <Text style={styles.avatarText}>
+                  {(profile.full_name || 'User')
+                    .split(' ')
+                    .map(n => n?.[0] ?? '')
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase()}
+                </Text>
+              </View>
+            </View>
+
+            {/* Greeting + Name + subtitle */}
+            <View style={styles.greetingTextContainer}>
+              <Text style={styles.greetingLabel}>{getGreeting()},</Text>
+              <Text numberOfLines={1} style={styles.userName}>{(profile.full_name || 'User')}</Text>
+              {profile.role && (<Text style={styles.userRole}>{profile.role}</Text>)}
+            </View>
+          </View>
+          
+          {/* We'll format and enhance the UI of this status container later. */}
+          {/* <View style={styles.compactStatusContainer}>
             <Text style={styles.compactStatusIcon}>{waterStatus.icon}</Text>
             <Text style={[styles.compactStatusText, { color: waterStatus.color }]}>
               {waterStatus.status}
             </Text>
-          </View>
+          </View> */}
         </View>
         
         <View style={styles.quickStats}>
@@ -455,7 +477,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   */
 
   return (
-    <SafeScreen>
+    <SafeScreen backgroundColor={Colors.deepSecurityBlue} statusBarStyle="light" edges={['top']}>
       <View style={styles.container}>
         <Navbar 
           onQRScanPress={() => handleNavbarAction('qr')}
@@ -487,7 +509,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       {/* Welcome heading and action buttons below */}
       <ScrollView
         style={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={Colors.deepSecurityBlue}
+            colors={[Colors.deepSecurityBlue, Colors.aquaTechBlue]}
+            progressViewOffset={40}
+          />
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}
       >
@@ -543,8 +573,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Recent Readings Section */}
         {renderRecentReadings()}
 
-        {/* AI Insights Section */}
-        {/* {renderAIInsights()} */} {/* Temporarily disabled until feature is ready */}
+        {/* AI Insights Section - Temporarily disabled until feature is ready */}
+        {/* {renderAIInsights()} */}
       </ScrollView>
       
         <BottomNavigation
@@ -562,7 +592,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.softLightGrey,
   },
   scrollContainer: {
-    paddingBottom: 0, // No padding for zero gap
+    paddingTop: 5,
+    paddingBottom: 0,
   },
   // Hero Section Styles
   heroContainer: {
@@ -578,7 +609,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   greetingContainer: {
-    flex:1,
+    flex: 1,
   },
   greeting: {
     ...NeumorphicTextStyles.body,
@@ -911,24 +942,6 @@ const styles = StyleSheet.create({
   greetingSection: {
     flex: 1,
   },
-  compactGreeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFD700', // golden yellow
-    marginBottom: 10,
-    letterSpacing: 1,
-    fontFamily: 'sans-serif-condensed',
-    textAlign: 'center',
-  },
-  compactStatusIcon: {
-    fontSize: 16,
-    marginRight: 6,
-  },
-  compactStatusText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: Colors.white,
-  },
   quickStats: {
     flexDirection: 'row',
     gap: 20,
@@ -937,23 +950,78 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quickStatNumber: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: 'white',
-    fontStyle: 'italic',
-    textShadowColor: '#222',
-    textShadowOffset: { width: 1, height: 2 },
-    textShadowRadius: 3,
+    color: Colors.white,
   },
   quickStatLabel: {
     fontSize: 12,
-    color: 'white',
-    fontWeight: 'bold',
-    fontStyle: 'italic',
-    textShadowColor: '#222',
-    textShadowOffset: { width: 1, height: 2 },
-    textShadowRadius: 3,
+    color: Colors.white + 'CC',
     marginTop: 2,
+  },
+  // Greeting Row Styles
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    padding: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  avatarGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
+    backgroundColor: Colors.aquaTechBlue,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  avatarText: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 22,
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  greetingTextContainer: {
+    flex: 1,
+  },
+  greetingLabel: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 2,
+    textTransform: 'capitalize',
+    letterSpacing: 0.3,
+  },
+  userName: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  userRole: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   // Fixed Actions Styles
   fixedActionsContainer: {
