@@ -334,11 +334,7 @@ const Navbar: React.FC<NavbarProps> = ({
 const styles = StyleSheet.create({
   navbar: {
     // Adjust these values to separate from mobile header
-    height: 110, // adjust navbar height
-    // marginTop: 8, // Added top margin
-    paddingTop: 40, // adjust internal top padding
-    paddingBottom: 8, // Added bottom padding
-    
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -348,7 +344,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 0,
     overflow: 'visible', // allow absolute children (notification panel) to overflow
   },
   leftSection: {
@@ -362,13 +358,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   appName: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: Colors.white,
     marginBottom: 2,
   },
   appSubtitle: {
-    fontSize: 12,
+    fontSize: 14,
     color: Colors.white + 'CC',
     fontWeight: '500',
   },
