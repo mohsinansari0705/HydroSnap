@@ -1,21 +1,23 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../lib/colors';
 
 interface BottomNavigationProps {
-  activeTab: 'capture' | 'readings' | 'dashboard' | 'sites' | 'profile';
-  onTabPress: (tab: 'capture' | 'readings' | 'dashboard' | 'sites' | 'profile') => void;
+  activeTab: 'capture' | 'readings' | 'home' | 'sites' | 'profile';
+  onTabPress: (tab: 'capture' | 'readings' | 'home' | 'sites' | 'profile') => void;
 }
 
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabPress }) => {
+  const insets = useSafeAreaInsets();
   
-  // Camera Icon for Capture Readings
-  const CameraIcon = ({ isActive }: { isActive: boolean }) => (
+  // Plus Icon for Capture Readings
+  const PlusIcon = ({ isActive }: { isActive: boolean }) => (
     <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
-      <View style={[styles.cameraBody, { backgroundColor: isActive ? Colors.white : Colors.textSecondary }]}>
-        <View style={[styles.cameraLens, { borderColor: isActive ? Colors.aquaTechBlue : Colors.softLightGrey }]} />
+      <View style={styles.plusContainer}>
+        <View style={[styles.plusVertical, { backgroundColor: isActive ? Colors.white : Colors.textSecondary }]} />
+        <View style={[styles.plusHorizontal, { backgroundColor: isActive ? Colors.white : Colors.textSecondary }]} />
       </View>
-      <View style={[styles.cameraFlash, { backgroundColor: isActive ? Colors.white : Colors.textSecondary }]} />
     </View>
   );
 
@@ -33,23 +35,22 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabPre
   // Home Icon for Dashboard
   const HomeIcon = ({ isActive }: { isActive: boolean }) => (
     <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
-      <View style={styles.house}>
-        <View style={[styles.roof, { borderBottomColor: isActive ? Colors.white : Colors.textSecondary }]} />
-        <View style={[styles.houseBase, { backgroundColor: isActive ? Colors.white : Colors.textSecondary }]}>
-          <View style={[styles.door, { backgroundColor: isActive ? Colors.aquaTechBlue : Colors.softLightGrey }]} />
+      <View style={styles.homeIconWrapper}>
+        <View style={[styles.homeRoof, { borderBottomColor: isActive ? Colors.white : Colors.textSecondary }]} />
+        <View style={[styles.homeBody, { backgroundColor: isActive ? Colors.white : Colors.textSecondary }]}>
+          <View style={[styles.homeDoor, { backgroundColor: isActive ? Colors.deepSecurityBlue : Colors.softLightGrey }]} />
         </View>
       </View>
     </View>
   );
 
-  // Map Pin Icon for Site Locations
-  const MapPinIcon = ({ isActive }: { isActive: boolean }) => (
+  // Location Icon for Site Locations
+  const LocationIcon = ({ isActive }: { isActive: boolean }) => (
     <View style={[styles.iconContainer, isActive && styles.activeIconContainer]}>
-      <View style={styles.pinContainer}>
-        <View style={[styles.pinTop, { backgroundColor: isActive ? Colors.white : Colors.textSecondary }]}>
-          <View style={[styles.pinDot, { backgroundColor: isActive ? Colors.aquaTechBlue : Colors.softLightGrey }]} />
+      <View style={styles.locationContainer}>
+        <View style={[styles.locationOuter, { borderColor: isActive ? Colors.white : Colors.textSecondary }]}>
+          <View style={[styles.locationInner, { backgroundColor: isActive ? Colors.white : Colors.textSecondary }]} />
         </View>
-        <View style={[styles.pinBottom, { backgroundColor: isActive ? Colors.white : Colors.textSecondary }]} />
       </View>
     </View>
   );
@@ -65,7 +66,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabPre
   );
 
   const renderTab = (
-    key: 'capture' | 'readings' | 'dashboard' | 'sites' | 'profile',
+    key: 'capture' | 'readings' | 'home' | 'sites' | 'profile',
     icon: React.ReactNode,
     label: string
   ) => {
@@ -87,12 +88,12 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabPre
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: insets.bottom || 8 }]}>
       <View style={styles.navigation}>
-        {renderTab('capture', <CameraIcon isActive={activeTab === 'capture'} />, 'Capture')}
-        {renderTab('readings', <DocumentIcon isActive={activeTab === 'readings'} />, 'My Readings')}
-        {renderTab('dashboard', <HomeIcon isActive={activeTab === 'dashboard'} />, 'Dashboard')}
-        {renderTab('sites', <MapPinIcon isActive={activeTab === 'sites'} />, 'Site Locations')}
+        {renderTab('capture', <PlusIcon isActive={activeTab === 'capture'} />, 'Capture')}
+        {renderTab('readings', <DocumentIcon isActive={activeTab === 'readings'} />, 'Readings')}
+        {renderTab('home', <HomeIcon isActive={activeTab === 'home'} />, 'Home')}
+        {renderTab('sites', <LocationIcon isActive={activeTab === 'sites'} />, 'Sites')}
         {renderTab('profile', <UserIcon isActive={activeTab === 'profile'} />, 'Profile')}
       </View>
     </View>
@@ -102,25 +103,35 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabPre
 const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.white,
-    borderTopWidth: 1,
-    borderTopColor: Colors.lightShadow,
-    // BOTTOM MARGIN SETTINGS
-    paddingBottom: 45, // adjust bottom spacing
-    marginBottom: 10, // Added extra margin
+    borderTopWidth: 0.5,
+    borderTopColor: Colors.softLightGrey,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 10,
   },
   navigation: {
     flexDirection: 'row',
-    paddingTop: 12,
-    paddingHorizontal: 8,
+    paddingTop: 10,
+    paddingBottom: 8,
+    paddingHorizontal: 12,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 16,
+    marginHorizontal: 2,
   },
   activeTab: {
-    backgroundColor: Colors.aquaTechBlue,
+    backgroundColor: Colors.deepSecurityBlue,
+    shadowColor: Colors.deepSecurityBlue,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   iconContainer: {
     width: 24,
@@ -133,37 +144,36 @@ const styles = StyleSheet.create({
     // Additional styling for active icons if needed
   },
   tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 10,
+    fontWeight: '600',
     color: Colors.textSecondary,
     textAlign: 'center',
+    marginTop: 4,
   },
   activeTabLabel: {
     color: Colors.white,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 
-  // Camera Icon Styles
-  cameraBody: {
-    width: 18,
-    height: 14,
-    borderRadius: 4,
+  // Plus Icon Styles (for Capture)
+  plusContainer: {
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
-  cameraLens: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1.5,
-  },
-  cameraFlash: {
-    width: 4,
-    height: 3,
+  plusVertical: {
+    width: 2.5,
+    height: 16,
     borderRadius: 2,
     position: 'absolute',
-    top: 0,
-    right: 2,
+  },
+  plusHorizontal: {
+    width: 16,
+    height: 2.5,
+    borderRadius: 2,
+    position: 'absolute',
   },
 
   // Document Icon Styles
@@ -182,61 +192,53 @@ const styles = StyleSheet.create({
   },
 
   // Home Icon Styles
-  house: {
+  homeIconWrapper: {
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    height: 20,
+    justifyContent: 'center',
+    height: 22,
   },
-  roof: {
+  homeRoof: {
     width: 0,
     height: 0,
-    borderLeftWidth: 10,
-    borderRightWidth: 10,
-    borderBottomWidth: 8,
+    borderLeftWidth: 11,
+    borderRightWidth: 11,
+    borderBottomWidth: 9,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    marginBottom: 2,
+    marginBottom: 1,
   },
-  houseBase: {
-    width: 16,
-    height: 10,
+  homeBody: {
+    width: 18,
+    height: 11,
     borderRadius: 2,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 2,
   },
-  door: {
-    width: 4,
-    height: 6,
-    borderRadius: 1,
+  homeDoor: {
+    width: 5,
+    height: 7,
+    borderRadius: 1.5,
   },
 
-  // Map Pin Icon Styles
-  pinContainer: {
+  // Location Icon Styles
+  locationContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pinTop: {
-    width: 14,
-    height: 14,
+  locationOuter: {
+    width: 20,
+    height: 20,
     borderRadius: 10,
+    borderWidth: 2.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pinDot: {
+  locationInner: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  pinBottom: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 4,
-    borderRightWidth: 4,
-    borderTopWidth: 6,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-  },
-
   // User Icon Styles
   userContainer: {
     alignItems: 'center',
