@@ -15,9 +15,7 @@ import { supabase } from '../lib/supabase';
 import { Profile } from '../types/profile';
 import {
   createNeumorphicCard,
-  createNeumorphicButton,
   createNeumorphicInput,
-  NeumorphicTextStyles,
 } from '../lib/neumorphicStyles';
 import { useTranslation } from 'react-i18next';
 import { Colors } from '../lib/colors';
