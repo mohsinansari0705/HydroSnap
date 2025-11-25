@@ -18,6 +18,7 @@ import {
   waterLevelReadingsService, 
   NewReadingData 
 } from '../services/waterLevelReadingsService';
+import { useTranslation } from 'react-i18next';
 
 interface NewReadingScreenProps {
   onSubmitReading?: (data: any) => void;
@@ -36,6 +37,7 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
   onCancel,
 }) => {
   // State management
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<ReadingStep>('qr_validation');
   const [validatedSite, setValidatedSite] = useState<ValidatedSiteData | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
@@ -78,7 +80,7 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
 
   const handleSubmitReading = async () => {
     if (!validatedSite || !userLocation || calculatedWaterLevel === null || !capturedPhoto) {
-      Alert.alert('Error', 'Missing required data for submission');
+      Alert.alert(t('common.error'), t('readings.submissionError'));
       return;
     }
 
@@ -98,11 +100,11 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
 
       if (result.success) {
         Alert.alert(
-          'Reading Submitted Successfully! ✅',
-          `Water Level: ${calculatedWaterLevel}cm\nSite: ${validatedSite.name}\nReading ID: ${result.readingId}`,
+          t('readings.readingSubmitted'),
+          `${t('readings.waterLevelLabel')} ${calculatedWaterLevel}cm\n${t('readings.siteInformation')} ${validatedSite.name}\n${t('readings.readingId')} ${result.readingId}`,
           [
             {
-              text: 'OK',
+              text: t('common.ok'),
               onPress: () => {
                 if (onSubmitReading) {
                   onSubmitReading({
@@ -117,11 +119,11 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
           ]
         );
       } else {
-        Alert.alert('Submission Failed', result.message);
+        Alert.alert(t('readings.submissionFailed'), result.message);
         setCurrentStep('confirmation');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit reading. Please try again.');
+      Alert.alert(t('common.error'), t('readings.submissionError'));
       setCurrentStep('confirmation');
     } finally {
       setIsSubmitting(false);
@@ -130,12 +132,12 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
 
   const resetReading = () => {
     Alert.alert(
-      'Start Over?',
-      'This will clear all current data and start a new reading process.',
+      t('common.startOver'),
+      t('readings.startOverConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         { 
-          text: 'Start Over', 
+          text: t('common.startOver'), 
           onPress: () => {
             setCurrentStep('qr_validation');
             setValidatedSite(null);
@@ -155,7 +157,7 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary, marginTop: 16 }]}>
-            Getting your location...
+            {t('readings.gettingLocation')}
           </Text>
         </View>
       );
@@ -207,16 +209,16 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
       <ScrollView style={styles.container}>
         <View style={styles.header}>
           <Text style={[NeumorphicTextStyles.heading, { color: Colors.textPrimary }]}>
-            Water Level Analysis
+            {t('readings.waterLevelAnalysis')}
           </Text>
         </View>
 
         <View style={[createNeumorphicCard(), styles.card]}>
           <Text style={[NeumorphicTextStyles.subheading, { color: Colors.textPrimary }]}>
-            📊 Image Processing Results
+            📊 {t('readings.imageProcessingResults')}
           </Text>
           <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary, marginTop: 8 }]}>
-            The system has analyzed your gauge photo and calculated the water level.
+            {t('readings.imageProcessingDesc')}
           </Text>
 
           <View style={styles.waterLevelDisplay}>
@@ -230,22 +232,22 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
 
           <View style={styles.levelsComparison}>
             <Text style={[NeumorphicTextStyles.caption, { color: Colors.textSecondary, marginBottom: 12 }]}>
-              Site Level References:
+              {t('readings.siteLevelReferences')}
             </Text>
             <View style={styles.levelRow}>
-              <Text style={styles.levelLabel}>Safe Level:</Text>
+              <Text style={styles.levelLabel}>{t('readings.safeLevel')}</Text>
               <Text style={[styles.levelValue, { color: '#10B981' }]}>
                 ≤ {validatedSite.levels.safe} cm
               </Text>
             </View>
             <View style={styles.levelRow}>
-              <Text style={styles.levelLabel}>Warning Level:</Text>
+              <Text style={styles.levelLabel}>{t('readings.warningLevel')}</Text>
               <Text style={[styles.levelValue, { color: '#F59E0B' }]}>
                 {validatedSite.levels.safe + 1} - {validatedSite.levels.warning} cm
               </Text>
             </View>
             <View style={styles.levelRow}>
-              <Text style={styles.levelLabel}>Danger Level:</Text>
+              <Text style={styles.levelLabel}>{t('readings.dangerLevel')}</Text>
               <Text style={[styles.levelValue, { color: '#EF4444' }]}>
                 {'>'}  {validatedSite.levels.warning} cm
               </Text>
@@ -258,7 +260,7 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
           onPress={handleConfirmReading}
         >
           <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.white }]}>
-            Continue to Review
+            {t('readings.continueToReview')}
           </Text>
         </TouchableOpacity>
 
@@ -267,7 +269,7 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
           onPress={() => setCurrentStep('photo_capture')}
         >
           <Text style={[NeumorphicTextStyles.buttonSecondary, { color: Colors.textPrimary }]}>
-            Retake Photo
+            {t('readings.retakePhoto')}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -286,17 +288,17 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
       <ScrollView style={styles.container}>
         <View style={styles.header}>
           <Text style={[NeumorphicTextStyles.heading, { color: Colors.textPrimary }]}>
-            Review Reading
+            {t('readings.reviewReading')}
           </Text>
           <TouchableOpacity style={styles.resetButton} onPress={resetReading}>
-            <Text style={styles.resetText}>Start Over</Text>
+            <Text style={styles.resetText}>{t('common.startOver')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Site Information */}
         <View style={[createNeumorphicCard(), styles.card]}>
           <Text style={[NeumorphicTextStyles.subheading, { color: Colors.textPrimary }]}>
-            📍 Site Information
+            📍 {t('readings.siteInformation')}
           </Text>
           <View style={styles.siteDetails}>
             <Text style={styles.siteTitle}>{validatedSite.name}</Text>
@@ -304,20 +306,20 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
               {validatedSite.location}, {validatedSite.state}
             </Text>
             <Text style={styles.siteRiver}>🌊 {validatedSite.riverName}</Text>
-            <Text style={styles.siteDistance}>📍 Distance: {siteDistance}m from site</Text>
+            <Text style={styles.siteDistance}>📍 {t('readings.distance')} {siteDistance}m</Text>
           </View>
         </View>
 
         {/* Water Level Reading */}
         <View style={[createNeumorphicCard(), styles.card]}>
           <Text style={[NeumorphicTextStyles.subheading, { color: Colors.textPrimary }]}>
-            📊 Water Level Reading
+            📊 {t('readings.waterLevelReading')}
           </Text>
           
           <View style={styles.readingDisplay}>
             <View style={styles.mainReading}>
               <Text style={styles.readingValue}>{calculatedWaterLevel.toFixed(2)}</Text>
-              <Text style={styles.readingUnit}>cm</Text>
+              <Text style={styles.readingUnit}>{t('readings.cm')}</Text>
             </View>
             <View style={[styles.statusBadge, { backgroundColor: waterStatus.color }]}>
               <Text style={styles.statusText}>{waterStatus.message}</Text>
@@ -325,11 +327,11 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
           </View>
 
           <View style={styles.readingMeta}>
-            <Text style={styles.metaItem}>📸 Photo captured and analyzed</Text>
-            <Text style={styles.metaItem}>📍 Location verified within geofence</Text>
-            <Text style={styles.metaItem}>🔍 QR code validated successfully</Text>
+            <Text style={styles.metaItem}>📸 {t('readings.photoCaptured')}</Text>
+            <Text style={styles.metaItem}>📍 {t('readings.locationVerified')}</Text>
+            <Text style={styles.metaItem}>🔍 {t('readings.qrValidated')}</Text>
             <Text style={styles.metaItem}>
-              ⏰ Timestamp: {new Date().toLocaleString()}
+              ⏰ {t('readings.timestamp')} {new Date().toLocaleString()}
             </Text>
           </View>
         </View>
@@ -341,7 +343,7 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
           disabled={isSubmitting}
         >
           <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.white }]}>
-            {isSubmitting ? 'Submitting...' : 'Submit Reading'}
+            {isSubmitting ? t('readings.submitting') : t('readings.submitReading')}
           </Text>
         </TouchableOpacity>
 
@@ -350,7 +352,7 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
           onPress={onCancel}
         >
           <Text style={[NeumorphicTextStyles.buttonSecondary, { color: Colors.textSecondary }]}>
-            Cancel
+            {t('common.cancel')}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -362,10 +364,10 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
       <View style={styles.submissionContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={[NeumorphicTextStyles.subheading, { color: Colors.textPrimary, marginTop: 20 }]}>
-          Submitting Reading...
+          {t('readings.submitting')}
         </Text>
         <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary, marginTop: 8, textAlign: 'center' }]}>
-          Please wait while we save your water level reading to the database.
+          {t('readings.submittingNote')}
         </Text>
       </View>
     );

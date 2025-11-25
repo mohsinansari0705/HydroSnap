@@ -19,6 +19,7 @@ import {
   createNeumorphicInput,
   NeumorphicTextStyles,
 } from '../lib/neumorphicStyles';
+import { useTranslation } from 'react-i18next';
 import { Colors } from '../lib/colors';
 import { useAuth } from '../lib/AuthContext';
 
@@ -28,6 +29,7 @@ interface EditProfileScreenProps {
 
 export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
   const { profile, refreshProfile } = useAuth();
+  const { t } = useTranslation();
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<Profile['role']>('public');
   const [organization, setOrganization] = useState('');
@@ -48,34 +50,34 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
   const roles: { value: Profile['role']; label: string; description: string }[] = [
     { 
       value: 'central_analyst', 
-      label: 'Central Analyst', 
-      description: 'CWC headquarters staff for data analysis'
+      label: t('editProfile.centralAnalyst'), 
+      description: t('editProfile.centralAnalystDesc')
     },
     { 
       value: 'supervisor', 
-      label: 'Supervisor', 
-      description: 'Regional supervisors managing multiple sites'
+      label: t('editProfile.supervisor'), 
+      description: t('editProfile.supervisorDesc')
     },
     { 
       value: 'field_personnel', 
-      label: 'Field Personnel', 
-      description: 'On-ground staff taking water level readings'
+      label: t('editProfile.fieldPersonnel'), 
+      description: t('editProfile.fieldPersonnelDesc')
     },
     { 
       value: 'public', 
-      label: 'Public User', 
-      description: 'General public contributing to monitoring'
+      label: t('editProfile.publicUser'), 
+      description: t('editProfile.publicUserDesc')
     },
   ];
 
   const handleSave = async () => {
     if (!fullName || !organization || !location) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert(t('editProfile.error'), t('editProfile.fillAllFields'));
       return;
     }
 
     if (role === 'field_personnel' && !siteId) {
-      Alert.alert('Error', 'Site ID is required for field personnel');
+      Alert.alert(t('editProfile.error'), t('editProfile.siteIdRequired'));
       return;
     }
 
@@ -94,14 +96,14 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         .eq('id', profile?.id);
 
       if (error) {
-        Alert.alert('Error', error.message);
+        Alert.alert(t('editProfile.error'), error.message);
       } else {
-        Alert.alert('Success', 'Profile updated successfully!');
+        Alert.alert(t('editProfile.success'), t('editProfile.profileUpdated'));
         await refreshProfile();
         onBack();
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert(t('editProfile.error'), t('editProfile.unexpectedError'));
       console.error('Profile update error:', error);
     } finally {
       setLoading(false);
@@ -117,7 +119,7 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Edit Profile</Text>
+        <Text style={styles.title}>{t('editProfile.editProfile')}</Text>
         <View style={{ width: 54 }} />
       </View>
 
@@ -126,9 +128,9 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.formContainer, createNeumorphicCard({ size: 'large', borderRadius: 16 })]}>
-          <Text style={styles.subtitle}>Update your profile information</Text>
+          <Text style={styles.subtitle}>{t('editProfile.updateProfileInfo')}</Text>
 
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={styles.label}>{t('editProfile.fullName')}</Text>
           <TextInput
             style={styles.input}
             placeholder="Full Name"
@@ -138,7 +140,7 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
             editable={!loading}
           />
 
-          <Text style={styles.label}>Role</Text>
+          <Text style={styles.label}>{t('editProfile.role')}</Text>
           <View style={styles.roleContainer}>
             {roles.map((roleOption) => (
               <TouchableOpacity
@@ -170,20 +172,20 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
             ))}
           </View>
 
-          <Text style={styles.label}>Organization</Text>
+          <Text style={styles.label}>{t('editProfile.organization')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Organization (e.g., Central Water Commission)"
+            placeholder={t('editProfile.organizationPlaceholder')}
             value={organization}
             onChangeText={setOrganization}
             autoCapitalize="words"
             editable={!loading}
           />
 
-          <Text style={styles.label}>Location/Region</Text>
+          <Text style={styles.label}>{t('editProfile.location')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Location/Region"
+            placeholder={t('editProfile.location')}
             value={location}
             onChangeText={setLocation}
             autoCapitalize="words"
@@ -192,18 +194,16 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
 
           {role === 'field_personnel' && (
             <View style={styles.siteIdContainer}>
-              <Text style={styles.label}>Site ID</Text>
+              <Text style={styles.label}>{t('editProfile.siteId')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Site ID (e.g., CWC-GAN-001)"
+                placeholder={t('editProfile.siteIdPlaceholder')}
                 value={siteId}
                 onChangeText={setSiteId}
                 autoCapitalize="characters"
                 editable={!loading}
               />
-              <Text style={styles.helperText}>
-                Enter the monitoring site ID assigned to you
-              </Text>
+              <Text style={styles.helperText}>{t('editProfile.siteIdHelper')}</Text>
             </View>
           )}
 
@@ -213,7 +213,7 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
               onPress={onBack}
               disabled={loading}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>{t('editProfile.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.saveButton, loading && styles.buttonDisabled]}
@@ -223,7 +223,7 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
               {loading ? (
                 <ActivityIndicator color={Colors.white} size="small" />
               ) : (
-                <Text style={styles.saveButtonText}>Save Changes</Text>
+                <Text style={styles.saveButtonText}>{t('editProfile.saveChanges')}</Text>
               )}
             </TouchableOpacity>
           </View>

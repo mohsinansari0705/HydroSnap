@@ -9,6 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { Colors } from '../lib/colors';
+import { useTranslation } from 'react-i18next';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 
 interface OnboardingScreenProps {
@@ -17,83 +18,31 @@ interface OnboardingScreenProps {
 
 const { width } = Dimensions.get('window');
 
-const onboardingData = [
-  {
-    id: 1,
-    title: 'Welcome to HydroSnap',
-    description: 'Revolutionary water level monitoring with AI-powered accuracy and security. Monitor river levels like never before.',
-    gradientColors: [Colors.aquaTechBlue, Colors.deepSecurityBlue],
-    image: require('../assets/icons/HydroSnap_logo_untexted.png'),
-  },
-  {
-    id: 2,
-    title: 'Smart Geofencing',
-    description: 'GPS-based location validation ensures readings are captured only from designated monitoring sites. No more location fraud.',
-    icon: '📍',
-    gradientColors: [Colors.validationGreen, Colors.aquaTechBlue],
-    image: require('../assets/icons/HydroSnap_logo_untexted.png'),
-  },
-  {
-    id: 3,
-    title: 'QR Code Verification',
-    description: 'Scan site-specific QR codes to verify authenticity and prevent unauthorized data entry from wrong locations.',
-    icon: '📱',
-    gradientColors: [Colors.deepSecurityBlue, Colors.pinkAccent],
-    image: require('../assets/icons/HydroSnap_logo_untexted.png'),
-  },
-  {
-    id: 4,
-    title: 'AI-Powered Reading',
-    description: 'Advanced OCR and computer vision automatically detect water levels from gauge photos with 99% accuracy.',
-    icon: '🤖',
-    gradientColors: [Colors.pinkAccent, Colors.aquaTechBlue],
-    image: require('../assets/icons/HydroSnap_logo_untexted.png'),
-  },
-  {
-    id: 5,
-    title: 'Secure Photo Capture',
-    description: 'Live camera enforcement with metadata tagging. No gallery uploads allowed - ensuring authentic, timestamped evidence.',
-    icon: '📸',
-    gradientColors: [Colors.warning, Colors.validationGreen],
-    image: require('../assets/icons/HydroSnap_logo_untexted.png'),
-  },
-  {
-    id: 6,
-    title: 'Offline Sync Ready',
-    description: 'Work seamlessly in remote areas. Data syncs automatically when connectivity returns. Never lose critical measurements.',
-    icon: '📡',
-    gradientColors: [Colors.info, Colors.deepSecurityBlue],
-    image: require('../assets/icons/HydroSnap_logo_untexted.png'),
-  },
-  {
-    id: 7,
-    title: 'Real-Time Monitoring',
-    description: 'Live dashboard integration with tamper detection and instant alerts. Supervisors track data across multiple sites.',
-    icon: '📊',
-    gradientColors: [Colors.validationGreen, Colors.pinkAccent],
-    image: require('../assets/icons/HydroSnap_logo_untexted.png'),
-  },
-  {
-    id: 8,
-    title: 'Ready to Start?',
-    description: 'Join thousands of field personnel ensuring accurate, secure water level monitoring for flood prevention and disaster preparedness.',
-    gradientColors: [Colors.aquaTechBlue, Colors.deepSecurityBlue],
-    image: require('../assets/icons/HydroSnap_logo.png'),
-  },
-];
+// We'll build the onboarding data using translation keys inside the component
 
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const onboardingData = [
+    { id: 1, title: t('onboarding.slide1Title'), description: t('onboarding.slide1Desc'), gradientColors: [Colors.aquaTechBlue, Colors.deepSecurityBlue], image: require('../assets/icons/HydroSnap_logo_untexted.png') },
+    { id: 2, title: t('onboarding.slide2Title'), description: t('onboarding.slide2Desc'), icon: '📍', gradientColors: [Colors.validationGreen, Colors.aquaTechBlue], image: require('../assets/icons/HydroSnap_logo_untexted.png') },
+    { id: 3, title: t('onboarding.slide3Title'), description: t('onboarding.slide3Desc'), icon: '📱', gradientColors: [Colors.deepSecurityBlue, Colors.pinkAccent], image: require('../assets/icons/HydroSnap_logo_untexted.png') },
+    { id: 4, title: t('onboarding.slide4Title'), description: t('onboarding.slide4Desc'), icon: '🤖', gradientColors: [Colors.pinkAccent, Colors.aquaTechBlue], image: require('../assets/icons/HydroSnap_logo_untexted.png') },
+    { id: 5, title: t('onboarding.slide5Title'), description: t('onboarding.slide5Desc'), icon: '📸', gradientColors: [Colors.warning, Colors.validationGreen], image: require('../assets/icons/HydroSnap_logo_untexted.png') },
+    { id: 6, title: t('onboarding.slide6Title'), description: t('onboarding.slide6Desc'), icon: '📡', gradientColors: [Colors.info, Colors.deepSecurityBlue], image: require('../assets/icons/HydroSnap_logo_untexted.png') },
+    { id: 7, title: t('onboarding.slide7Title'), description: t('onboarding.slide7Desc'), icon: '📊', gradientColors: [Colors.validationGreen, Colors.pinkAccent], image: require('../assets/icons/HydroSnap_logo_untexted.png') },
+    { id: 8, title: t('onboarding.slide8Title'), description: t('onboarding.slide8Desc'), gradientColors: [Colors.aquaTechBlue, Colors.deepSecurityBlue], image: require('../assets/icons/HydroSnap_logo.png') },
+  ];
   const scrollViewRef = useRef<ScrollView>(null);
 
   const getFeatureHighlight = (id: number): string => {
     const highlights: { [key: number]: string } = {
-      2: "Prevents location spoofing",
-      3: "Ensures site authenticity", 
-      4: "99% accuracy rate",
-      5: "Tamper-proof evidence",
-      6: "Works without internet",
-      7: "Real-time alerts & monitoring"
+      2: t('onboarding.slide2Highlight'),
+      3: t('onboarding.slide3Highlight'), 
+      4: t('onboarding.slide4Highlight'),
+      5: t('onboarding.slide5Highlight'),
+      6: t('onboarding.slide6Highlight'),
+      7: t('onboarding.slide7Highlight')
     };
     return highlights[id] || "";
   };
@@ -204,13 +153,13 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
             />
           </View>
           <Text style={styles.progressText}>
-            {currentIndex + 1} of {onboardingData.length}
+            {t('onboarding.progressOf', { current: currentIndex + 1, total: onboardingData.length })}
           </Text>
         </View>
         
         {/* Skip Button */}
         <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -239,7 +188,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
             onPress={handlePrevious}
             style={[styles.navButton, styles.previousButton, createNeumorphicCard({ size: 'medium' })]}
           >
-            <Text style={styles.previousButtonText}>Previous</Text>
+            <Text style={styles.previousButtonText}>{t('onboarding.previous')}</Text>
           </TouchableOpacity>
         )}
         
@@ -252,7 +201,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
           ]}
         >
           <Text style={styles.nextButtonText}>
-            {currentIndex === onboardingData.length - 1 ? 'Get Started' : 'Next'}
+            {currentIndex === onboardingData.length - 1 ? t('onboarding.getStarted') : t('onboarding.next')}
           </Text>
         </TouchableOpacity>
       </View>

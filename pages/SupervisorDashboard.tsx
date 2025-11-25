@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Colors } from '../lib/colors';
+import { useTranslation } from 'react-i18next';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { Profile } from '../types/profile';
 
@@ -55,6 +56,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   onNavigateToSettings,
   onSignOut,
 }) => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<DashboardStats>({
     totalSites: 0,
     activeSites: 0,
@@ -146,7 +148,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       ]);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
-      Alert.alert('Error', 'Failed to load dashboard data. Please try again.');
+      Alert.alert(t('supervisor.error'), t('supervisor.failedToLoad'));
     }
   };
 
@@ -155,7 +157,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     try {
       await fetchDashboardData();
     } catch (error) {
-      Alert.alert('Error', 'Failed to refresh data. Please try again.');
+      Alert.alert(t('supervisor.error'), t('supervisor.failedToRefresh'));
     } finally {
       setRefreshing(false);
     }
@@ -195,11 +197,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
     if (diffHours > 0) {
-      return `${diffHours}h ago`;
+      return t('supervisor.hoursAgo', { hours: diffHours });
     } else if (diffMinutes > 0) {
-      return `${diffMinutes}m ago`;
+      return t('supervisor.minutesAgo', { minutes: diffMinutes });
     } else {
-      return 'Just now';
+      return t('supervisor.justNow');
     }
   };
 
@@ -208,10 +210,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       <View style={styles.headerContent}>
         <View>
           <Text style={[styles.greeting, NeumorphicTextStyles.heading]}>
-            Supervisor Dashboard
+            {t('supervisor.supervisorDashboard')}
           </Text>
           <Text style={[styles.welcomeText, NeumorphicTextStyles.caption]}>
-            Welcome back, {profile.full_name.split(' ')[0]}
+            {t('supervisor.welcomeBack', { name: profile.full_name.split(' ')[0] })}
           </Text>
         </View>
         <View style={styles.headerActions}>
@@ -239,13 +241,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           <Text style={[styles.statValue, { color: Colors.deepSecurityBlue }]}>
             {stats.totalSites}
           </Text>
-          <Text style={styles.statLabel}>Total Sites</Text>
+          <Text style={styles.statLabel}>{t('supervisor.totalSites')}</Text>
         </View>
         <View style={[styles.statCard, createNeumorphicCard({ size: 'small' })]}>
           <Text style={[styles.statValue, { color: Colors.validationGreen }]}>
             {stats.activeSites}
           </Text>
-          <Text style={styles.statLabel}>Active Sites</Text>
+          <Text style={styles.statLabel}>{t('supervisor.activeSites')}</Text>
         </View>
       </View>
       
@@ -254,13 +256,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           <Text style={[styles.statValue, { color: Colors.alertRed }]}>
             {stats.alertSites}
           </Text>
-          <Text style={styles.statLabel}>Alerts</Text>
+          <Text style={styles.statLabel}>{t('supervisor.alerts')}</Text>
         </View>
         <View style={[styles.statCard, createNeumorphicCard({ size: 'small' })]}>
           <Text style={[styles.statValue, { color: Colors.aquaTechBlue }]}>
             {stats.todayReadings}
           </Text>
-          <Text style={styles.statLabel}>Today's Readings</Text>
+          <Text style={styles.statLabel}>{t('supervisor.todayReadings')}</Text>
         </View>
       </View>
 
@@ -269,13 +271,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           <Text style={[styles.statValue, { color: Colors.warning }]}>
             {stats.pendingReviews}
           </Text>
-          <Text style={styles.statLabel}>Pending Reviews</Text>
+          <Text style={styles.statLabel}>{t('supervisor.pendingReviews')}</Text>
         </View>
         <View style={[styles.statCard, createNeumorphicCard({ size: 'small' })]}>
           <Text style={[styles.statValue, { color: Colors.validationGreen }]}>
             {stats.dataAccuracy}%
           </Text>
-          <Text style={styles.statLabel}>Data Accuracy</Text>
+          <Text style={styles.statLabel}>{t('supervisor.dataAccuracy')}</Text>
         </View>
       </View>
     </View>
@@ -296,7 +298,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
             styles.tabText,
             selectedView === tab && styles.activeTabText,
           ]}>
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab === 'overview' && t('supervisor.overview')}
+            {tab === 'alerts' && t('supervisor.alerts')}
+            {tab === 'activity' && t('supervisor.activity')}
           </Text>
         </TouchableOpacity>
       ))}
@@ -306,7 +310,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const renderAlerts = () => (
     <View style={[styles.alertsCard, createNeumorphicCard({ size: 'medium' })]}>
       <Text style={[styles.cardTitle, NeumorphicTextStyles.subheading]}>
-        🚨 Critical Alerts
+        {t('supervisor.criticalAlerts')}
       </Text>
       
       {alerts.length > 0 ? (
@@ -328,7 +332,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           </TouchableOpacity>
         ))
       ) : (
-        <Text style={styles.emptyText}>No active alerts</Text>
+        <Text style={styles.emptyText}>{t('supervisor.noActiveAlerts')}</Text>
       )}
     </View>
   );
@@ -336,7 +340,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const renderActivity = () => (
     <View style={[styles.activityCard, createNeumorphicCard({ size: 'medium' })]}>
       <Text style={[styles.cardTitle, NeumorphicTextStyles.subheading]}>
-        📊 Recent Activity
+        {t('supervisor.recentActivity')}
       </Text>
       
       {recentActivity.length > 0 ? (
@@ -355,14 +359,14 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               <Text style={styles.activityTime}>{formatTimestamp(activity.timestamp)}</Text>
             </View>
             <Text style={styles.activityAction}>{activity.action}</Text>
-            <Text style={styles.activityOperator}>By: {activity.operator}</Text>
+            <Text style={styles.activityOperator}>{t('supervisor.by', { operator: activity.operator })}</Text>
             {activity.waterLevel && (
-              <Text style={styles.activityLevel}>Water Level: {activity.waterLevel} cm</Text>
+              <Text style={styles.activityLevel}>{t('supervisor.waterLevel', { level: activity.waterLevel })}</Text>
             )}
           </TouchableOpacity>
         ))
       ) : (
-        <Text style={styles.emptyText}>No recent activity</Text>
+        <Text style={styles.emptyText}>{t('supervisor.noRecentActivity')}</Text>
       )}
     </View>
   );

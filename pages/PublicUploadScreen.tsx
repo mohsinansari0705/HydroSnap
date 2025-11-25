@@ -10,6 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { Colors } from '../lib/colors';
+import { useTranslation } from 'react-i18next';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 
 interface PublicUploadScreenProps {
@@ -31,6 +32,7 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
   onSubmitReport,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [waterLevel, setWaterLevel] = useState('');
@@ -62,13 +64,13 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
     try {
       // TODO: Implement camera functionality
       Alert.alert(
-        'Photo Capture',
-        'Camera functionality will be implemented with expo-camera.',
-        [{ text: 'OK' }]
+        t('publicUpload.photoCapture'),
+        t('publicUpload.cameraImplemented'),
+        [{ text: t('common.ok') }]
       );
     } catch (error) {
       console.error('Photo capture failed:', error);
-      Alert.alert('Capture Failed', 'Unable to capture photo. Please try again.');
+      Alert.alert(t('publicUpload.captureFailed'), t('publicUpload.captureError'));
     }
   };
 
@@ -83,8 +85,8 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
   const handleSubmit = async () => {
     if (!canSubmit()) {
       Alert.alert(
-        'Incomplete Information',
-        'Please provide location and a detailed description (minimum 10 characters).'
+        t('publicUpload.incompleteInfo'),
+        t('publicUpload.incompleteMessage')
       );
       return;
     }
@@ -107,13 +109,13 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
       await onSubmitReport(reportData);
       
       Alert.alert(
-        'Report Submitted',
-        'Thank you for your contribution! Your report has been submitted for review.',
-        [{ text: 'OK', onPress: onCancel }]
+        t('publicUpload.reportSubmitted'),
+        t('publicUpload.thankYou'),
+        [{ text: t('common.ok'), onPress: onCancel }]
       );
     } catch (error) {
       console.error('Submit failed:', error);
-      Alert.alert('Submission Failed', 'Unable to submit report. Please try again.');
+      Alert.alert(t('publicUpload.submissionFailed'), t('publicUpload.tryAgain'));
     } finally {
       setIsSubmitting(false);
     }
@@ -124,14 +126,14 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
       {/* Header */}
       <View style={[styles.header, createNeumorphicCard({ size: 'medium' })]}>
         <TouchableOpacity style={styles.backButton} onPress={onCancel}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>{t('publicUpload.back')}</Text>
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={[styles.headerTitle, NeumorphicTextStyles.heading]}>
-            Report Water Situation
+            {t('publicUpload.reportWaterSituation')}
           </Text>
           <Text style={[styles.headerSubtitle, NeumorphicTextStyles.caption]}>
-            Help us monitor water levels in your area
+            {t('publicUpload.helpMonitor')}
           </Text>
         </View>
       </View>
@@ -142,10 +144,10 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
           <Text style={styles.infoIcon}>ℹ️</Text>
           <View style={styles.infoContent}>
             <Text style={[styles.infoTitle, NeumorphicTextStyles.subheading]}>
-              Public Contribution
+              {t('publicUpload.publicContribution')}
             </Text>
             <Text style={[styles.infoText, NeumorphicTextStyles.caption]}>
-              Your reports help authorities monitor water conditions. All submissions are reviewed before being added to our system.
+              {t('publicUpload.contributionInfo')}
             </Text>
           </View>
         </View>
@@ -153,12 +155,12 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
         {/* Location Input */}
         <View style={[styles.inputCard, createNeumorphicCard({ size: 'medium' })]}>
           <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>
-            📍 Location *
+            {t('publicUpload.location')}
           </Text>
           <View style={[styles.inputContainer, createNeumorphicCard({ size: 'small', depressed: true })]}>
             <TextInput
               style={styles.input}
-              placeholder="Enter the location (e.g., Yamuna River near ITO Bridge)"
+              placeholder={t('publicUpload.locationPlaceholder')}
               placeholderTextColor={Colors.textLight}
               value={location}
               onChangeText={setLocation}
@@ -166,21 +168,19 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
             />
           </View>
           {currentLocation && (
-            <Text style={styles.gpsInfo}>
-              📡 GPS coordinates will be attached automatically
-            </Text>
+            <Text style={styles.gpsInfo}>{t('publicUpload.gpsAttached')}</Text>
           )}
         </View>
 
         {/* Description Input */}
         <View style={[styles.inputCard, createNeumorphicCard({ size: 'medium' })]}>
           <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>
-            📝 Description *
+            {t('publicUpload.description')}
           </Text>
           <View style={[styles.textAreaContainer, createNeumorphicCard({ size: 'small', depressed: true })]}>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Describe what you observed (water level, flooding, drought conditions, etc.)"
+              placeholder={t('publicUpload.descriptionPlaceholder')}
               placeholderTextColor={Colors.textLight}
               value={description}
               onChangeText={setDescription}
@@ -188,20 +188,18 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
               numberOfLines={4}
             />
           </View>
-          <Text style={styles.characterCount}>
-            {description.length}/500 characters (minimum 10 required)
-          </Text>
+          <Text style={styles.characterCount}>{t('publicUpload.characterCount', { count: description.length })}</Text>
         </View>
 
         {/* Water Level Input (Optional) */}
         <View style={[styles.inputCard, createNeumorphicCard({ size: 'medium' })]}>
           <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>
-            💧 Water Level (Optional)
+            {t('publicUpload.waterLevelOptional')}
           </Text>
           <View style={[styles.inputContainer, createNeumorphicCard({ size: 'small', depressed: true })]}>
             <TextInput
               style={styles.input}
-              placeholder="Enter approximate water level if known"
+              placeholder={t('publicUpload.waterLevelPlaceholder')}
               placeholderTextColor={Colors.textLight}
               value={waterLevel}
               onChangeText={setWaterLevel}
@@ -209,15 +207,13 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
             />
             <Text style={styles.inputUnit}>cm</Text>
           </View>
-          <Text style={styles.helpText}>
-            If you can see a gauge or have measurement tools
-          </Text>
+          <Text style={styles.helpText}>{t('publicUpload.waterLevelHelper')}</Text>
         </View>
 
         {/* Photo Section */}
         <View style={[styles.photoCard, createNeumorphicCard({ size: 'medium' })]}>
           <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>
-            📸 Photo Evidence (Optional)
+            {t('publicUpload.photoEvidence')}
           </Text>
           
           {capturedPhoto ? (
@@ -227,7 +223,7 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
                 style={[styles.retakeButton, createNeumorphicCard({ size: 'small' })]}
                 onPress={takePhoto}
               >
-                <Text style={styles.retakeButtonText}>Retake Photo</Text>
+                <Text style={styles.retakeButtonText}>{t('publicUpload.retakePhoto')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -236,10 +232,8 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
               onPress={takePhoto}
             >
               <Text style={styles.photoPlaceholderIcon}>📷</Text>
-              <Text style={styles.photoPlaceholderText}>Tap to Add Photo</Text>
-              <Text style={styles.photoPlaceholderSubtext}>
-                Photos help verify your report
-              </Text>
+              <Text style={styles.photoPlaceholderText}>{t('publicUpload.tapToAddPhoto')}</Text>
+              <Text style={styles.photoPlaceholderSubtext}>{t('publicUpload.photosHelp')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -247,33 +241,31 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
         {/* Contact Information (Optional) */}
         <View style={[styles.inputCard, createNeumorphicCard({ size: 'medium' })]}>
           <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>
-            📞 Contact Information (Optional)
+            {t('publicUpload.contactInfo')}
           </Text>
           <View style={[styles.inputContainer, createNeumorphicCard({ size: 'small', depressed: true })]}>
             <TextInput
               style={styles.input}
-              placeholder="Phone or email (in case we need to follow up)"
+              placeholder={t('publicUpload.contactPlaceholder')}
               placeholderTextColor={Colors.textLight}
               value={contactInfo}
               onChangeText={setContactInfo}
             />
           </View>
-          <Text style={styles.helpText}>
-            Your contact info will be kept private
-          </Text>
+          <Text style={styles.helpText}>{t('publicUpload.contactPrivacy')}</Text>
         </View>
 
         {/* Privacy Notice */}
         <View style={[styles.privacyCard, createNeumorphicCard({ size: 'medium' })]}>
           <Text style={[styles.privacyTitle, NeumorphicTextStyles.subheading]}>
-            🔒 Privacy & Data Use
+            {t('publicUpload.privacyDataUse')}
           </Text>
           <Text style={[styles.privacyText, NeumorphicTextStyles.caption]}>
-            • Your location data helps identify affected areas{'\n'}
-            • Photos may be used for verification and analysis{'\n'}
-            • Contact information is optional and kept confidential{'\n'}
-            • Reports are reviewed before being made public{'\n'}
-            • Data is used for flood monitoring and public safety
+            {t('publicUpload.privacyPoint1')}{'\n'}
+            {t('publicUpload.privacyPoint2')}{'\n'}
+            {t('publicUpload.privacyPoint3')}{'\n'}
+            {t('publicUpload.privacyPoint4')}{'\n'}
+            {t('publicUpload.privacyPoint5')}
           </Text>
         </View>
       </ScrollView>
@@ -296,7 +288,7 @@ const PublicUploadScreen: React.FC<PublicUploadScreenProps> = ({
             styles.submitButtonText,
             { color: canSubmit() ? Colors.white : Colors.textLight }
           ]}>
-            {isSubmitting ? 'Submitting Report...' : '📤 Submit Report'}
+            {isSubmitting ? t('publicUpload.submittingReport') : t('publicUpload.submitReport')}
           </Text>
         </TouchableOpacity>
       </View>
