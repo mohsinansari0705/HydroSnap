@@ -1,6 +1,9 @@
 {
   "common": {
     "appName": "HydroSnap",
+    "tagline": "Smart Water Level Monitoring",
+    "dashboard": "Dashboard",
+    "unknown": "Unknown",
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
@@ -122,6 +125,15 @@
   },
   "readings": {
     "myReadings": "My Readings",
+    "back": "Back",
+    "noReadings": "No recent readings available",
+    "waterLevelLabel": "Water Level:",
+    "danger": "DANGER",
+    "dangerStatus": "DANGER",
+    "noRecentReadings": "No recent readings available",
+    "tryAgain": "Try again",
+    "noSitesAvailable": "No sites available to show readings.",
+    "loadMore": "Load more",
     "waterLevelReading": "Water Level Reading",
     "waterLevelAnalysis": "Water Level Analysis",
     "imageProcessingResults": "Image Processing Results",
@@ -151,6 +163,11 @@
     "gettingLocation": "Getting your location...",
     "capturePhoto": "Capture Photo",
     "captureGauge": "Capture gauge photo"
+    ,"latestWaterLevelReading": "Latest Water Level Reading"
+    ,"automatedReadingDesc": "Automated reading captured via HydroSnap mobile app"
+    ,"manualSiteInspection": "Manual Site Inspection"
+    ,"fieldVerificationDesc": "Field verification and water level measurement"
+    ,"lastReading": "Last Reading:" 
   },
   "settings": {
     "settings": "Settings",
@@ -216,19 +233,57 @@
     "active": "Active",
     "inactive": "Inactive",
     "lastLogin": "Last Login",
-    "memberSince": "Member Since"
-  },
-  "notifications": {
-    "notifications": "Notifications",
-    "noNotifications": "No notifications",
-    "markAllRead": "Mark all as read",
-    "clearAll": "Clear all"
+    "memberSince": "Member Since",
+    "unknownUser": "Unknown User",
+    "infoContact": "Info & Contact",
+    "systemMetadata": "System & Account Metadata",
+    "userId": "User ID",
+    "profileCreated": "Profile Created",
+    "lastUpdated": "Last Updated",
+    "lastActivity": "Last Activity",
+    "roleLabel": "Role",
+    "siteIdLabel": "Site ID",
+    "phoneLabel": "Phone No",
+    "emailLabel": "Email",
+    "genderLabel": "Gender",
+    "locationLabel": "Location",
+    "organizationLabel": "Organization"
   },
   "alerts": {
     "highWaterLevel": "High Water Level Alert",
     "waterLevelApproaching": "Water level approaching danger mark at gauge station",
     "risingWaterLevels": "Rising Water Levels",
-    "steadyIncrease": "Steady increase in water level due to upstream rainfall"
+    "steadyIncrease": "Steady increase in water level due to upstream rainfall",
+    "waterLevel": "Water Level:",
+    "threshold": "Threshold:",
+    "floodAlerts": "Flood Alerts"
+  },
+  "siteLocations": {
+    "siteLocations": "Site Locations",
+    "loadingSites": "Loading Sites...",
+    "fetchingSites": "Fetching monitoring sites from database",
+    "noSitesFound": "No Sites Found",
+    "noSitesInArea": "No monitoring sites found in your area",
+    "enableLocation": "Enable location services to find nearby sites",
+    "failedToLoad": "Failed to Load Sites",
+    "tryAgain": "Try Again",
+    "searchPlaceholder": "Search sites by name, location, or river...",
+    "allSites": "All Sites",
+    "rivers": "Rivers",
+    "reservoirs": "Reservoirs",
+    "canals": "Canals",
+    "lakes": "Lakes",
+    "sortBy": "Sort by:",
+    "name": "Name",
+    "distance": "Distance",
+    "status": "Status",
+    "sitesFound": "Sites Found",
+    "within10km": "Within 10km",
+    "alerts": "Alerts",
+    "warning": "Warning:",
+    "danger": "Danger:",
+    "last": "Last:",
+    "monitoring": "MONITORING"
   },
   "errors": {
     "genericError": "An error occurred. Please try again.",
@@ -237,5 +292,76 @@
     "unauthorized": "You are not authorized to perform this action.",
     "notFound": "The requested resource was not found.",
     "serverError": "Server error. Please try again later."
+  }
+  ,"qr": {
+    "scanMonitoringSiteQR": "Scan Monitoring Site QR Code",
+    "positionInstruction": "Position the QR code within the frame",
+    "validatingSite": "Validating site...",
+    "retryScan": "Retry Scan",
+    "requestingCameraPermission": "Requesting camera permission...",
+    "noCameraAccess": "No access to camera",
+    "grantPermission": "Grant Permission"
+  }
+  ,"notifications": {
+    "notifications": "Notifications",
+    "noNotifications": "No notifications",
+    "markAllRead": "Mark all as read",
+    "clearAll": "Clear all",
+    "noActiveAlerts": "No active alerts"
+  },
+  "dashboard": {
+    "analyticsDashboard": "Analytics Dashboard",
+    "dataInsightsExport": "Data Insights & Export",
+    "pieChart": "Pie Chart",
+    "donutChart": "Donut Chart",
+    "lineChart": "Line Chart",
+    "areaChart": "Area Chart",
+    "barChart": "Bar Chart",
+    "stackedBar": "Stacked Bar",
+    "pieChartDesc": "Distribution of sites by danger level",
+    "donutChartDesc": "Distribution of sites by type",
+    "lineChartDesc": "Water level trends over time",
+    "areaChartDesc": "Cumulative water level readings",
+    "barChartDesc": "Readings count by site",
+    "stackedBarDesc": "Danger levels by site",
+    "totalSites": "Total Sites",
+    "totalReadings": "Total Readings",
+    "dangerAlerts": "Danger Alerts",
+    "warnings": "Warnings",
+    "viewDatasetCharts": "View Dataset Charts",
+    "monitoringSites": "Monitoring Sites",
+    "waterLevelReadings": "Water Level Readings",
+    "currentlyViewing": "Currently Viewing",
+    "dangerLevelTrend": "Danger Level Trend (7 Days)",
+    "waterLevelTrend": "Water Level Trend (7 Days)",
+    "readingsByDay": "Readings by Day (7 Days)",
+    "dangerDistribution": "Danger Distribution",
+    "dangerByType": "Danger by Type",
+    "siteTypeDistribution": "Site Type Distribution",
+    "readingsPerSite": "Readings Per Site",
+    "dangerLevelsBySite": "Danger Levels by Site",
+    "tryAgain": "Try Again"
+  },
+  "siteDetails": {
+    "back": "← Back",
+    "currentWaterLevel": "Current Water Level",
+    "lastReadingDetails": "Last Reading Details",
+    "timestamp": "Timestamp:",
+    "operator": "Operator:",
+    "qrCode": "QR Code:",
+    "overview": "Overview",
+    "history": "History",
+    "map": "Map",
+    "readingHistory": "Reading History",
+    "locationGeofence": "Location & Geofence",
+    "mapViewComingSoon": "Map View Coming Soon",
+    "coordinates": "Coordinates:",
+    "geofenceRadius": "Geofence Radius:",
+    "takeNewReading": "📸 Take New Reading",
+    "loadingSiteDetails": "Loading site details...",
+    "by": "By:",
+    "danger": "Danger:",
+    "warning": "Warning:",
+    "safe": "Safe:"
   }
 }

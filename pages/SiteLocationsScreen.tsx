@@ -14,6 +14,7 @@ import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { useMonitoringSites } from '../hooks/useMonitoringSites';
 import { MonitoringSite } from '../services/monitoringSitesService';
+import { useTranslation } from 'react-i18next';
 
 interface SiteLocationsScreenProps {
   onNavigateToSite: (siteId: string) => void;
@@ -29,6 +30,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
   onBack,
   userLocation,
 }) => {
+  const { t } = useTranslation();
   console.log('SiteLocationsScreen: Component loaded');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'river' | 'reservoir' | 'canal' | 'lake'>('all');
@@ -139,7 +141,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
       <View style={styles.siteMiddle}>
         <View style={styles.siteTypeBadge}>
           <Text style={styles.siteTypeText}>
-            {item.site_type?.toUpperCase() || 'MONITORING'}
+            {item.site_type?.toUpperCase() || t('siteLocations.monitoring').toUpperCase()}
           </Text>
         </View>
         <Text style={styles.organization}>
@@ -150,15 +152,15 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
       <View style={styles.siteFooter}>
         <View style={styles.levelsInfo}>
           <Text style={styles.levelText}>
-            ⚠️ Warning: {item.warning_level}cm
+            ⚠️ {t('siteLocations.warning')} {item.warning_level}cm
           </Text>
           <Text style={styles.levelText}>
-            🚨 Danger: {item.danger_level}cm
+            🚨 {t('siteLocations.danger')} {item.danger_level}cm
           </Text>
         </View>
         {item.lastReading && (
           <Text style={styles.lastReading}>
-            Last: {item.lastReading.waterLevel}cm ({item.lastReading.timestamp})
+            {t('siteLocations.last')} {item.lastReading.waterLevel}cm ({item.lastReading.timestamp})
           </Text>
         )}
       </View>
@@ -168,9 +170,9 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
   const renderLoadingState = () => (
     <View style={styles.loadingContainer}>
       <ActivityIndicator size="large" color={Colors.aquaTechBlue} />
-      <Text style={styles.loadingTitle}>Loading Sites...</Text>
+      <Text style={styles.loadingTitle}>{t('siteLocations.loadingSites')}</Text>
       <Text style={styles.loadingText}>
-        Fetching monitoring sites from database
+        {t('siteLocations.fetchingSites')}
       </Text>
     </View>
   );
@@ -178,11 +180,11 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyIcon}>🗺️</Text>
-      <Text style={styles.emptyTitle}>No Sites Found</Text>
+      <Text style={styles.emptyTitle}>{t('siteLocations.noSitesFound')}</Text>
       <Text style={styles.emptyText}>
         {userLocation 
-          ? 'No monitoring sites found in your area' 
-          : 'Enable location services to find nearby sites'}
+          ? t('siteLocations.noSitesInArea') 
+          : t('siteLocations.enableLocation')}
       </Text>
     </View>
   );
@@ -190,10 +192,10 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
   const renderErrorState = () => (
     <View style={styles.errorContainer}>
       <Text style={styles.errorIcon}>⚠️</Text>
-      <Text style={styles.errorTitle}>Failed to Load Sites</Text>
+      <Text style={styles.errorTitle}>{t('siteLocations.failedToLoad')}</Text>
       <Text style={styles.errorText}>{error}</Text>
       <TouchableOpacity onPress={refresh} style={styles.retryButton}>
-        <Text style={styles.retryButtonText}>Try Again</Text>
+          <Text style={styles.retryButtonText}>{t('siteLocations.tryAgain')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -206,7 +208,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Site Locations ({sortedSites.length})</Text>
+          <Text style={styles.headerTitle}>{t('siteLocations.siteLocations')} ({sortedSites.length})</Text>
         </View>
       </View>
 
@@ -242,7 +244,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
                     <Text style={styles.searchIcon}>🔍</Text>
                     <TextInput
                       style={styles.searchInput}
-                      placeholder="Search sites by name, location, or river..."
+                      placeholder={t('siteLocations.searchPlaceholder')}
                       value={searchQuery}
                       onChangeText={setSearchQuery}
                       placeholderTextColor={Colors.textSecondary}
@@ -257,22 +259,22 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
 
                   {/* Filter Chips */}
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer}>
-                    {renderFilterChip('All Sites', 'all', '🏗️')}
-                    {renderFilterChip('Rivers', 'river', '🌊')}
-                    {renderFilterChip('Reservoirs', 'reservoir', '🏞️')}
-                    {renderFilterChip('Canals', 'canal', '🚰')}
-                    {renderFilterChip('Lakes', 'lake', '🏔️')}
+                    {renderFilterChip(t('siteLocations.allSites'), 'all', '🏗️')}
+                    {renderFilterChip(t('siteLocations.rivers'), 'river', '🌊')}
+                    {renderFilterChip(t('siteLocations.reservoirs'), 'reservoir', '🏞️')}
+                    {renderFilterChip(t('siteLocations.canals'), 'canal', '🚰')}
+                    {renderFilterChip(t('siteLocations.lakes'), 'lake', '🏔️')}
                   </ScrollView>
 
                   {/* Sort Options */}
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortContainer}>
-                    <Text style={styles.sortLabel}>Sort by:</Text>
+                    <Text style={styles.sortLabel}>{t('siteLocations.sortBy')}</Text>
                     <TouchableOpacity
                       style={[styles.sortChip, sortBy === 'name' && styles.sortChipActive]}
                       onPress={() => setSortBy('name')}
                     >
                       <Text style={[styles.sortChipText, sortBy === 'name' && styles.sortChipTextActive]}>
-                        Name
+                        {t('siteLocations.name')}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -280,7 +282,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
                       onPress={() => setSortBy('distance')}
                     >
                       <Text style={[styles.sortChipText, sortBy === 'distance' && styles.sortChipTextActive]}>
-                        Distance
+                        {t('siteLocations.distance')}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -288,7 +290,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
                       onPress={() => setSortBy('status')}
                     >
                       <Text style={[styles.sortChipText, sortBy === 'status' && styles.sortChipTextActive]}>
-                        Status
+                        {t('siteLocations.status')}
                       </Text>
                     </TouchableOpacity>
                   </ScrollView>
@@ -306,7 +308,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
           <View style={styles.statCircle}>
             <Text style={styles.statNumber}>{sortedSites.length}</Text>
           </View>
-          <Text style={styles.statLabel}>Sites Found</Text>
+          <Text style={styles.statLabel}>{t('siteLocations.sitesFound')}</Text>
         </View>
 
         {userLocation && (
@@ -316,7 +318,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
                 {sortedSites.filter((site: MonitoringSite) => (site.distanceFromUser || 0) <= 10000).length}
               </Text>
             </View>
-            <Text style={styles.statLabel}>Within 10km</Text>
+            <Text style={styles.statLabel}>{t('siteLocations.within10km')}</Text>
           </View>
         )}
 
@@ -326,7 +328,7 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
               {sortedSites.filter((site: MonitoringSite) => site.status === 'danger' || site.status === 'warning').length}
             </Text>
           </View>
-          <Text style={styles.statLabel}>Alerts</Text>
+          <Text style={styles.statLabel}>{t('siteLocations.alerts')}</Text>
         </View>
       </View>
     </View>

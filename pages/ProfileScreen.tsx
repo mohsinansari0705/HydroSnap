@@ -1,6 +1,7 @@
 import { ScrollView } from 'react-native';
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Colors } from '../lib/colors';
 import { Profile } from '../types/profile';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ interface ProfileScreenProps {
 const defaultProfileImage = 'https://example.com/default-profile.png'; // Add your default image URL here
 
 export default function ProfileScreen({ profile: initialProfile, onEditProfile, onBack }: ProfileScreenProps) {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<Profile | null>(initialProfile || null);
 
   useEffect(() => {
@@ -59,9 +61,9 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
         <TouchableOpacity onPress={onBack} style={styles.navButton}>
           <Text style={styles.navButtonText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Profile</Text>
+        <Text style={styles.navTitle}>{t('profile.profile')}</Text>
         <TouchableOpacity onPress={onEditProfile} style={styles.navButton}>
-          <Text style={styles.navButtonText}>Edit</Text>
+          <Text style={styles.navButtonText}>{t('profile.editProfile')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -75,65 +77,65 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
               <MaterialCommunityIcons name="pencil" size={20} color="white" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.fullName}>{profile?.full_name || 'Unknown User'}</Text>
-          <Text style={styles.role}>{`Role: ${profile?.role || 'N/A'}`}</Text>
+          <Text style={styles.fullName}>{profile?.full_name || t('profile.unknownUser')}</Text>
+          <Text style={styles.role}>{`${t('profile.roleLabel')}: ${profile?.role || 'N/A'}`}</Text>
         </View>
 
         {/* INFO & CONTACT SECTION */}
         <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Info & Contact</Text>
+          <Text style={styles.sectionTitle}>{t('profile.infoContact')}</Text>
           <View style={styles.infoItem}>
             <MaterialCommunityIcons name="ruler-square" size={24} color="gray" />
-            <Text style={styles.infoText}>Site ID: {profile?.site_id || 'N/A'}</Text>
+            <Text style={styles.infoText}>{t('profile.siteIdLabel')}: {profile?.site_id || 'N/A'}</Text>
           </View>
           <View style={styles.infoItem}>
             <MaterialCommunityIcons name="phone" size={24} color="gray" />
-            <Text style={styles.infoText}>Phone No: {profile?.phone || 'N/A'}</Text>
+            <Text style={styles.infoText}>{t('profile.phoneLabel')}: {profile?.phone || 'N/A'}</Text>
           </View>
           <View style={styles.infoItem}>
             <MaterialCommunityIcons name="gender-male-female" size={24} color="gray" />
-            <Text style={styles.infoText}>Gender: {profile?.gender || 'N/A'}</Text>
+            <Text style={styles.infoText}>{t('profile.genderLabel')}: {profile?.gender || 'N/A'}</Text>
           </View>
           <View style={styles.infoItem}>
             <MaterialCommunityIcons name="email" size={24} color="gray" />
-            <Text style={styles.infoText}>Email: {profile?.email || 'N/A'}</Text>
+            <Text style={styles.infoText}>{t('profile.emailLabel')}: {profile?.email || 'N/A'}</Text>
           </View>
           <View style={styles.infoItem}>
             <MaterialCommunityIcons name="map-marker" size={24} color="gray" />
-            <Text style={styles.infoText}>Location: {profile?.location || 'N/A'}</Text>
+            <Text style={styles.infoText}>{t('profile.locationLabel')}: {profile?.location || 'N/A'}</Text>
           </View>
           <View style={styles.infoItem}>
             <MaterialCommunityIcons name="office-building" size={24} color="gray" />
-            <Text style={styles.infoText}>Organization: {profile?.organization || 'N/A'}</Text>
+            <Text style={styles.infoText}>{t('profile.organizationLabel')}: {profile?.organization || 'N/A'}</Text>
           </View>
         </View>
 
         {/* SYSTEM & ACCOUNT METADATA SECTION */}
         <View style={styles.metadataSection}>
-          <Text style={styles.sectionTitle}>System & Account Metadata</Text>
+          <Text style={styles.sectionTitle}>{t('profile.systemMetadata')}</Text>
           <View style={styles.metadataItem}>
             <MaterialCommunityIcons name="account" size={24} color="gray" />
-            <Text style={styles.metadataText}>User ID: {profile?.id || 'N/A'}</Text>
+            <Text style={styles.metadataText}>{t('profile.userId')}: {profile?.id || 'N/A'}</Text>
           </View>
           <View style={styles.metadataItem}>
             <MaterialCommunityIcons name="check-circle" size={24} color={profile?.is_active ? 'green' : 'red'} />
-            <Text style={styles.metadataText}>Account Status: {profile?.is_active ? 'Active' : 'Inactive'}</Text>
+            <Text style={styles.metadataText}>{t('profile.accountStatus')}: {profile?.is_active ? t('profile.active') : t('profile.inactive')}</Text>
           </View>
           <View style={styles.metadataItem}>
             <MaterialCommunityIcons name="calendar" size={24} color="gray" />
-            <Text style={styles.metadataText}>Profile Created: {profile?.created_at ? format(new Date(profile.created_at), 'PPpp') : 'N/A'}</Text>
+            <Text style={styles.metadataText}>{t('profile.profileCreated')}: {profile?.created_at ? format(new Date(profile.created_at), 'PPpp') : 'N/A'}</Text>
           </View>
           <View style={styles.metadataItem}>
             <MaterialCommunityIcons name="update" size={24} color="gray" />
-            <Text style={styles.metadataText}>Last Updated: {profile?.updated_at ? format(new Date(profile.updated_at), 'PPpp') : 'N/A'}</Text>
+            <Text style={styles.metadataText}>{t('profile.lastUpdated')}: {profile?.updated_at ? format(new Date(profile.updated_at), 'PPpp') : 'N/A'}</Text>
           </View>
           <View style={styles.metadataItem}>
             <MaterialCommunityIcons name="login" size={24} color="gray" />
-            <Text style={styles.metadataText}>Last Login: {profile?.last_login_at ? format(new Date(profile.last_login_at), 'PPpp') : 'N/A'}</Text>
+            <Text style={styles.metadataText}>{t('profile.lastLogin')}: {profile?.last_login_at ? format(new Date(profile.last_login_at), 'PPpp') : 'N/A'}</Text>
           </View>
           <View style={styles.metadataItem}>
             <MaterialCommunityIcons name="clock" size={24} color="gray" />
-            <Text style={styles.metadataText}>Last Activity: {profile?.last_activity_at ? format(new Date(profile.last_activity_at), 'PPpp') : 'N/A'}</Text>
+            <Text style={styles.metadataText}>{t('profile.lastActivity')}: {profile?.last_activity_at ? format(new Date(profile.last_activity_at), 'PPpp') : 'N/A'}</Text>
           </View>
         </View>
       </ScrollView>

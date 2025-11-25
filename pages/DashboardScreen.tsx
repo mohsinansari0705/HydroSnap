@@ -12,6 +12,7 @@ import {
   Animated,
   RefreshControl,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { PieChart, BarChart, LineChart } from 'react-native-gifted-charts';
 import { Colors } from '../lib/colors';
 import SafeScreen from '../components/SafeScreen';
@@ -41,6 +42,7 @@ interface ChartData {
 }
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [chartLoading, setChartLoading] = useState(false);
@@ -152,7 +154,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      Alert.alert('Error', 'Failed to load dashboard data');
+      Alert.alert(t('common.error'), t('dashboard.tryAgain'));
     } finally {
       setLoading(false);
     }
@@ -276,7 +278,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             
             const pieCharts = [
               {
-                title: 'Site Types Distribution',
+                title: t('dashboard.siteTypeDistribution'),
                 labels: Object.keys(siteTypes),
                 values: Object.values(siteTypes) as number[],
                 colors: siteColors,
@@ -286,7 +288,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             // Add river chart only if there are river sites
             if (riverLabels.length > 0) {
               pieCharts.push({
-                title: 'River Sites by Danger Level',
+                title: t('dashboard.dangerLevelsBySite'),
                 labels: riverLabels,
                 values: riverValues,
                 colors: riverColors,
@@ -296,7 +298,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             // Add reservoir chart only if there are reservoir sites
             if (reservoirLabels.length > 0) {
               pieCharts.push({
-                title: 'Reservoir/Dam Sites by Danger Level',
+                title: t('dashboard.dangerLevelsBySite'),
                 labels: reservoirLabels,
                 values: reservoirValues,
                 colors: reservoirColors,
@@ -429,14 +431,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
               colors: methodData.map(d => d.color),
               pieCharts: [
                 {
-                  title: 'Reading Methods',
+                  title: t('dashboard.readingsPerSite'),
                   labels: methodData.map(d => d.label),
                   values: methodData.map(d => d.value),
                   colors: methodData.map(d => d.color),
                 },
                 {
-                  title: 'Water Level Status',
-                  labels: ['Danger', 'Warning', 'Normal'],
+                  title: t('dashboard.dangerDistribution'),
+                  labels: [t('home.danger'), t('home.warning'), t('home.normal')],
                   values: [dangerReadings, warningReadings, normalReadings],
                   colors: [Colors.criticalRed, Colors.warningYellow, Colors.validationGreen],
                 }
@@ -522,9 +524,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
             // Sort by status priority (danger > warning > normal)
             const statusData = [
-              { label: 'Danger', value: statusCounts.danger, color: Colors.criticalRed },
-              { label: 'Warning', value: statusCounts.warning, color: Colors.warningYellow },
-              { label: 'Normal', value: statusCounts.normal, color: Colors.validationGreen },
+              { label: t('home.danger'), value: statusCounts.danger, color: Colors.criticalRed },
+              { label: t('home.warning'), value: statusCounts.warning, color: Colors.warningYellow },
+              { label: t('home.normal'), value: statusCounts.normal, color: Colors.validationGreen },
             ].sort((a, b) => b.value - a.value);
             
             setChartData({
@@ -532,7 +534,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
               values: statusData.map(d => d.value),
               colors: statusData.map(d => d.color),
               pieCharts: [{
-                title: 'Water Level Status Distribution',
+                title: t('dashboard.dangerDistribution'),
                 labels: statusData.map(d => d.label),
                 values: statusData.map(d => d.value),
                 colors: statusData.map(d => d.color),
@@ -572,7 +574,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
       await generateChartData('pie', dataset);
     } catch (error) {
       console.error(`Error loading ${dataset} data:`, error);
-      Alert.alert('Error', `Failed to load ${dataset} data`);
+      Alert.alert(t('common.error'), t('dashboard.tryAgain'));
     } finally {
       setLoading(false);
     }
@@ -610,12 +612,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
   );
 
   const chartTypes: Array<{ type: ChartType; icon: string; label: string; description: string }> = [
-    { type: 'pie', icon: '🥧', label: 'Pie Chart', description: 'Show data as portions of a whole' },
-    { type: 'donut', icon: '🍩', label: 'Donut Chart', description: 'Ring-shaped pie chart' },
-    { type: 'line', icon: '📈', label: 'Line Chart', description: 'Display trends over time' },
-    { type: 'area', icon: '🌊', label: 'Area Chart', description: 'Filled line chart' },
-    { type: 'bar', icon: '📊', label: 'Bar Chart', description: 'Compare values side by side' },
-    { type: 'stackedBar', icon: '📚', label: 'Stacked Bar', description: 'Layered bar comparison' },
+    { type: 'pie', icon: '🥧', label: t('dashboard.pieChart'), description: t('dashboard.pieChartDesc') },
+    { type: 'donut', icon: '🍩', label: t('dashboard.donutChart'), description: t('dashboard.donutChartDesc') },
+    { type: 'line', icon: '📈', label: t('dashboard.lineChart'), description: t('dashboard.lineChartDesc') },
+    { type: 'area', icon: '🌊', label: t('dashboard.areaChart'), description: t('dashboard.areaChartDesc') },
+    { type: 'bar', icon: '📊', label: t('dashboard.barChart'), description: t('dashboard.barChartDesc') },
+    { type: 'stackedBar', icon: '📚', label: t('dashboard.stackedBar'), description: t('dashboard.stackedBarDesc') },
   ];
 
   const getChartLabel = (type: ChartType) => {
@@ -625,7 +627,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
   const renderChartTypeSelector = () => (
     <View style={[styles.chartSelector, createNeumorphicCard({ size: 'medium' })]}>
-      <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>📊 Chart Type</Text>
+      <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>📊 {t('dashboard.barChart')}</Text>
       <TouchableOpacity
         style={[styles.selectButton, createNeumorphicButton('primary', { size: 'medium', borderRadius: 12 })]}
         onPress={() => setChartModalVisible(true)}
@@ -646,7 +648,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
       <View style={styles.modalOverlay}>
         <View style={[styles.modalContent, createNeumorphicCard({ size: 'large' })]}>
           <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, NeumorphicTextStyles.heading]}>Select Chart Type</Text>
+            <Text style={[styles.modalTitle, NeumorphicTextStyles.heading]}>{t('dashboard.barChart')}</Text>
             <TouchableOpacity onPress={() => setChartModalVisible(false)} style={styles.modalCloseButton}>
               <Text style={styles.modalCloseText}>✕</Text>
             </TouchableOpacity>
@@ -695,7 +697,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
       return (
         <View style={[styles.chartContainer, createNeumorphicCard({ size: 'large' })]}>
           <ActivityIndicator size="large" color={Colors.aquaTechBlue} />
-          <Text style={styles.noDataText}>Loading chart...</Text>
+          <Text style={styles.noDataText}>{t('common.loading')}</Text>
         </View>
       );
     }
@@ -703,7 +705,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
     if (!chartData || chartData.values.length === 0) {
       return (
         <View style={[styles.chartContainer, createNeumorphicCard({ size: 'large' })]}>
-          <Text style={styles.noDataText}>No data available for chart</Text>
+          <Text style={styles.noDataText}>{t('dashboard.tryAgain')}</Text>
         </View>
       );
     }
@@ -712,7 +714,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
       return (
         <View style={[styles.chartContainer, createNeumorphicCard({ size: 'large' })]}>
           <ActivityIndicator size="large" color={Colors.aquaTechBlue} />
-          <Text style={styles.noDataText}>Preparing chart...</Text>
+          <Text style={styles.noDataText}>{t('common.loading')}</Text>
         </View>
       );
     }
@@ -892,7 +894,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                     <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
                       {pieChartData.title}
                     </Text>
-                    <Text style={styles.chartHelperText}>Tap chart or legend items to highlight</Text>
+                    <Text style={styles.chartHelperText}>{t('dashboard.dataInsightsExport')}</Text>
                   </View>
                   <View style={styles.pieChartContainer}>
                     <View style={styles.pieChartCenter}>
@@ -1026,9 +1028,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
           >
             <View style={styles.chartHeader}>
               <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
-                {selectedDataset === 'sites' ? 'Danger Level Trend' : selectedDataset === 'readings' ? 'Water Level Trend' : 'Data Trend'}
+                {selectedDataset === 'sites' ? t('dashboard.dangerLevelTrend') : selectedDataset === 'readings' ? t('dashboard.waterLevelTrend') : t('dashboard.waterLevelTrend')}
               </Text>
-              <Text style={styles.chartHelperText}>Swipe left/right • Long press for details</Text>
+              <Text style={styles.chartHelperText}>{t('dashboard.dataInsightsExport')}</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={true}>
               <View style={styles.giftedChartWrapper}>
@@ -1099,9 +1101,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
           >
             <View style={styles.chartHeader}>
               <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
-                {selectedDataset === 'sites' ? 'Danger Level Trend' : selectedDataset === 'readings' ? 'Water Level Trend' : 'Data Trend'}
+                {selectedDataset === 'sites' ? t('dashboard.dangerLevelTrend') : selectedDataset === 'readings' ? t('dashboard.waterLevelTrend') : t('dashboard.waterLevelTrend')}
               </Text>
-              <Text style={styles.chartHelperText}>Swipe left/right • Long press for details</Text>
+              <Text style={styles.chartHelperText}>{t('dashboard.dataInsightsExport')}</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={true}>
               <View style={styles.giftedChartWrapper}>
@@ -1169,9 +1171,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
           <View style={[styles.chartContainer, createNeumorphicCard({ size: 'large' })]}>
             <View style={styles.chartHeader}>
               <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
-                {selectedDataset === 'sites' ? 'Danger Level Distribution' : selectedDataset === 'readings' ? 'Water Level Distribution' : 'Data Distribution'}
+                {selectedDataset === 'sites' ? t('dashboard.dangerDistribution') : selectedDataset === 'readings' ? t('dashboard.dangerDistribution') : t('dashboard.dangerDistribution')}
               </Text>
-              <Text style={styles.chartHelperText}>Swipe to view all bars</Text>
+              <Text style={styles.chartHelperText}>{t('dashboard.dataInsightsExport')}</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={true}>
               <View style={styles.giftedChartWrapper}>
@@ -1208,9 +1210,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
   const renderDatasetButtons = () => (
     <View style={[styles.exportSection, createNeumorphicCard({ size: 'medium' })]}>
-      <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>📊 View Dataset Charts</Text>
+      <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>📊 {t('dashboard.viewDatasetCharts')}</Text>
       <Text style={styles.exportDescription}>
-        Click to view detailed charts for specific datasets
+        {t('dashboard.dataInsightsExport')}
       </Text>
       
       <View style={styles.exportButtons}>
@@ -1228,9 +1230,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
           ) : (
             <>
               <Text style={styles.exportButtonIcon}>🗺️</Text>
-              <Text style={styles.exportButtonText}>Monitoring Sites</Text>
+              <Text style={styles.exportButtonText}>{t('dashboard.monitoringSites')}</Text>
               <Text style={styles.exportButtonSubtext}>
-                {selectedDataset === 'sites' ? 'Currently Viewing' : 'View charts & analysis'}
+                {selectedDataset === 'sites' ? t('dashboard.currentlyViewing') : t('dashboard.dataInsightsExport')}
               </Text>
             </>
           )}
@@ -1250,9 +1252,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
           ) : (
             <>
               <Text style={styles.exportButtonIcon}>📊</Text>
-              <Text style={styles.exportButtonText}>Water Level Readings</Text>
+              <Text style={styles.exportButtonText}>{t('dashboard.waterLevelReadings')}</Text>
               <Text style={styles.exportButtonSubtext}>
-                {selectedDataset === 'readings' ? 'Currently Viewing' : 'View charts & analysis'}
+                {selectedDataset === 'readings' ? t('dashboard.currentlyViewing') : t('dashboard.dataInsightsExport')}
               </Text>
             </>
           )}
@@ -1272,13 +1274,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
         <View style={styles.headerContent}>
           <Text style={[styles.headerTitle, NeumorphicTextStyles.heading]}>
             {selectedDataset === 'sites' 
-              ? 'Monitoring Sites' 
+              ? t('dashboard.monitoringSites') 
               : selectedDataset === 'readings' 
-              ? 'Water Level Readings' 
-              : 'Analytics Dashboard'}
+              ? t('dashboard.waterLevelReadings') 
+              : t('dashboard.analyticsDashboard')}
           </Text>
           <Text style={[styles.headerSubtitle, NeumorphicTextStyles.caption]}>
-            Data Insights & Export
+            {t('dashboard.dataInsightsExport')}
           </Text>
         </View>
       </View>
@@ -1304,10 +1306,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
             {/* Statistics Cards */}
             <View style={styles.statsGrid}>
-          {renderStatCard('Total Sites', stats.totalSites, '🏗️', Colors.aquaTechBlue)}
-          {renderStatCard('Total Readings', stats.totalReadings, '📊', Colors.deepSecurityBlue)}
-          {renderStatCard('Danger Alerts', stats.dangerSites, '🚨', Colors.criticalRed)}
-          {renderStatCard('Warnings', stats.warningSites, '⚠️', Colors.warningYellow)}
+          {renderStatCard(t('dashboard.totalSites'), stats.totalSites, '🏗️', Colors.aquaTechBlue)}
+          {renderStatCard(t('dashboard.totalReadings'), stats.totalReadings, '📊', Colors.deepSecurityBlue)}
+          {renderStatCard(t('dashboard.dangerAlerts'), stats.dangerSites, '🚨', Colors.criticalRed)}
+          {renderStatCard(t('dashboard.warnings'), stats.warningSites, '⚠️', Colors.warningYellow)}
         </View>
           </>
         ) : (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, TouchableOpacity, StyleSheet, Text, Modal, Pressable, ScrollView, Animated } from 'react-native';
 import { Colors } from '../lib/colors';
 import { Alert } from '../types/alerts';
@@ -16,10 +17,11 @@ const Navbar: React.FC<NavbarProps> = ({
   onNotificationPress,
   onSettingsPress,
 }) => {
+  const { t } = useTranslation();
   console.log('Navbar: onSettingsPress is', typeof onSettingsPress);
   const [showMenu, setShowMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const { notificationsVisible, hideNotifications, toggleNotifications, navigateToSite, navigateToSettings, navigateToProfile, navigateToDashboard } = useNavigation();
+  const { navigateToSite, navigateToSettings, navigateToProfile, navigateToDashboard } = useNavigation();
 
   // Sample notifications for testing
   const sampleNotifications: Alert[] = [
@@ -104,12 +106,6 @@ const Navbar: React.FC<NavbarProps> = ({
     setShowMenu(!showMenu);
   };
 
-  const handleMenuItemPress = (action: () => void) => {
-    console.log('Menu item pressed, calling action');
-    setShowMenu(false);
-    action();
-  };
-
   // QR Code Icon SVG
   const QRIcon = () => (
     <View style={styles.iconContainer}>
@@ -166,8 +162,8 @@ const Navbar: React.FC<NavbarProps> = ({
       <View style={styles.leftSection}>
         <View style={styles.brandContainer}>
           <View style={styles.appInfo}>
-            <Text style={styles.appName}>HydroSnap</Text>
-            <Text style={styles.appSubtitle}>Smart Water Level Monitoring</Text>
+            <Text style={styles.appName}>{t('common.appName')}</Text>
+            <Text style={styles.appSubtitle}>{t('common.tagline', { defaultValue: 'Smart Water Level Monitoring' })}</Text>
           </View>
         </View>
       </View>
@@ -212,7 +208,7 @@ const Navbar: React.FC<NavbarProps> = ({
               <View style={styles.modalContentWrapper} pointerEvents="box-none">
                 <Animated.View style={[styles.modalCard, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]} pointerEvents="auto"> 
                   <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Flood Alerts</Text>
+                    <Text style={styles.modalTitle}>{t('home.floodAlertStatus')}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <TouchableOpacity
                         onPress={() => {
@@ -221,7 +217,7 @@ const Navbar: React.FC<NavbarProps> = ({
                         }}
                         style={[styles.markAllButton]}
                       >
-                        <Text style={styles.markAllText}>Mark all read</Text>
+                        <Text style={styles.markAllText}>{t('notifications.markAllRead')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => {
@@ -238,7 +234,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   {/* Reuse NotificationPanel's content but render inline here for tighter UX control */}
                   <ScrollView style={styles.notificationListScroll} contentContainerStyle={styles.notificationListContainer} scrollEnabled={true} nestedScrollEnabled={true}>
                     {alerts.length === 0 ? (
-                      <Text style={styles.noAlertsText}>No active alerts</Text>
+                      <Text style={styles.noAlertsText}>{t('notifications.noActiveAlerts', { defaultValue: 'No active alerts' })}</Text>
                     ) : (
                       alerts.map((alert) => (
                         <TouchableOpacity
@@ -290,11 +286,11 @@ const Navbar: React.FC<NavbarProps> = ({
             <Pressable style={styles.menuModalBackdrop} onPress={() => setShowMenu(false)}>
               <View style={styles.menuModalWrapper} pointerEvents="box-none">
                 <View style={styles.dropdownModalContent}>
-                  {(
+                      {(
                     [
-                      { key: 'profile', label: '👤 Profile', disabled: false, action: navigateToProfile, icon: null },
-                      { key: 'dashboard', label: 'Dashboard', disabled: false, action: navigateToDashboard, icon: <DashboardIcon /> },
-                      { key: 'settings', label: '⚙️ Settings', disabled: false, action: onSettingsPress || navigateToSettings, icon: null },
+                      { key: 'profile', label: `👤 ${t('profile.profile')}`, disabled: false, action: navigateToProfile, icon: null },
+                      { key: 'dashboard', label: t('common.dashboard', { defaultValue: 'Dashboard' }), disabled: false, action: navigateToDashboard, icon: <DashboardIcon /> },
+                      { key: 'settings', label: `⚙️ ${t('settings.settings')}`, disabled: false, action: onSettingsPress || navigateToSettings, icon: null },
                     ] as Array<any>
                   ).map((item) => (
                     item.disabled ? (

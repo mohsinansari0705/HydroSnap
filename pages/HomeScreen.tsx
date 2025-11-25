@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { QRScanner } from '../components/QRScanner';
 import {
   View,
@@ -33,57 +34,7 @@ interface HomeScreenProps {
 
 
 
-// Flood alerts data
-const floodAlerts = [
-  {
-    id: 'flood_1',
-    title: 'High Water Level Alert',
-    description: 'Water level approaching danger mark at gauge station',
-    location: 'Brahmaputra River - Guwahati',
-    date: '2025-10-14',
-    type: 'flood_alert' as const,
-    severity: 'critical' as const,
-    waterLevel: 142.5,
-    dangerLevel: 145.0,
-  },
-  {
-    id: 'flood_2',
-    title: 'Rising Water Levels',
-    description: 'Steady increase in water level due to upstream rainfall',
-    location: 'Ganges River - Patna',
-    date: '2025-10-14',
-    type: 'flood_alert' as const,
-    severity: 'warning' as const,
-    waterLevel: 48.2,
-    dangerLevel: 50.0,
-  },
-];
-
-// Recent readings data
-const recentReadings = [
-  {
-    id: 'reading_1',
-    title: 'Latest Water Level Reading',
-    description: 'Automated reading captured via HydroSnap mobile app',
-    location: 'Narmada River - Bhopal',
-    date: '2025-10-14',
-    type: 'reading' as const,
-    severity: 'low' as const,
-    waterLevel: 35.8,
-    fieldPersonnel: 'Rajesh Kumar',
-  },
-  {
-    id: 'reading_2',
-    title: 'Manual Site Inspection',
-    description: 'Field verification and water level measurement',
-    location: 'Yamuna River - Agra',
-    date: '2025-10-14',
-    type: 'reading' as const,
-    severity: 'low' as const,
-    waterLevel: 28.4,
-    fieldPersonnel: 'Priya Sharma',
-  },
-];
+// (Moved floodAlerts and recentReadings inside component to access translations)
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
   profile,
@@ -93,6 +44,58 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToSiteLocations,
   onNavigateToSettings,
 }) => {
+  const { t } = useTranslation();
+  // Flood alerts data (localized)
+  const floodAlerts = [
+    {
+      id: 'flood_1',
+      title: t('alerts.highWaterLevel'),
+      description: t('alerts.waterLevelApproaching'),
+      location: 'Brahmaputra River - Guwahati',
+      date: '2025-10-14',
+      type: 'flood_alert' as const,
+      severity: 'critical' as const,
+      waterLevel: 142.5,
+      dangerLevel: 145.0,
+    },
+    {
+      id: 'flood_2',
+      title: t('alerts.risingWaterLevels'),
+      description: t('alerts.steadyIncrease'),
+      location: 'Ganges River - Patna',
+      date: '2025-10-14',
+      type: 'flood_alert' as const,
+      severity: 'warning' as const,
+      waterLevel: 48.2,
+      dangerLevel: 50.0,
+    },
+  ];
+
+  // Recent readings data (localized)
+  const recentReadings = [
+    {
+      id: 'reading_1',
+      title: t('readings.latestWaterLevelReading'),
+      description: t('readings.automatedReadingDesc'),
+      location: 'Narmada River - Bhopal',
+      date: '2025-10-14',
+      type: 'reading' as const,
+      severity: 'low' as const,
+      waterLevel: 35.8,
+      fieldPersonnel: 'Rajesh Kumar',
+    },
+    {
+      id: 'reading_2',
+      title: t('readings.manualSiteInspection'),
+      description: t('readings.fieldVerificationDesc'),
+      location: 'Yamuna River - Agra',
+      date: '2025-10-14',
+      type: 'reading' as const,
+      severity: 'low' as const,
+      waterLevel: 28.4,
+      fieldPersonnel: 'Priya Sharma',
+    },
+  ];
   const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'home' | 'sites' | 'profile'>('home');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
   const [qrScannerVisible, setQRScannerVisible] = useState(false);
@@ -159,7 +162,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       console.log('[HomeScreen] Cleared cache for fresh data refresh');
       await refresh();
     } catch (error) {
-      Alert.alert('Error', 'Failed to refresh data. Please try again.');
+      Alert.alert(t('common.error'), t('home.refreshDataError'));
     }
   };
 
@@ -167,10 +170,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     console.log('🐛 Running debug tests from HomeScreen...');
     try {
       await DebugUtils.runAllTests();
-      Alert.alert('Debug Complete', 'Check the console for detailed debug information.');
+      Alert.alert(t('home.debugComplete'), t('home.debugCompleteMessage'));
     } catch (error) {
       console.error('Debug tests failed:', error);
-      Alert.alert('Debug Failed', 'Debug tests encountered an error. Check console for details.');
+      Alert.alert(t('home.debugFailed'), t('home.debugFailedMessage'));
     }
   };
 
@@ -192,15 +195,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const getStatusText = (status: MonitoringSite['status']) => {
     switch (status) {
       case 'normal':
-        return 'Normal';
+        return t('home.normal');
       case 'warning':
-        return 'Warning';
+        return t('home.warning');
       case 'danger':
-        return 'Danger';
+        return t('home.danger');
       case 'reading_due':
-        return 'Reading Due';
+        return t('home.readingDue');
       default:
-        return 'Unknown';
+        return t('common.unknown', { defaultValue: 'Unknown' });
     }
   };
 
@@ -297,25 +300,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const renderCompactHeader = () => {
     const currentHour = new Date().getHours();
     const getGreeting = () => {
-      if (currentHour < 12) return 'Good Morning';
-      if (currentHour < 17) return 'Good Afternoon';
-      return 'Good Evening';
+      if (currentHour < 12) return t('home.goodMorning');
+      if (currentHour < 17) return t('home.goodAfternoon');
+      return t('home.goodEvening');
     };
-
-    const getWaterLevelStatus = () => {
-      const warningSites = displaySites.filter(site => site.status === 'warning').length;
-      const dangerSites = displaySites.filter(site => site.status === 'danger').length;
-      
-      if (dangerSites > 0) {
-        return { status: 'Critical', color: Colors.alertRed, icon: '🚨' };
-      } else if (warningSites > 0) {
-        return { status: 'Monitoring', color: Colors.warning, icon: '⚠️' };
-      } else {
-        return { status: 'Normal', color: Colors.validationGreen, icon: '✅' };
-      }
-    };
-
-    const waterStatus = getWaterLevelStatus();
 
     return (
       <View style={styles.compactHeader}>
@@ -355,15 +343,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         <View style={styles.quickStats}>
           <View style={styles.quickStatItem}>
             <Text style={styles.quickStatNumber}>{displaySites.length}</Text>
-            <Text style={styles.quickStatLabel}>Sites</Text>
+            <Text style={styles.quickStatLabel}>{t('home.sites')}</Text>
           </View>
           <View style={styles.quickStatItem}>
             <Text style={styles.quickStatNumber}>{todaysReadingsCount}</Text>
-            <Text style={styles.quickStatLabel}>Readings</Text>
+            <Text style={styles.quickStatLabel}>{t('home.readings')}</Text>
           </View>
           <View style={styles.quickStatItem}>
             <Text style={styles.quickStatNumber}>{floodAlertsCount}</Text>
-            <Text style={styles.quickStatLabel}>Alerts</Text>
+            <Text style={styles.quickStatLabel}>{t('home.alerts')}</Text>
           </View>
         </View>
       </View>
@@ -377,7 +365,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         onPress={() => onNavigateToNewReading('capture')}
       >
         <Text style={styles.primaryActionIcon}>📸</Text>
-        <Text style={styles.primaryActionText}>Capture Reading</Text>
+        <Text style={styles.primaryActionText}>{t('home.captureReading')}</Text>
       </TouchableOpacity>
       
       <TouchableOpacity 
@@ -385,7 +373,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         onPress={() => Alert.alert('Map View', 'Interactive map view for monitoring sites is coming soon!')}
       >
         <Text style={styles.secondaryActionIcon}>🗺️</Text>
-        <Text style={styles.secondaryActionText}>Map View</Text>
+        <Text style={styles.secondaryActionText}>{t('home.mapView')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -411,8 +399,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>🚨 Flood Alert Status</Text>
-          <Text style={styles.sectionSubtitle}>Real-time water level monitoring</Text>
+          <Text style={styles.sectionTitle}>🚨 {t('home.floodAlertStatus')}</Text>
+          <Text style={styles.sectionSubtitle}>{t('home.realtimeMonitoring')}</Text>
         </View>
         {floodAlerts.map(alert => (
           <Card
@@ -435,8 +423,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const renderRecentReadings = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>📊 Recent Water Level Readings</Text>
-        <Text style={styles.sectionSubtitle}>Latest data collection</Text>
+        <Text style={styles.sectionTitle}>📊 {t('home.recentReadings')}</Text>
+        <Text style={styles.sectionSubtitle}>{t('home.latestDataCollection')}</Text>
       </View>
       {recentReadings.map(reading => (
         <Card
@@ -529,37 +517,37 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         <View style={styles.section}>
           <View style={styles.sectionHeaderWithAction}>
             <View>
-              <Text style={styles.sectionTitle}>🏗️ Monitoring Sites</Text>
-              <Text style={styles.sectionSubtitle}>Overview • History • Map</Text>
+              <Text style={styles.sectionTitle}>🏗️ {t('home.monitoringSites')}</Text>
+              <Text style={styles.sectionSubtitle}>{`${t('home.overview')} • ${t('home.history')} • ${t('home.map')}`}</Text>
             </View>
             {displaySites.length > 5 && (
               <TouchableOpacity 
                 style={styles.viewAllButton}
                 onPress={() => handleTabPress('sites')}
               >
-                <Text style={styles.viewAllButtonText}>View All</Text>
+                <Text style={styles.viewAllButtonText}>{t('common.viewAll')}</Text>
               </TouchableOpacity>
             )}
           </View>
           
           {loading && displaySites.length === 0 ? (
             <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading monitoring sites...</Text>
+              <Text style={styles.loadingText}>{t('home.loadingSites')}</Text>
             </View>
           ) : error ? (
             <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>Failed to load sites: {error}</Text>
+              <Text style={styles.errorText}>{t('home.failedToLoad')}: {error}</Text>
               <TouchableOpacity onPress={refresh} style={styles.retryButton}>
-                <Text style={styles.retryButtonText}>Retry</Text>
+                <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={runDebugTests} style={[styles.retryButton, { backgroundColor: Colors.warning, marginTop: 10 }]}>
-                <Text style={styles.retryButtonText}>Run Debug Tests</Text>
+                <Text style={styles.retryButtonText}>{t('home.runDebugTests')}</Text>
               </TouchableOpacity>
             </View>
           ) : displaySites.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No monitoring sites found in your area</Text>
-              <Text style={styles.emptySubtext}>Trying to load sites...</Text>
+              <Text style={styles.emptyText}>{t('home.noSitesFound')}</Text>
+              <Text style={styles.emptySubtext}>{t('home.tryingToLoad')}</Text>
             </View>
           ) : (
             // Only show first 5 sites on home screen

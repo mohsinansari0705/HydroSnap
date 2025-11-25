@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -68,6 +69,7 @@ interface QRScannerProps {
 }
 
 export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteValidated, onCancel }) => {
+  const { t } = useTranslation();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   // SECRET_KEY would be used in production for decryption
@@ -180,7 +182,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Requesting camera permission...</Text>
+        <Text style={styles.loadingText}>{t('qr.requestingCameraPermission')}</Text>
       </View>
     );
   }
@@ -188,9 +190,9 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
   if (hasPermission === false) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>No access to camera</Text>
+        <Text style={styles.errorText}>{t('qr.noCameraAccess')}</Text>
         <TouchableOpacity style={styles.button} onPress={getCameraPermissions}>
-          <Text style={styles.buttonText}>Grant Permission</Text>
+          <Text style={styles.buttonText}>{t('qr.grantPermission')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -207,7 +209,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
       >
         <View style={styles.overlay}>
           <View style={styles.header}>
-            <Text style={styles.title}>Scan Monitoring Site QR Code</Text>
+            <Text style={styles.title}>{t('qr.scanMonitoringSiteQR')}</Text>
             <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
               <Text style={styles.cancelText}>?</Text>
             </TouchableOpacity>
@@ -221,14 +223,14 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
               <View style={[styles.corner, styles.bottomRight]} />
             </View>
             <Text style={styles.instruction}>
-              Position the QR code within the frame
+              {t('qr.positionInstruction')}
             </Text>
           </View>
 
           {isProcessing && (
             <View style={styles.processingOverlay}>
               <ActivityIndicator size="large" color="#FFFFFF" />
-              <Text style={styles.processingText}>Validating site...</Text>
+              <Text style={styles.processingText}>{t('qr.validatingSite')}</Text>
             </View>
           )}
 
@@ -238,7 +240,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
               onPress={resetScanner}
               disabled={isProcessing}
             >
-              <Text style={styles.retryText}>Retry Scan</Text>
+              <Text style={styles.retryText}>{t('qr.retryScan')}</Text>
             </TouchableOpacity>
           </View>
         </View>

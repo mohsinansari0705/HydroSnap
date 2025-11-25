@@ -6,6 +6,7 @@ import { MonitoringSitesService } from '../services/monitoringSitesService';
 import { WaterLevelReading, MonitoringSite } from '../services/monitoringSitesService';
 import { useNavigation } from '../lib/NavigationContext';
 import SafeScreen from '../components/SafeScreen';
+import { useTranslation } from 'react-i18next';
 
 interface MyReadingsScreenProps {
   profile: Profile;
@@ -13,6 +14,7 @@ interface MyReadingsScreenProps {
 }
 
 const MyReadingsScreen: React.FC<MyReadingsScreenProps> = ({ profile, onBack }) => {
+  const { t } = useTranslation();
   const [loadingMain, setLoadingMain] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sites, setSites] = useState<MonitoringSite[]>([]);
@@ -78,15 +80,15 @@ const MyReadingsScreen: React.FC<MyReadingsScreenProps> = ({ profile, onBack }) 
         <Text style={styles.location}>{item.location}</Text>
         {reading ? (
           <View style={styles.readingRow}>
-            <Text style={styles.waterLevel}>Water Level: {reading.water_level} m</Text>
+            <Text style={styles.waterLevel}>{t('readings.waterLevelLabel')} {reading.water_level} m</Text>
             {item.danger_level && reading.water_level >= item.danger_level && (
               <Text style={[styles.status, { color: Colors.criticalRed }]}>
-                DANGER
+                {t('readings.dangerStatus')}
               </Text>
             )}
           </View>
         ) : (
-          <Text style={styles.noReading}>No recent readings available</Text>
+          <Text style={styles.noReading}>{t('readings.noRecentReadings')}</Text>
         )}
       </TouchableOpacity>
     );
@@ -101,7 +103,7 @@ const MyReadingsScreen: React.FC<MyReadingsScreenProps> = ({ profile, onBack }) 
           <ActivityIndicator size="small" color={Colors.aquaTechBlue} />
         ) : (
           <TouchableOpacity onPress={loadMore} style={{ padding: 10, backgroundColor: Colors.aquaTechBlue, borderRadius: 8 }}>
-            <Text style={{ color: Colors.white }}>Load more</Text>
+            <Text style={{ color: Colors.white }}>{t('readings.loadMore')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -113,9 +115,9 @@ const MyReadingsScreen: React.FC<MyReadingsScreenProps> = ({ profile, onBack }) 
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backText}>← Back</Text>
+            <Text style={styles.backText}>{t('readings.back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>My Readings</Text>
+          <Text style={styles.title}>{t('readings.myReadings')}</Text>
           <View style={{width: 60}} />
         </View>
 
@@ -132,9 +134,9 @@ const MyReadingsScreen: React.FC<MyReadingsScreenProps> = ({ profile, onBack }) 
               <ActivityIndicator size="large" color={Colors.aquaTechBlue} />
             ) : (
               <>
-                <Text style={styles.emptyText}>No sites available to show readings.</Text>
+                <Text style={styles.emptyText}>{t('readings.noSitesAvailable')}</Text>
                 <TouchableOpacity onPress={() => { setPage(0); fetchData(); }} style={{ marginTop: 12, padding: 10, backgroundColor: Colors.aquaTechBlue, borderRadius: 8 }}>
-                  <Text style={{ color: Colors.white }}>Try again</Text>
+                  <Text style={{ color: Colors.white }}>{t('readings.tryAgain')}</Text>
                 </TouchableOpacity>
               </>
             )}

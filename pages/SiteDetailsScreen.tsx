@@ -10,6 +10,7 @@ import {
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import SafeScreen from '../components/SafeScreen';
+import { useTranslation } from 'react-i18next';
 
 interface SiteDetailsScreenProps {
   siteId: string;
@@ -50,6 +51,7 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
   onNavigateBack,
   onNavigateToNewReading,
 }) => {
+  const { t } = useTranslation();
   const [siteDetails, setSiteDetails] = useState<SiteDetails | null>(null);
   const [readingHistory, setReadingHistory] = useState<ReadingHistory[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -162,7 +164,7 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
   const renderHeader = () => (
     <View style={[styles.header, createNeumorphicCard({ size: 'medium' })]}>
       <TouchableOpacity style={styles.backButton} onPress={onNavigateBack}>
-        <Text style={styles.backButtonText}>← Back</Text>
+        <Text style={styles.backButtonText}>{t('siteDetails.back')}</Text>
       </TouchableOpacity>
       <View style={styles.headerInfo}>
         <Text style={[styles.headerTitle, NeumorphicTextStyles.heading]}>
@@ -185,7 +187,7 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
       <View style={[styles.statusCard, createNeumorphicCard({ size: 'medium' })]}>
         <View style={styles.statusHeader}>
           <Text style={[styles.statusTitle, NeumorphicTextStyles.subheading]}>
-            Current Water Level
+            {t('siteDetails.currentWaterLevel')}
           </Text>
           <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
             <Text style={styles.statusBadgeText}>
@@ -201,15 +203,15 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
         <View style={styles.levelsInfo}>
           <View style={styles.levelItem}>
             <View style={[styles.levelIndicator, { backgroundColor: Colors.alertRed }]} />
-            <Text style={styles.levelText}>Danger: {siteDetails.dangerLevel} cm</Text>
+            <Text style={styles.levelText}>{t('siteDetails.danger')} {siteDetails.dangerLevel} cm</Text>
           </View>
           <View style={styles.levelItem}>
             <View style={[styles.levelIndicator, { backgroundColor: Colors.warning }]} />
-            <Text style={styles.levelText}>Warning: {siteDetails.warningLevel} cm</Text>
+            <Text style={styles.levelText}>{t('siteDetails.warning')} {siteDetails.warningLevel} cm</Text>
           </View>
           <View style={styles.levelItem}>
             <View style={[styles.levelIndicator, { backgroundColor: Colors.validationGreen }]} />
-            <Text style={styles.levelText}>Safe: {siteDetails.safeLevel} cm</Text>
+            <Text style={styles.levelText}>{t('siteDetails.safe')} {siteDetails.safeLevel} cm</Text>
           </View>
         </View>
       </View>
@@ -222,22 +224,22 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
     return (
       <View style={[styles.lastReadingCard, createNeumorphicCard({ size: 'medium' })]}>
         <Text style={[styles.cardTitle, NeumorphicTextStyles.subheading]}>
-          Last Reading Details
+          {t('siteDetails.lastReadingDetails')}
         </Text>
         
         <View style={styles.readingDetails}>
           <View style={styles.readingRow}>
-            <Text style={styles.readingLabel}>Timestamp:</Text>
+            <Text style={styles.readingLabel}>{t('siteDetails.timestamp')}</Text>
             <Text style={styles.readingValue}>
               {formatTimestamp(siteDetails.lastReading.timestamp)}
             </Text>
           </View>
           <View style={styles.readingRow}>
-            <Text style={styles.readingLabel}>Operator:</Text>
+            <Text style={styles.readingLabel}>{t('siteDetails.operator')}</Text>
             <Text style={styles.readingValue}>{siteDetails.lastReading.operator}</Text>
           </View>
           <View style={styles.readingRow}>
-            <Text style={styles.readingLabel}>QR Code:</Text>
+            <Text style={styles.readingLabel}>{t('siteDetails.qrCode')}</Text>
             <Text style={styles.readingValue}>{siteDetails.qrCode}</Text>
           </View>
         </View>
@@ -260,7 +262,7 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
             styles.tabText,
             selectedTab === tab && styles.activeTabText,
           ]}>
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {t(`siteDetails.${tab}`)}
           </Text>
         </TouchableOpacity>
       ))}
@@ -270,7 +272,7 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
   const renderHistory = () => (
     <View style={[styles.historyCard, createNeumorphicCard({ size: 'medium' })]}>
       <Text style={[styles.cardTitle, NeumorphicTextStyles.subheading]}>
-        Reading History
+        {t('siteDetails.readingHistory')}
       </Text>
       
       {readingHistory.map((reading) => (
@@ -292,7 +294,7 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
             {formatTimestamp(reading.timestamp)}
           </Text>
           <Text style={styles.historyOperator}>
-            By: {reading.operator}
+            {t('siteDetails.by')} {reading.operator}
           </Text>
         </View>
       ))}
@@ -302,23 +304,23 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
   const renderMapView = () => (
     <View style={[styles.mapCard, createNeumorphicCard({ size: 'medium' })]}>
       <Text style={[styles.cardTitle, NeumorphicTextStyles.subheading]}>
-        Location & Geofence
+        {t('siteDetails.locationGeofence')}
       </Text>
       
       <View style={styles.mapPlaceholder}>
         <Text style={styles.mapPlaceholderText}>🗺️</Text>
-        <Text style={styles.mapPlaceholderSubtext}>Map View Coming Soon</Text>
+        <Text style={styles.mapPlaceholderSubtext}>{t('siteDetails.mapViewComingSoon')}</Text>
       </View>
 
       <View style={styles.locationInfo}>
         <View style={styles.locationRow}>
-          <Text style={styles.locationLabel}>Coordinates:</Text>
+          <Text style={styles.locationLabel}>{t('siteDetails.coordinates')}</Text>
           <Text style={styles.locationValue}>
             {siteDetails?.coordinates.latitude.toFixed(6)}, {siteDetails?.coordinates.longitude.toFixed(6)}
           </Text>
         </View>
         <View style={styles.locationRow}>
-          <Text style={styles.locationLabel}>Geofence Radius:</Text>
+          <Text style={styles.locationLabel}>{t('siteDetails.geofenceRadius')}</Text>
           <Text style={styles.locationValue}>{siteDetails?.geofenceRadius}m</Text>
         </View>
       </View>
@@ -346,7 +348,7 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
   if (!siteDetails) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading site details...</Text>
+        <Text style={styles.loadingText}>{t('siteDetails.loadingSiteDetails')}</Text>
       </View>
     );
   }
@@ -371,7 +373,7 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
           style={[styles.newReadingButton, createNeumorphicCard({ size: 'medium' })]}
           onPress={() => onNavigateToNewReading(siteId)}
         >
-          <Text style={styles.newReadingButtonText}>📸 Take New Reading</Text>
+          <Text style={styles.newReadingButtonText}>{t('siteDetails.takeNewReading')}</Text>
         </TouchableOpacity>
       </View>
       </View>

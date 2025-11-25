@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../lib/colors';
@@ -9,6 +10,7 @@ interface BottomNavigationProps {
 }
 
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabPress }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   
   // Plus Icon for Capture Readings
@@ -90,11 +92,11 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeTab, onTabPre
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom || 8 }]}>
       <View style={styles.navigation}>
-        {renderTab('capture', <PlusIcon isActive={activeTab === 'capture'} />, 'Capture')}
-        {renderTab('readings', <DocumentIcon isActive={activeTab === 'readings'} />, 'Readings')}
-        {renderTab('home', <HomeIcon isActive={activeTab === 'home'} />, 'Home')}
-        {renderTab('sites', <LocationIcon isActive={activeTab === 'sites'} />, 'Sites')}
-        {renderTab('profile', <UserIcon isActive={activeTab === 'profile'} />, 'Profile')}
+        {renderTab('capture', <PlusIcon isActive={activeTab === 'capture'} />, t('navigation.capture'))}
+        {renderTab('readings', <DocumentIcon isActive={activeTab === 'readings'} />, t('navigation.myReadings'))}
+        {renderTab('home', <HomeIcon isActive={activeTab === 'home'} />, t('navigation.home'))}
+        {renderTab('sites', <LocationIcon isActive={activeTab === 'sites'} />, t('navigation.sites'))}
+        {renderTab('profile', <UserIcon isActive={activeTab === 'profile'} />, t('navigation.profile'))}
       </View>
     </View>
   );
