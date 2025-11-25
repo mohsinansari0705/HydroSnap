@@ -11,12 +11,15 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types/profile';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { Colors } from '../lib/colors';
 import { useAuth } from '../lib/AuthContext';
+import i18n, { storeLanguage } from '../lib/i18n';
 
 interface AuthScreenProps {
   onAuthSuccess: () => void;
@@ -24,10 +27,15 @@ interface AuthScreenProps {
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const { refreshProfile, setIsRegistering } = useAuth(); // changed to include refreshProfile
+  const { t } = useTranslation();
 
   // Main state
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  
+  // Language selector
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
   
   // Signup steps: 1=Basic Info, 2=Site ID, 3=Credentials & OTP
   const [signupStep, setSignupStep] = useState(1);
@@ -61,17 +69,37 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [registrationInProgress, setRegistrationInProgress] = useState(false);
 
+  const languages = [
+    { code: 'en', name: 'English', nativeName: 'English' },
+    { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
+    { code: 'bn', name: 'Bengali', nativeName: 'বাংলা' },
+    { code: 'mr', name: 'Marathi', nativeName: 'मराठी' },
+    { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
+    { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
+    { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
+    { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી' },
+    { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' },
+    { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' },
+  ];
+
+  const handleLanguageChange = async (languageCode: string) => {
+    await i18n.changeLanguage(languageCode);
+    await storeLanguage(languageCode);
+    setCurrentLanguage(languageCode);
+    setShowLanguageModal(false);
+  };
+
   const roles = [
-    { value: 'central_analyst', label: 'Central Analyst', description: 'CWC headquarters staff' },
-    { value: 'supervisor', label: 'Supervisor', description: 'Regional supervisors' },
-    { value: 'field_personnel', label: 'Field Personnel', description: 'On-ground staff' },
-    { value: 'public', label: 'Public User', description: 'General public' },
+    { value: 'central_analyst', label: t('auth.centralAnalyst'), description: t('auth.centralAnalystDesc') },
+    { value: 'supervisor', label: t('auth.supervisor'), description: t('auth.supervisorDesc') },
+    { value: 'field_personnel', label: t('auth.fieldPersonnel'), description: t('auth.fieldPersonnelDesc') },
+    { value: 'public', label: t('auth.publicUser'), description: t('auth.publicUserDesc') },
   ] as const;
 
   const genders = [
-    { value: 'male', label: 'Male' },
-    { value: 'female', label: 'Female' },
-    { value: 'other', label: 'Other' }
+    { value: 'male', label: t('auth.male') },
+    { value: 'female', label: t('auth.female') },
+    { value: 'other', label: t('auth.other') }
   ];
 
   const isValidEmail = (text: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
@@ -85,7 +113,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   // Step validations
   const validateStep1 = () => {
     if (!fullName.trim() || !organization.trim() || !location.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return false;
     }
     return true;
@@ -93,7 +121,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   const validateStep2 = () => {
     if (role === 'field_personnel' && !siteId.trim()) {
-      Alert.alert('Error', 'Site ID is required for field personnel');
+      Alert.alert(t('common.error'), t('auth.siteIdRequired'));
       return false;
     }
     return true;
@@ -101,23 +129,23 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   const validateStep3 = () => {
     if (!email.trim() || !phone.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return false;
     }
     if (!isValidEmail(email)) {
-      Alert.alert('Error', 'Please enter a valid email');
+      Alert.alert(t('common.error'), t('auth.invalidEmail'));
       return false;
     }
     if (!isValidPhone(phone)) {
-      Alert.alert('Error', 'Please enter a valid phone number');
+      Alert.alert(t('common.error'), t('auth.invalidPhone'));
       return false;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert(t('common.error'), t('auth.passwordMismatch'));
       return false;
     }
       if (newPassword.length < 12) {
-        Alert.alert('Error', 'Password must be at least 12 characters long');
+        Alert.alert(t('common.error'), t('auth.passwordTooShort'));
         return false;
     }
     return true;
@@ -167,7 +195,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
       if (error) {
         console.error('OTP send error:', error);
-        Alert.alert('Error', error.message);
+        Alert.alert(t('common.error'), error.message);
         setRegistrationInProgress(false);
         setIsRegistering(false); // Reset flag on error
         return;
@@ -175,10 +203,10 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
       console.log('OTP sent response:', data);
       setShowOtpField(true);
-      Alert.alert('OTP Sent', 'Check your email for the 6-digit code.');
+      Alert.alert(t('auth.otpSent'), t('auth.otpSentMessage'));
     } catch (e: any) {
       console.error('OTP initiation error:', e);
-      Alert.alert('Error', 'Failed to send OTP.');
+      Alert.alert(t('common.error'), 'Failed to send OTP.');
       setRegistrationInProgress(false);
       setIsRegistering(false); // Reset flag on error
     } finally {
@@ -188,11 +216,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   const handleRegister = async () => {
     if (!registrationInProgress) {
-      Alert.alert('Error', 'Start signup first.');
+      Alert.alert(t('common.error'), 'Start signup first.');
       return;
     }
     if (!otpCode || otpCode.length !== 6) {
-      Alert.alert('Error', 'Enter the 6-digit OTP.');
+      Alert.alert(t('common.error'), t('auth.enterOTP'));
       return;
     }
 
@@ -208,16 +236,16 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       if (verifyError) {
         console.error('OTP verify error:', verifyError);
         const m = verifyError.message.toLowerCase();
-        if (m.includes('expired')) Alert.alert('OTP Expired', 'Request a new code.');
-        else if (m.includes('invalid')) Alert.alert('Invalid Code', 'Check the code and retry.');
-        else Alert.alert('Error', verifyError.message);
+        if (m.includes('expired')) Alert.alert(t('auth.otpExpired'), t('auth.otpExpiredMessage'));
+        else if (m.includes('invalid')) Alert.alert(t('auth.invalidCode'), t('auth.invalidCodeMessage'));
+        else Alert.alert(t('common.error'), verifyError.message);
         setLoading(false);
         return;
       }
 
       if (!verifyData.session || !verifyData.user) {
         console.warn('Verified but no session/user returned:', verifyData);
-        Alert.alert('Error', 'Unexpected state. Try logging in after a minute.');
+        Alert.alert(t('common.error'), 'Unexpected state. Try logging in after a minute.');
         setLoading(false);
         return;
       }
@@ -255,7 +283,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         if (profileError.code === '23505') {
           console.log('Profile already exists, fetching it...');
         } else {
-          Alert.alert('Error', `Profile creation failed: ${profileError.message}`);
+          Alert.alert(t('common.error'), `Profile creation failed: ${profileError.message}`);
           setLoading(false);
           setIsRegistering(false);
           return;
@@ -271,8 +299,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       });
       
       if (pwdError) {
-        console.error('Password set error:', pwdError);
-        Alert.alert('Warning', 'Account created but password setup failed. Please use password recovery.');
+        console.error('Password update error:', pwdError);
+        Alert.alert(t('common.error'), 'Account created but password setup failed. Please use password recovery.');
       } else {
         console.log('Password set successfully.');
       }
@@ -312,7 +340,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   const handleLogin = async () => {
     if (!loginIdentifier.trim() || !loginPassword.trim()) {
-      Alert.alert('Error', 'Please enter email/phone and password');
+      Alert.alert(t('common.error'), t('auth.loginError'));
       return;
     }
   
@@ -379,7 +407,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         }
       
         if (!profileData || !profileData.email) {
-          Alert.alert('Error', 'No account found with this phone number. Please check the number or use your email address.');
+          Alert.alert(t('common.error'), t('auth.noPhoneFound'));
           setLoading(false);
           return;
         }
@@ -443,13 +471,23 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Language Selector Button */}
+        <TouchableOpacity
+          style={styles.languageButton}
+          onPress={() => setShowLanguageModal(true)}
+        >
+          <Text style={styles.languageButtonText}>
+            🌐 {languages.find(l => l.code === currentLanguage)?.nativeName || 'English'}
+          </Text>
+        </TouchableOpacity>
+
         <View style={styles.logoContainer}>
           <Image 
             source={require('../assets/icons/HydroSnap_logo.png')} 
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={[NeumorphicTextStyles.heading, styles.appTitle]}>HydroSnap</Text>
+          <Text style={[NeumorphicTextStyles.heading, styles.appTitle]}>{t('common.appName')}</Text>
         </View>
 
         <View style={[styles.card, createNeumorphicCard()]}>
@@ -462,7 +500,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               }}
             >
               <Text style={[styles.tabText, isLogin && styles.activeTabText]}>
-                Login
+                {t('auth.login')}
               </Text>
             </TouchableOpacity>
 
@@ -474,7 +512,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               }}
             >
               <Text style={[styles.tabText, !isLogin && styles.activeTabText]}>
-                Sign Up
+                {t('auth.signUp')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -482,11 +520,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           {/* Login Form */}
           {isLogin ? (
             <View style={styles.formContainer}>
-              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.title}>{t('auth.welcomeBack')}</Text>
               
               <TextInput
                 style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                placeholder="Email or Phone Number"
+                placeholder={t('auth.emailOrPhone')}
                 value={loginIdentifier}
                 onChangeText={setLoginIdentifier}
                 autoCapitalize="none"
@@ -496,7 +534,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
               <TextInput
                 style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                placeholder="Password"
+                placeholder={t('auth.password')}
                 value={loginPassword}
                 onChangeText={setLoginPassword}
                 secureTextEntry
@@ -512,7 +550,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   <ActivityIndicator color={Colors.deepSecurityBlue} />
                 ) : (
                   <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.deepSecurityBlue }]}>
-                    Login
+                    {t('auth.loginButton')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -522,11 +560,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             <View style={styles.stepContainer}>
               {signupStep === 1 && (
                 <>
-                  <Text style={styles.stepTitle}>Step 1: Basic Information</Text>
+                  <Text style={styles.stepTitle}>{t('auth.signupStep1')}</Text>
                   
                   <TextInput
                     style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                    placeholder="Full Name *"
+                    placeholder={t('auth.fullName')}
                     value={fullName}
                     onChangeText={setFullName}
                     placeholderTextColor={Colors.textSecondary}
@@ -537,7 +575,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     onPress={() => setShowGenderDropdown(!showGenderDropdown)}
                   >
                     <Text style={styles.dropdownText}>
-                      {genders.find(g => g.value === gender)?.label || 'Select Gender *'}
+                      {genders.find(g => g.value === gender)?.label || t('auth.gender')}
                     </Text>
                   </TouchableOpacity>
 
@@ -563,7 +601,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     onPress={() => setShowRoleDropdown(!showRoleDropdown)}
                   >
                     <Text style={styles.dropdownText}>
-                      {roles.find(r => r.value === role)?.label || 'Select Role *'}
+                      {roles.find(r => r.value === role)?.label || t('auth.role')}
                     </Text>
                   </TouchableOpacity>
 
@@ -587,7 +625,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
                   <TextInput
                     style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                    placeholder="Organization *"
+                    placeholder={t('auth.organization')}
                     value={organization}
                     onChangeText={setOrganization}
                     placeholderTextColor={Colors.textSecondary}
@@ -595,7 +633,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
                   <TextInput
                     style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                    placeholder="Location *"
+                    placeholder={t('auth.location')}
                     value={location}
                     onChangeText={setLocation}
                     placeholderTextColor={Colors.textSecondary}
@@ -606,7 +644,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     onPress={handleNextStep}
                   >
                     <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.deepSecurityBlue }]}>
-                      Next
+                      {t('common.next')}
                     </Text>
                   </TouchableOpacity>
                 </>
@@ -614,11 +652,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
               {signupStep === 2 && (
                 <>
-                  <Text style={styles.stepTitle}>Step 2: Site Information</Text>
+                  <Text style={styles.stepTitle}>{t('auth.signupStep2')}</Text>
                   
                   <TextInput
                     style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                    placeholder={role === 'field_personnel' ? 'Site ID *' : 'Site ID (Optional)'}
+                    placeholder={role === 'field_personnel' ? t('auth.siteId') : t('auth.siteIdOptional')}
                     value={siteId}
                     onChangeText={setSiteId}
                     placeholderTextColor={Colors.textSecondary}
@@ -626,8 +664,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
                   <Text style={styles.infoText}>
                     {role === 'field_personnel' 
-                      ? 'Site ID is required for field personnel'
-                      : 'You can skip this step or update it later'
+                      ? t('auth.siteIdRequired')
+                      : t('auth.siteIdInfo')
                     }
                   </Text>
 
@@ -637,7 +675,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                       onPress={handlePrevStep}
                     >
                       <Text style={[NeumorphicTextStyles.buttonSecondary, { color: Colors.textSecondary }]}>
-                        Back
+                        {t('common.back')}
                       </Text>
                     </TouchableOpacity>
 
@@ -646,7 +684,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                       onPress={handleNextStep}
                     >
                       <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.deepSecurityBlue }]}>
-                        Next
+                        {t('common.next')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -659,7 +697,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                         setSignupStep(3);
                       }}
                     >
-                      <Text style={styles.skipText}>Skip this step</Text>
+                      <Text style={styles.skipText}>{t('common.skipThisStep')}</Text>
                     </TouchableOpacity>
                   )}
                 </>
@@ -667,11 +705,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
               {signupStep === 3 && (
                 <>
-                  <Text style={styles.stepTitle}>Step 3: Credentials & Verification</Text>
+                  <Text style={styles.stepTitle}>{t('auth.signupStep3')}</Text>
 
                   <TextInput
                     style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                    placeholder="Email *"
+                    placeholder={t('auth.email')}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -681,7 +719,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
                   <TextInput
                     style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                    placeholder="Phone Number *"
+                    placeholder={t('auth.phone')}
                     value={phone}
                     onChangeText={setPhone}
                     keyboardType="phone-pad"
@@ -692,7 +730,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     <>
                       <TextInput
                         style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                        placeholder="Password *"
+                        placeholder={t('auth.passwordRequired')}
                         value={newPassword}
                         onChangeText={setNewPassword}
                         secureTextEntry
@@ -700,7 +738,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                       />
                       <TextInput
                         style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                        placeholder="Confirm Password *"
+                        placeholder={t('auth.confirmPassword')}
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
                         secureTextEntry
@@ -719,7 +757,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                         <ActivityIndicator color={Colors.deepSecurityBlue} />
                       ) : (
                         <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.deepSecurityBlue }]}>
-                          Get OTP
+                          {t('auth.getOTP')}
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -727,7 +765,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     <>
                       <TextInput
                         style={[styles.input, createNeumorphicCard({ depressed: true, size: 'small' })]}
-                        placeholder="Enter 6-digit OTP *"
+                        placeholder={t('auth.enterOTP')}
                         value={otpCode}
                         onChangeText={setOtpCode}
                         keyboardType="numeric"
@@ -744,7 +782,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                           <ActivityIndicator color={Colors.deepSecurityBlue} />
                         ) : (
                           <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.deepSecurityBlue }]}>
-                            Verify OTP
+                            {t('auth.verifyOTP')}
                           </Text>
                         )}
                       </TouchableOpacity>
@@ -756,7 +794,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     onPress={handlePrevStep}
                   >
                     <Text style={[NeumorphicTextStyles.buttonSecondary, { color: Colors.textSecondary }]}>
-                      Back
+                      {t('common.back')}
                     </Text>
                   </TouchableOpacity>
                 </>
@@ -766,6 +804,47 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           )}
         </View>
       </ScrollView>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={showLanguageModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLanguageModal(false)}
+        >
+          <View style={[styles.modalContent, createNeumorphicCard()]}>
+            <Text style={styles.modalTitle}>{t('settings.selectLanguage')}</Text>
+            <ScrollView style={styles.languageList}>
+              {languages.map((lang) => (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[
+                    styles.languageItem,
+                    currentLanguage === lang.code && styles.languageItemActive
+                  ]}
+                  onPress={() => handleLanguageChange(lang.code)}
+                >
+                  <Text style={[
+                    styles.languageItemText,
+                    currentLanguage === lang.code && styles.languageItemTextActive
+                  ]}>
+                    {lang.nativeName}
+                  </Text>
+                  <Text style={styles.languageItemSubtext}>{lang.name}</Text>
+                  {currentLanguage === lang.code && (
+                    <Text style={styles.checkmark}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -907,5 +986,81 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  languageButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.softLightGrey,
+    ...createNeumorphicCard({ size: 'small' }),
+    zIndex: 1000,
+  },
+  languageButtonText: {
+    fontSize: 14,
+    color: Colors.deepSecurityBlue,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '90%',
+    maxWidth: 400,
+    maxHeight: '70%',
+    backgroundColor: Colors.softLightGrey,
+    borderRadius: 20,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  languageList: {
+    maxHeight: 400,
+  },
+  languageItem: {
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+    backgroundColor: Colors.lightShadow,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  languageItemActive: {
+    backgroundColor: Colors.aquaTechBlue + '20',
+    borderWidth: 2,
+    borderColor: Colors.deepSecurityBlue,
+  },
+  languageItemText: {
+    fontSize: 16,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+    flex: 1,
+  },
+  languageItemTextActive: {
+    color: Colors.deepSecurityBlue,
+    fontWeight: 'bold',
+  },
+  languageItemSubtext: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginLeft: 10,
+  },
+  checkmark: {
+    fontSize: 20,
+    color: Colors.deepSecurityBlue,
+    fontWeight: 'bold',
+    marginLeft: 10,
   },
 });

@@ -6,6 +6,7 @@ import { AuthProvider } from './lib/AuthContext';
 import { NavigationProvider } from './lib/NavigationContext';
 import AppNavigator from './components/AppNavigator';
 import { Colors } from './lib/colors';
+import './lib/i18n'; // Initialize i18n
 
 export default function App() {
   return (

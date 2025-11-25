@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../lib/ThemeContext';
 import { supabase } from '../lib/supabase';
 import SafeScreen from '../components/SafeScreen';
@@ -18,6 +19,7 @@ import {
   NeumorphicTextStyles,
 } from '../lib/neumorphicStyles';
 import { Colors } from '../lib/colors';
+import i18n, { storeLanguage } from '../lib/i18n';
 
 interface SettingsPageProps {
   onNavigate: (screen: string) => void;
@@ -43,6 +45,7 @@ interface SettingItem {
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
   const styles = React.useMemo(() => createStyles(), []);
   
   const [userData, setUserData] = useState<UserData>({});
@@ -50,7 +53,29 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [autoSync, setAutoSync] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
   const [loading, setLoading] = useState(false);
+
+  const languages = [
+    { code: 'en', name: 'English', nativeName: 'English' },
+    { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
+    { code: 'bn', name: 'Bengali', nativeName: 'বাংলা' },
+    { code: 'mr', name: 'Marathi', nativeName: 'मराठी' },
+    { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
+    { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
+    { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
+    { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી' },
+    { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' },
+    { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' },
+  ];
+
+  const handleLanguageChange = async (languageCode: string) => {
+    await i18n.changeLanguage(languageCode);
+    await storeLanguage(languageCode);
+    setCurrentLanguage(languageCode);
+    setShowLanguageModal(false);
+  };
 
   useEffect(() => {
     fetchUserData();
@@ -84,13 +109,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        Alert.alert('Error', 'Failed to logout. Please try again.');
+        Alert.alert(t('common.error'), t('settings.logoutError'));
       } else {
         setShowLogoutModal(false);
         onNavigate('Auth');
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred.');
+      Alert.alert(t('common.error'), t('settings.logoutError'));
     } finally {
       setLoading(false);
     }
@@ -98,124 +123,130 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
 
   const confirmLogout = () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      t('settings.logout'),
+      t('settings.logoutConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: () => setShowLogoutModal(true) },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('settings.logout'), style: 'destructive', onPress: () => setShowLogoutModal(true) },
       ]
     );
   };
 
   const settingsSections: { title: string; items: SettingItem[] }[] = [
     {
-      title: 'Account',
+      title: t('settings.account'),
       items: [
         {
           icon: '👤',
-          label: 'Profile Information',
-          value: userData.full_name || 'Update Profile',
+          label: t('settings.profileInformation'),
+          value: userData.full_name || t('settings.updateProfile'),
           onPress: () => onNavigate('Profile'),
         },
         {
           icon: '📧',
-          label: 'Email',
-          value: userData.email || 'No email',
+          label: t('profile.email'),
+          value: userData.email || t('settings.noEmail'),
           disabled: true,
         },
         {
           icon: '🏢',
-          label: 'Organization',
-          value: userData.organization || 'Not specified',
+          label: t('profile.organization'),
+          value: userData.organization || t('settings.notSpecified'),
           disabled: true,
         },
         {
           icon: '👔',
-          label: 'Role',
-          value: userData.role || 'Health Worker',
+          label: t('profile.role'),
+          value: userData.role || t('settings.healthWorker'),
           disabled: true,
         },
       ],
     },
     {
-      title: 'Preferences',
+      title: t('settings.preferences'),
       items: [
         {
           icon: theme === 'dark' ? '🌙' : '☀️',
-          label: 'Theme',
-          value: theme === 'dark' ? 'Dark Mode' : 'Light Mode',
+          label: t('settings.theme'),
+          value: theme === 'dark' ? t('settings.darkMode') : t('settings.lightMode'),
           onPress: toggleTheme,
         },
         {
           icon: '🔔',
-          label: 'Push Notifications',
+          label: t('settings.pushNotifications'),
           toggle: true,
           value: notificationsEnabled,
           onToggle: setNotificationsEnabled,
         },
         {
           icon: '📍',
-          label: 'Location Services',
+          label: t('settings.locationServices'),
           toggle: true,
           value: locationEnabled,
           onToggle: setLocationEnabled,
         },
         {
           icon: '🔄',
-          label: 'Auto Sync Data',
+          label: t('settings.autoSyncData'),
           toggle: true,
           value: autoSync,
           onToggle: setAutoSync,
         },
+        {
+          icon: '🌐',
+          label: t('settings.language'),
+          value: languages.find(l => l.code === currentLanguage)?.nativeName || 'English',
+          onPress: () => setShowLanguageModal(true),
+        },
       ],
     },
     {
-      title: 'Data & Storage',
+      title: t('settings.dataStorage'),
       items: [
         {
           icon: '💾',
-          label: 'Clear Cache',
-          value: 'Clear app cache',
-          onPress: () => Alert.alert('Info', 'Cache cleared successfully!'),
+          label: t('settings.clearCache'),
+          value: t('settings.clearCacheDesc'),
+          onPress: () => Alert.alert(t('common.success'), t('settings.cacheClearedSuccess')),
         },
         {
           icon: '📊',
-          label: 'Data Usage',
-          value: 'View data usage',
-          onPress: () => Alert.alert('Info', 'Feature coming soon!'),
+          label: t('settings.dataUsage'),
+          value: t('settings.viewDataUsage'),
+          onPress: () => Alert.alert(t('common.comingSoon'), t('settings.featureComingSoon')),
         },
         {
           icon: '☁️',
-          label: 'Sync Settings',
-          value: 'Manage sync preferences',
-          onPress: () => Alert.alert('Info', 'Feature coming soon!'),
+          label: t('settings.syncSettings'),
+          value: t('settings.manageSyncPreferences'),
+          onPress: () => Alert.alert(t('common.comingSoon'), t('settings.featureComingSoon')),
         },
       ],
     },
     {
-      title: 'Support & About',
+      title: t('settings.supportAbout'),
       items: [
         {
           icon: '❓',
-          label: 'Help & FAQ',
-          value: 'Get help',
-          onPress: () => Alert.alert('Info', 'Feature coming soon!'),
+          label: t('settings.helpFAQ'),
+          value: t('common.getHelp'),
+          onPress: () => Alert.alert(t('common.comingSoon'), t('settings.featureComingSoon')),
         },
         {
           icon: '📝',
-          label: 'Privacy Policy',
-          value: 'View policy',
-          onPress: () => Alert.alert('Info', 'Feature coming soon!'),
+          label: t('settings.privacyPolicy'),
+          value: t('settings.viewPolicy'),
+          onPress: () => Alert.alert(t('common.comingSoon'), t('settings.featureComingSoon')),
         },
         {
           icon: '📋',
-          label: 'Terms of Service',
-          value: 'View terms',
-          onPress: () => Alert.alert('Info', 'Feature coming soon!'),
+          label: t('settings.termsOfService'),
+          value: t('settings.viewTerms'),
+          onPress: () => Alert.alert(t('common.comingSoon'), t('settings.featureComingSoon')),
         },
         {
           icon: 'ℹ️',
-          label: 'App Version',
+          label: t('settings.appVersion'),
           value: 'v1.0.0',
           disabled: true,
         },
@@ -231,7 +262,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>{t('settings.settings')}</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -285,7 +316,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
         <View style={styles.logoutSection}>
           <TouchableOpacity style={styles.logoutButton} onPress={confirmLogout}>
             <Text style={styles.logoutIcon}>🚪</Text>
-            <Text style={styles.logoutText}>Logout</Text>
+            <Text style={styles.logoutText}>{t('settings.logout')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -299,16 +330,16 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Confirm Logout</Text>
+            <Text style={styles.modalTitle}>{t('settings.logoutDialogTitle')}</Text>
             <Text style={styles.modalMessage}>
-              Are you sure you want to logout from HealthDrop? You'll need to sign in again to access your account.
+              {t('settings.logoutDialogMessage')}
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setShowLogoutModal(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
@@ -316,12 +347,55 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
                 disabled={loading}
               >
                 <Text style={styles.confirmButtonText}>
-                  {loading ? 'Logging out...' : 'Logout'}
+                  {loading ? t('settings.loggingOut') : t('settings.logout')}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={showLanguageModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLanguageModal(false)}
+        >
+          <View style={[styles.modalContent, styles.languageModalContent]}>
+            <Text style={styles.modalTitle}>{t('settings.selectLanguage')}</Text>
+            <ScrollView style={styles.languageList}>
+              {languages.map((lang) => (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[
+                    styles.languageItem,
+                    currentLanguage === lang.code && styles.languageItemActive
+                  ]}
+                  onPress={() => handleLanguageChange(lang.code)}
+                >
+                  <View style={styles.languageItemContent}>
+                    <Text style={[
+                      styles.languageItemText,
+                      currentLanguage === lang.code && styles.languageItemTextActive
+                    ]}>
+                      {lang.nativeName}
+                    </Text>
+                    <Text style={styles.languageItemSubtext}>{lang.name}</Text>
+                  </View>
+                  {currentLanguage === lang.code && (
+                    <Text style={styles.checkmark}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
       </Modal>
       </View>
     </SafeScreen>
@@ -512,6 +586,49 @@ const createStyles = () => StyleSheet.create({
     ...NeumorphicTextStyles.buttonPrimary,
     fontSize: 16,
     fontWeight: '700',
+  },
+  languageModalContent: {
+    maxHeight: '70%',
+  },
+  languageList: {
+    maxHeight: 400,
+  },
+  languageItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+    backgroundColor: Colors.lightShadow,
+  },
+  languageItemActive: {
+    backgroundColor: Colors.aquaTechBlue + '20',
+    borderWidth: 2,
+    borderColor: Colors.deepSecurityBlue,
+  },
+  languageItemContent: {
+    flex: 1,
+  },
+  languageItemText: {
+    fontSize: 16,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  languageItemTextActive: {
+    color: Colors.deepSecurityBlue,
+    fontWeight: 'bold',
+  },
+  languageItemSubtext: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  checkmark: {
+    fontSize: 20,
+    color: Colors.deepSecurityBlue,
+    fontWeight: 'bold',
+    marginLeft: 10,
   },
 });
 
