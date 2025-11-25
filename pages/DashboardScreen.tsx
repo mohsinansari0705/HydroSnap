@@ -18,6 +18,7 @@ import SafeScreen from '../components/SafeScreen';
 import { createNeumorphicCard, createNeumorphicButton, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types/profile';
+import { MonitoringSitesService } from '../services/monitoringSitesService';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -109,37 +110,27 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch monitoring sites
-      const { data: sites, error: sitesError } = await supabase
-        .from('monitoring_sites')
-        .select('*');
+      // Fetch monitoring sites using service
+      const sites = await MonitoringSitesService.getAllSites();
 
-      if (sitesError) throw sitesError;
-
-      // Fetch water level readings
-      const { data: readings, error: readingsError } = await supabase
-        .from('water_level_readings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (readingsError) throw readingsError;
+      // Fetch water level readings using service
+      const readings = await MonitoringSitesService.getAllReadings(100);
 
       // Calculate statistics
       const dangerCount = sites?.filter(site => {
         const latestReading = readings?.find(r => r.site_id === site.id);
-        return latestReading && site.danger_level && latestReading.water_level >= site.danger_level;
+        return latestReading && site.danger_level && latestReading.predicted_water_level >= site.danger_level;
       }).length || 0;
 
       const warningCount = sites?.filter(site => {
         const latestReading = readings?.find(r => r.site_id === site.id);
         return latestReading && site.warning_level && site.danger_level &&
-               latestReading.water_level >= site.warning_level &&
-               latestReading.water_level < site.danger_level;
+               latestReading.predicted_water_level >= site.warning_level &&
+               latestReading.predicted_water_level < site.danger_level;
       }).length || 0;
 
       const avgLevel = readings && readings.length > 0
-        ? readings.reduce((sum, r) => sum + r.water_level, 0) / readings.length
+        ? readings.reduce((sum, r) => sum + (r.predicted_water_level || 0), 0) / readings.length
         : 0;
 
       setStats({
@@ -165,13 +156,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
     
     try {
       if (dataset === 'sites') {
-        // Monitoring Sites data
-        const { data: sites, error } = await supabase
-          .from('monitoring_sites')
-          .select('*')
-          .limit(20);
-
-        if (error) throw error;
+        // Monitoring Sites data using service
+        const allSites = await MonitoringSitesService.getAllSites();
+        const sites = allSites.slice(0, 20);
 
         if (!sites || sites.length === 0) {
           setChartData({ labels: [], values: [] });
@@ -344,14 +331,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             break;
         }
       } else if (dataset === 'readings') {
-        // Water Level Readings data
-        const { data: readings, error } = await supabase
-          .from('water_level_readings')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(15);
-
-        if (error) throw error;
+        // Water Level Readings data using service
+        const readings = await MonitoringSitesService.getAllReadings(15);
 
         if (!readings || readings.length === 0) {
           setChartData({ labels: [], values: [] });
@@ -366,10 +347,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             // Keep original order for water level readings
             setChartData({
               labels: readings.map((_r, i) => `R${readings.length - i}`),
-              values: readings.map(r => r.water_level),
+              values: readings.map(r => r.predicted_water_level || 0),
               colors: readings.map(r => 
-                r.water_level > 1000 ? Colors.criticalRed :
-                r.water_level > 500 ? Colors.warningYellow :
+                (r.predicted_water_level || 0) > 1000 ? Colors.criticalRed :
+                (r.predicted_water_level || 0) > 500 ? Colors.warningYellow :
                 Colors.validationGreen
               ),
             });
@@ -400,9 +381,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             }, {});
             
             // Pie Chart 2: Water Level Status Distribution
-            const dangerReadings = readings.filter(r => r.water_level > 1000).length;
-            const warningReadings = readings.filter(r => r.water_level > 500 && r.water_level <= 1000).length;
-            const normalReadings = readings.filter(r => r.water_level <= 500).length;
+            const dangerReadings = readings.filter(r => (r.predicted_water_level || 0) > 1000).length;
+            const warningReadings = readings.filter(r => (r.predicted_water_level || 0) > 500 && (r.predicted_water_level || 0) <= 1000).length;
+            const normalReadings = readings.filter(r => (r.predicted_water_level || 0) <= 500).length;
             
             const readingColors = [
               Colors.aquaTechBlue, 
@@ -423,6 +404,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
               color: readingColors[idx % readingColors.length]
             })).sort((a, b) => b.value - a.value);
             
+            // Sort water level status data by value
+            const statusData = [
+              { label: 'Danger', value: dangerReadings, color: Colors.criticalRed },
+              { label: 'Warning', value: warningReadings, color: Colors.warningYellow },
+              { label: 'Normal', value: normalReadings, color: Colors.validationGreen },
+            ].sort((a, b) => b.value - a.value);
+            
             setChartData({
               labels: methodData.map(d => d.label),
               values: methodData.map(d => d.value),
@@ -436,9 +424,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                 },
                 {
                   title: 'Water Level Status',
-                  labels: ['Danger', 'Warning', 'Normal'],
-                  values: [dangerReadings, warningReadings, normalReadings],
-                  colors: [Colors.criticalRed, Colors.warningYellow, Colors.validationGreen],
+                  labels: statusData.map(d => d.label),
+                  values: statusData.map(d => d.value),
+                  colors: statusData.map(d => d.color),
                 }
               ]
             });
@@ -460,14 +448,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             break;
         }
       } else {
-        // Overview data (default)
-        const { data: readings, error } = await supabase
-          .from('water_level_readings')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        if (error) throw error;
+        // Overview data (default) using service
+        const readings = await MonitoringSitesService.getAllReadings(10);
 
         if (!readings || readings.length === 0) {
           setChartData({ labels: [], values: [] });
@@ -482,10 +464,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             // Keep original order for overview readings
             setChartData({
               labels: readings.map((_r, i) => `R${readings.length - i}`),
-              values: readings.map(r => r.water_level),
+              values: readings.map(r => r.predicted_water_level || 0),
               colors: readings.map(r => 
-                r.water_level > 1000 ? Colors.criticalRed :
-                r.water_level > 500 ? Colors.warningYellow :
+                (r.predicted_water_level || 0) > 1000 ? Colors.criticalRed :
+                (r.predicted_water_level || 0) > 500 ? Colors.warningYellow :
                 Colors.validationGreen
               ),
             });
@@ -515,8 +497,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             };
             
             readings.forEach(r => {
-              if (r.water_level > 1000) statusCounts.danger++;
-              else if (r.water_level > 500) statusCounts.warning++;
+              const level = r.predicted_water_level || 0;
+              if (level > 1000) statusCounts.danger++;
+              else if (level > 500) statusCounts.warning++;
               else statusCounts.normal++;
             });
 
