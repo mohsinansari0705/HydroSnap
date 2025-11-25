@@ -6,6 +6,7 @@ import { AuthProvider } from './lib/AuthContext';
 import { NavigationProvider } from './lib/NavigationContext';
 import AppNavigator from './components/AppNavigator';
 import { Colors } from './lib/colors';
+import { NavigationContainer } from '@react-navigation/native';
 
 export default function App() {
   return (
@@ -13,7 +14,9 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <NavigationProvider>
-            <AppNavigator />
+            <NavigationContainer>
+              <AppNavigator />
+            </NavigationContainer>
             <StatusBar style="dark" translucent={false} backgroundColor={Colors.softLightGrey} />
           </NavigationProvider>
         </AuthProvider>

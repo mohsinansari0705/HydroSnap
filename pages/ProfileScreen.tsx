@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Colors } from '../lib/colors';
 import { Profile } from '../types/profile';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { format } from 'date-fns';
+import { NavigationProp, useNavigation } from '../lib/NavigationContext'; // Use custom navigation context
 import SafeScreen from '../components/SafeScreen';
 
 interface ProfileScreenProps {
@@ -13,9 +13,17 @@ interface ProfileScreenProps {
   onBack: () => void;
 }
 
+// Define the RootStackParamList type
+type RootStackParamList = {
+  Dashboard: undefined; // Add other routes as needed
+  Profile: undefined;   // Example route
+};
+
 const defaultProfileImage = 'https://example.com/default-profile.png'; // Add your default image URL here
 
 export default function ProfileScreen({ profile: initialProfile, onEditProfile, onBack }: ProfileScreenProps) {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>(); // Reliable navigation object
+
   const [profile, setProfile] = useState<Profile | null>(initialProfile || null);
 
   useEffect(() => {
@@ -51,6 +59,10 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
     }
   };
 
+  const handleViewDashboard = () => {
+    navigation.setCurrentScreen('dashboard'); // Use custom navigation method
+  };
+
   return (
     <SafeScreen backgroundColor={Colors.softLightGrey} statusBarStyle="dark">
 
@@ -83,58 +95,45 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
         <View style={styles.infoSection}>
           <Text style={styles.sectionTitle}>Info & Contact</Text>
           <View style={styles.infoItem}>
-            <MaterialCommunityIcons name="ruler-square" size={24} color="gray" />
+            <MaterialCommunityIcons name="ruler-square" size={24} color={Colors.primary} />
             <Text style={styles.infoText}>Site ID: {profile?.site_id || 'N/A'}</Text>
           </View>
           <View style={styles.infoItem}>
-            <MaterialCommunityIcons name="phone" size={24} color="gray" />
+            <MaterialCommunityIcons name="phone" size={24} color={Colors.primary} />
             <Text style={styles.infoText}>Phone No: {profile?.phone || 'N/A'}</Text>
           </View>
           <View style={styles.infoItem}>
-            <MaterialCommunityIcons name="gender-male-female" size={24} color="gray" />
+            <MaterialCommunityIcons name="gender-male-female" size={24} color={Colors.primary} />
             <Text style={styles.infoText}>Gender: {profile?.gender || 'N/A'}</Text>
           </View>
           <View style={styles.infoItem}>
-            <MaterialCommunityIcons name="email" size={24} color="gray" />
+            <MaterialCommunityIcons name="email" size={24} color={Colors.primary} />
             <Text style={styles.infoText}>Email: {profile?.email || 'N/A'}</Text>
           </View>
           <View style={styles.infoItem}>
-            <MaterialCommunityIcons name="map-marker" size={24} color="gray" />
+            <MaterialCommunityIcons name="map-marker" size={24} color={Colors.primary} />
             <Text style={styles.infoText}>Location: {profile?.location || 'N/A'}</Text>
           </View>
           <View style={styles.infoItem}>
-            <MaterialCommunityIcons name="office-building" size={24} color="gray" />
+            <MaterialCommunityIcons name="office-building" size={24} color={Colors.primary} />
             <Text style={styles.infoText}>Organization: {profile?.organization || 'N/A'}</Text>
           </View>
         </View>
 
-        {/* SYSTEM & ACCOUNT METADATA SECTION */}
-        <View style={styles.metadataSection}>
-          <Text style={styles.sectionTitle}>System & Account Metadata</Text>
-          <View style={styles.metadataItem}>
-            <MaterialCommunityIcons name="account" size={24} color="gray" />
-            <Text style={styles.metadataText}>User ID: {profile?.id || 'N/A'}</Text>
-          </View>
-          <View style={styles.metadataItem}>
-            <MaterialCommunityIcons name="check-circle" size={24} color={profile?.is_active ? 'green' : 'red'} />
-            <Text style={styles.metadataText}>Account Status: {profile?.is_active ? 'Active' : 'Inactive'}</Text>
-          </View>
-          <View style={styles.metadataItem}>
-            <MaterialCommunityIcons name="calendar" size={24} color="gray" />
-            <Text style={styles.metadataText}>Profile Created: {profile?.created_at ? format(new Date(profile.created_at), 'PPpp') : 'N/A'}</Text>
-          </View>
-          <View style={styles.metadataItem}>
-            <MaterialCommunityIcons name="update" size={24} color="gray" />
-            <Text style={styles.metadataText}>Last Updated: {profile?.updated_at ? format(new Date(profile.updated_at), 'PPpp') : 'N/A'}</Text>
-          </View>
-          <View style={styles.metadataItem}>
-            <MaterialCommunityIcons name="login" size={24} color="gray" />
-            <Text style={styles.metadataText}>Last Login: {profile?.last_login_at ? format(new Date(profile.last_login_at), 'PPpp') : 'N/A'}</Text>
-          </View>
-          <View style={styles.metadataItem}>
-            <MaterialCommunityIcons name="clock" size={24} color="gray" />
-            <Text style={styles.metadataText}>Last Activity: {profile?.last_activity_at ? format(new Date(profile.last_activity_at), 'PPpp') : 'N/A'}</Text>
-          </View>
+        {/* ACTION BUTTONS SECTION */}
+        <View style={styles.actionSection}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={handleViewDashboard} // Updated to use the safe handler
+          >
+            <Text style={styles.primaryButtonText}>View Dashboard</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => console.log('Logout action triggered')}
+          >
+            <Text style={styles.secondaryButtonText}>Logout</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeScreen>
@@ -183,6 +182,8 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     marginBottom: 16,
+    borderWidth: 2,
+    borderColor: Colors.primary,
   },
   fallbackAvatar: {
     width: 100,
@@ -223,21 +224,38 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    marginBottom: 16, // Add spacing below this section
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+    marginBottom: 16,
   },
-  metadataSection: {
-    backgroundColor: '#fff',
+  actionSection: {
+    marginTop: 16,
+  },
+  primaryButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
     borderRadius: 8,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: Colors.danger,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: Colors.danger,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   sectionTitle: {
     fontSize: 18,
@@ -249,11 +267,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10, // Clear vertical separation
   },
-  metadataItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
   icon: {
     fontSize: 24,
     marginRight: 12, // Consistent spacing between icon and text
@@ -261,10 +274,5 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 16,
     marginLeft: 12, // Consistent spacing between icon and text
-  },
-  metadataText: {
-    fontSize: 14,
-    marginLeft: 12,
-    color: 'gray',
   },
 });
