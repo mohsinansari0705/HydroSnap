@@ -7,7 +7,7 @@ export interface WaterLevelReading {
   user_role: string;
   site_id: string;
   site_name: string;
-  water_level: number;
+  predicted_water_level: number;
   latitude: number;
   longitude: number;
   photo_url: string;
@@ -17,7 +17,7 @@ export interface WaterLevelReading {
   reading_method: 'manual' | 'photo_analysis' | 'qr_scan';
   weather_conditions: string;
   submission_timestamp: string;
-  created_at: string;
+  // Note: DB column is `submission_timestamp` (no `created_at` column)
 }
 
 export interface NewReadingData {
@@ -160,13 +160,13 @@ class WaterLevelReadingsService {
       const waterLevel = readingData.waterLevel || this.generateRealisticWaterLevel(readingData.siteData);
       
       // Create reading record
-      const reading: Omit<WaterLevelReading, 'created_at'> = {
+      const reading: Omit<WaterLevelReading, 'id'> = {
         id: this.generateReadingId(),
         user_id: '550e8400-e29b-41d4-a716-446655440001', // Mock user ID
         user_role: 'field_personnel',
         site_id: readingData.siteData.siteId,
         site_name: readingData.siteData.name,
-        water_level: waterLevel,
+        predicted_water_level: waterLevel,
         latitude: readingData.userLocation.latitude,
         longitude: readingData.userLocation.longitude,
         photo_url: readingData.photoUri || this.generateMockPhotoUrl(readingData.siteData.siteId),
@@ -188,7 +188,7 @@ class WaterLevelReadingsService {
       console.log('📊 New Water Level Reading:', {
         siteId: reading.site_id,
         siteName: reading.site_name,
-        waterLevel: `${reading.water_level}cm`,
+        waterLevel: `${reading.predicted_water_level}cm`,
         location: `${reading.latitude.toFixed(6)}, ${reading.longitude.toFixed(6)}`,
         distance: `${reading.distance_from_site}m from site`,
         qrCode: reading.qr_code_scanned,
