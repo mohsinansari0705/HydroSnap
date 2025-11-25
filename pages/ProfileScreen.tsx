@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Colors } from '../lib/colors';
 import { Profile } from '../types/profile';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { NavigationProp, useNavigation } from '../lib/NavigationContext'; // Use custom navigation context
+import { useNavigation } from '../lib/NavigationContext';
 import SafeScreen from '../components/SafeScreen';
 
 interface ProfileScreenProps {
@@ -13,16 +13,10 @@ interface ProfileScreenProps {
   onBack: () => void;
 }
 
-// Define the RootStackParamList type
-type RootStackParamList = {
-  Dashboard: undefined; // Add other routes as needed
-  Profile: undefined;   // Example route
-};
-
 const defaultProfileImage = 'https://example.com/default-profile.png'; // Add your default image URL here
 
 export default function ProfileScreen({ profile: initialProfile, onEditProfile, onBack }: ProfileScreenProps) {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>(); // Reliable navigation object
+  const navigation = useNavigation(); // Reliable navigation object
 
   const [profile, setProfile] = useState<Profile | null>(initialProfile || null);
 
