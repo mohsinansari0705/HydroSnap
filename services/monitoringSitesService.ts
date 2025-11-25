@@ -40,7 +40,7 @@ export interface WaterLevelReading {
   user_role: string;
   site_id: string;
   site_name: string;
-  water_level: number;
+  predicted_water_level: number;
   latitude?: number;
   longitude?: number;
   photo_url?: string;
@@ -50,7 +50,7 @@ export interface WaterLevelReading {
   reading_method: 'manual' | 'photo_analysis';
   weather_conditions?: string;
   submission_timestamp: string;
-  created_at: string;
+  // Note: DB column is `submission_timestamp` (no `created_at` column)
 }
 
 /**
@@ -252,7 +252,7 @@ export class MonitoringSitesService {
         let status: 'normal' | 'warning' | 'danger' | 'reading_due' = 'reading_due';
         
         if (latestReading) {
-          const waterLevel = latestReading.water_level;
+          const waterLevel = latestReading.predicted_water_level || 0;
           
           if (waterLevel >= site.danger_level) {
             status = 'danger';
@@ -275,7 +275,7 @@ export class MonitoringSitesService {
           ...site,
           status,
           lastReading: latestReading ? {
-            waterLevel: latestReading.water_level,
+            waterLevel: latestReading.predicted_water_level || 0,
             timestamp: this.formatTimestamp(latestReading.submission_timestamp),
             operator: latestReading.user_role
           } : undefined,
@@ -296,6 +296,44 @@ export class MonitoringSitesService {
         lastReading: undefined,
         isAccessible: true
       }));
+    }
+  }
+
+  /**
+   * Fetch all water level readings with optional limit
+   */
+  static async getAllReadings(limit?: number): Promise<WaterLevelReading[]> {
+    try {
+      console.log('🔄 Fetching water level readings from Supabase...');
+      
+      let query = supabase
+        .from('water_level_readings')
+        .select('*')
+        .order('submission_timestamp', { ascending: false });
+
+      if (limit) {
+        query = query.limit(limit);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('❌ Supabase error fetching water level readings:', error);
+        console.error('Error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+
+      console.log('✅ Successfully fetched', data?.length || 0, 'water level readings');
+
+      return data || [];
+    } catch (error) {
+      console.error('💥 Error in getAllReadings:', error);
+      throw error;
     }
   }
 
