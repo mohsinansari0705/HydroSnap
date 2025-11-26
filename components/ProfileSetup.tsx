@@ -19,6 +19,8 @@ import {
   NeumorphicTextStyles,
 } from '../lib/neumorphicStyles';
 import { Colors } from '../lib/colors';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '../lib/NavigationContext';
 
 interface ProfileSetupProps {
   userId: string;
@@ -26,6 +28,7 @@ interface ProfileSetupProps {
 }
 
 export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetupProps) {
+  const { navigateBack } = useNavigation(); // Use custom navigation context
   const styles = React.useMemo(() => createStyles(), []);
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<Profile['role']>('public');
@@ -115,6 +118,14 @@ export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetup
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      {/* Back Button */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={navigateBack} // Use custom navigation method
+      >
+        <Ionicons name="arrow-back" size={24} color={Colors.deepSecurityBlue} />
+      </TouchableOpacity>
+
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.formContainer}>
           <Text style={styles.title}>Complete Your Profile</Text>
@@ -304,5 +315,11 @@ const createStyles = () => StyleSheet.create({
     ...NeumorphicTextStyles.buttonPrimary,
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 10,
   },
 });
