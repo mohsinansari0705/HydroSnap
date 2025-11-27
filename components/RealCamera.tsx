@@ -6,11 +6,16 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Animated,
+  Modal,
+  Image,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
+import { LocationMonitorWidget } from './LocationMonitorWidget';
 
 interface RealCameraProps {
   onPhotoTaken: (photoUri: string) => void;
@@ -22,13 +27,55 @@ export const RealCamera: React.FC<RealCameraProps> = ({ onPhotoTaken, onCancel }
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaLibraryPermission, requestMediaLibraryPermission] = MediaLibrary.usePermissions();
   const [isCapturing, setIsCapturing] = useState(false);
+  const [showTipsModal, setShowTipsModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
+  const [flashMode, setFlashMode] = useState<'off' | 'on' | 'auto'>('off');
   const cameraRef = useRef<CameraView>(null);
+  
+  // Animation values for corner scanning effect
+  const cornerAnim1 = useRef(new Animated.Value(0)).current;
+  const cornerAnim2 = useRef(new Animated.Value(0)).current;
+  const cornerAnim3 = useRef(new Animated.Value(0)).current;
+  const cornerAnim4 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Request media library permission on mount
     if (!mediaLibraryPermission?.granted) {
       requestMediaLibraryPermission();
     }
+    
+    // Start corner animations
+    const createPulseAnimation = (animValue: Animated.Value, delay: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(animValue, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    };
+    
+    const animations = [
+      createPulseAnimation(cornerAnim1, 0),
+      createPulseAnimation(cornerAnim2, 375),
+      createPulseAnimation(cornerAnim3, 750),
+      createPulseAnimation(cornerAnim4, 1125),
+    ];
+    
+    animations.forEach(anim => anim.start());
+    
+    return () => {
+      animations.forEach(anim => anim.stop());
+    };
   }, []);
 
   const capturePhoto = async () => {
@@ -49,14 +96,8 @@ export const RealCamera: React.FC<RealCameraProps> = ({ onPhotoTaken, onCancel }
           await MediaLibrary.createAlbumAsync('HydroSnap', asset, false);
         }
 
-        Alert.alert(
-          'Photo Captured! 📸',
-          'Gauge photo has been captured successfully. The system will process this image to calculate the water level.',
-          [
-            { text: 'Retake', onPress: () => setIsCapturing(false) },
-            { text: 'Use Photo', onPress: () => onPhotoTaken(photo.uri) }
-          ]
-        );
+        setCapturedPhotoUri(photo.uri);
+        setShowPreviewModal(true);
       }
     } catch (error) {
       console.error('Error capturing photo:', error);
@@ -68,6 +109,34 @@ export const RealCamera: React.FC<RealCameraProps> = ({ onPhotoTaken, onCancel }
 
   const toggleCameraFacing = () => {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
+  };
+
+  const toggleFlash = () => {
+    setFlashMode(current => {
+      if (current === 'off') return 'on';
+      if (current === 'on') return 'off';
+      return 'off';
+    });
+  };
+
+  const getFlashIcon = () => {
+    switch (flashMode) {
+      case 'on': return 'flash';
+      default: return 'flash-off';
+    }
+  };
+
+  const handleRetake = () => {
+    setShowPreviewModal(false);
+    setCapturedPhotoUri(null);
+    setIsCapturing(false);
+  };
+
+  const handleUsePhoto = () => {
+    if (capturedPhotoUri) {
+      setShowPreviewModal(false);
+      onPhotoTaken(capturedPhotoUri);
+    }
   };
 
   if (!permission) {
@@ -89,18 +158,22 @@ export const RealCamera: React.FC<RealCameraProps> = ({ onPhotoTaken, onCancel }
     return (
       <View style={styles.container}>
         <View style={[createNeumorphicCard(), styles.permissionContainer]}>
-          <Text style={[NeumorphicTextStyles.heading, { color: Colors.textPrimary, textAlign: 'center' }]}>
-            📸 Camera Permission Required
+          <View style={styles.permissionIcon}>
+            <Ionicons name="camera-outline" size={64} color={Colors.primary} />
+          </View>
+          <Text style={[NeumorphicTextStyles.heading, { color: Colors.textPrimary, textAlign: 'center', marginTop: 20 }]}>
+            Camera Permission Required
           </Text>
-          <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary, textAlign: 'center', marginTop: 16 }]}>
+          <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary, textAlign: 'center', marginTop: 16, paddingHorizontal: 20 }]}>
             We need access to your camera to capture gauge readings. This is essential for the water level measurement process.
           </Text>
           <TouchableOpacity
             style={[createNeumorphicCard(), styles.permissionButton]}
             onPress={requestPermission}
           >
+            <Ionicons name="camera" size={20} color={Colors.primary} style={{ marginRight: 8 }} />
             <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.primary }]}>
-              Grant Camera Permission
+              Grant Permission
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -120,93 +193,281 @@ export const RealCamera: React.FC<RealCameraProps> = ({ onPhotoTaken, onCancel }
     <View style={styles.container}>
       <CameraView 
         style={styles.camera} 
-        facing={facing} 
+        facing={facing}
+        enableTorch={flashMode === 'on'}
         ref={cameraRef}
       >
         <View style={styles.overlay}>
+          {/* Header with gradient background */}
           <View style={styles.header}>
-            <Text style={[NeumorphicTextStyles.heading, { color: Colors.white }]}>
-              Capture Gauge Reading
-            </Text>
-            <TouchableOpacity style={styles.headerButton} onPress={onCancel}>
-              <Text style={styles.headerButtonText}>✕</Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.headerContent}>
+                <MaterialCommunityIcons name="water" size={24} color="#fff" />
+                <Text style={styles.headerTitle}>Capture Gauge Reading</Text>
+              </View>
+              <View style={styles.headerButtons}>
+                <TouchableOpacity 
+                  style={styles.headerButton} 
+                  onPress={() => setShowTipsModal(true)}
+                >
+                  <Ionicons name="information-circle" size={24} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerButton} onPress={onCancel}>
+                  <Ionicons name="close" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
 
-          {/* Gauge Frame Guide */}
-          <View style={styles.gaugeFrame}>
+            {/* Location Monitor Widget - Small Popup */}
+            <View style={styles.locationWidgetContainer}>
+              <LocationMonitorWidget compact={true} />
+            </View>
+
+          {/* Scanning Frame with Animated Corners */}
+          <View style={styles.scanningArea}>
             <View style={styles.frameGuide}>
-              <View style={[styles.corner, styles.topLeft]} />
-              <View style={[styles.corner, styles.topRight]} />
-              <View style={[styles.corner, styles.bottomLeft]} />
-              <View style={[styles.corner, styles.bottomRight]} />
+              {/* Animated Corner Indicators */}
+              <Animated.View 
+                style={[
+                  styles.corner, 
+                  styles.topLeft,
+                  {
+                    opacity: cornerAnim1.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.3, 1],
+                    }),
+                  }
+                ]} 
+              />
+              <Animated.View 
+                style={[
+                  styles.corner, 
+                  styles.topRight,
+                  {
+                    opacity: cornerAnim2.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.3, 1],
+                    }),
+                  }
+                ]} 
+              />
+              <Animated.View 
+                style={[
+                  styles.corner, 
+                  styles.bottomLeft,
+                  {
+                    opacity: cornerAnim3.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.3, 1],
+                    }),
+                  }
+                ]} 
+              />
+              <Animated.View 
+                style={[
+                  styles.corner, 
+                  styles.bottomRight,
+                  {
+                    opacity: cornerAnim4.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.3, 1],
+                    }),
+                  }
+                ]} 
+              />
               
-              <View style={styles.centerCrosshair}>
-                <View style={styles.horizontalLine} />
-                <View style={styles.verticalLine} />
+              {/* Center Grid */}
+              <View style={styles.gridOverlay}>
+                <View style={styles.gridLine} />
+                <View style={[styles.gridLine, styles.gridLineVertical]} />
               </View>
             </View>
             
-            <Text style={styles.instruction}>
-              Position the water gauge meter within the frame
-            </Text>
-            <Text style={styles.subInstruction}>
-              Ensure the water level marking is clearly visible
-            </Text>
+            <View style={styles.instructionContainer}>
+              <View style={styles.instructionBadge}>
+                <MaterialCommunityIcons name="target" size={16} color="#fff" />
+                <Text style={styles.instruction}>
+                  Align gauge within frame
+                </Text>
+              </View>
+            </View>
           </View>
 
           {/* Camera Controls */}
-          <View style={styles.controls}>
-            <TouchableOpacity
-              style={styles.flipButton}
-              onPress={toggleCameraFacing}
-            >
-              <Text style={styles.flipButtonText}>🔄</Text>
-            </TouchableOpacity>
+          <View style={styles.controlsContainer}>
+            <View style={styles.controls}>
+              <TouchableOpacity
+                style={styles.flipButton}
+                onPress={toggleCameraFacing}
+              >
+                <Ionicons name="camera-reverse" size={28} color="#fff" />
+              </TouchableOpacity>
 
-            <View style={styles.captureButtonContainer}>
+              <View style={styles.captureButtonContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.captureButton,
+                    isCapturing && styles.capturingButton
+                  ]}
+                  onPress={capturePhoto}
+                  disabled={isCapturing}
+                  activeOpacity={0.8}
+                >
+                  {isCapturing ? (
+                    <ActivityIndicator size="large" color="#fff" />
+                  ) : (
+                    <View style={styles.captureButtonInner}>
+                      <Ionicons name="camera" size={32} color={Colors.primary} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <Text style={styles.captureText}>
+                  {isCapturing ? 'Processing...' : 'Capture'}
+                </Text>
+              </View>
+              
               <TouchableOpacity
                 style={[
-                  styles.captureButton,
-                  isCapturing && styles.capturingButton
+                  styles.flashButton,
+                  flashMode !== 'off' && styles.flashButtonActive
                 ]}
-                onPress={capturePhoto}
-                disabled={isCapturing}
+                onPress={toggleFlash}
               >
-                <View style={styles.captureButtonInner} />
+                <Ionicons name={getFlashIcon()} size={28} color="#fff" />
               </TouchableOpacity>
             </View>
-            
-            <View style={styles.placeholderButton} />
           </View>
-
-          <Text style={styles.captureText}>
-            {isCapturing ? 'Capturing...' : 'Tap to capture'}
-          </Text>
         </View>
       </CameraView>
 
-      {/* Information Panel */}
-      <View style={[createNeumorphicCard(), styles.infoPanel]}>
-        <Text style={[NeumorphicTextStyles.subheading, { color: Colors.textPrimary }]}>
-          📋 Photo Capture Tips
-        </Text>
-        <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary, marginTop: 8 }]}>
-          • Keep the gauge meter centered in the frame{'\n'}
-          • Ensure good lighting for clear visibility{'\n'}
-          • Hold the device steady while capturing{'\n'}
-          • Make sure the water level mark is visible
-        </Text>
-        
-        {isCapturing && (
-          <View style={styles.processingIndicator}>
-            <ActivityIndicator size="small" color={Colors.primary} />
-            <Text style={[NeumorphicTextStyles.body, { color: Colors.primary, marginLeft: 10 }]}>
-              📸 Processing image...
-            </Text>
+        {/* Tips Modal */}
+      <Modal
+        visible={showTipsModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTipsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[createNeumorphicCard(), styles.tipsModal]}>
+            <View style={styles.tipsHeader}>
+              <View style={styles.tipsIconContainer}>
+                <Ionicons name="bulb" size={28} color={Colors.primary} />
+              </View>
+              <Text style={[NeumorphicTextStyles.heading, { color: Colors.textPrimary }]}>
+                Photo Capture Tips
+              </Text>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setShowTipsModal(false)}
+              >
+                <Ionicons name="close" size={24} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.tipsContent}>
+              <View style={styles.tipItem}>
+                <View style={styles.tipIcon}>
+                  <Ionicons name="locate" size={20} color={Colors.primary} />
+                </View>
+                <Text style={[NeumorphicTextStyles.body, styles.tipText]}>
+                  Keep the gauge meter centered in the frame
+                </Text>
+              </View>
+              
+              <View style={styles.tipItem}>
+                <View style={styles.tipIcon}>
+                  <Ionicons name="sunny" size={20} color={Colors.warning} />
+                </View>
+                <Text style={[NeumorphicTextStyles.body, styles.tipText]}>
+                  Ensure good lighting for clear visibility
+                </Text>
+              </View>
+              
+              <View style={styles.tipItem}>
+                <View style={styles.tipIcon}>
+                  <MaterialCommunityIcons name="hand-okay" size={20} color={Colors.success} />
+                </View>
+                <Text style={[NeumorphicTextStyles.body, styles.tipText]}>
+                  Hold the device steady while capturing
+                </Text>
+              </View>
+              
+              <View style={styles.tipItem}>
+                <View style={styles.tipIcon}>
+                  <MaterialCommunityIcons name="water-check" size={20} color={Colors.info} />
+                </View>
+                <Text style={[NeumorphicTextStyles.body, styles.tipText]}>
+                  Make sure the water level mark is clearly visible
+                </Text>
+              </View>
+            </View>
+            
+            <TouchableOpacity
+              style={[createNeumorphicCard(), styles.gotItButton]}
+              onPress={() => setShowTipsModal(false)}
+            >
+              <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.primary }]}>
+                Got it
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
-      </View>
+        </View>
+      </Modal>
+
+      {/* Photo Preview Modal */}
+      <Modal
+        visible={showPreviewModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleRetake}
+      >
+        <View style={styles.previewModalOverlay}>
+          <View style={[createNeumorphicCard(), styles.previewModal]}>
+            <View style={styles.previewHeader}>
+              <View style={styles.successIconContainer}>
+                <Ionicons name="checkmark-circle" size={32} color={Colors.success} />
+              </View>
+              <Text style={[NeumorphicTextStyles.heading, { color: Colors.textPrimary, marginTop: 12 }]}>
+                Photo Captured Successfully
+              </Text>
+              <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary, textAlign: 'center', marginTop: 8 }]}>
+                Review your photo before proceeding
+              </Text>
+            </View>
+            
+            {capturedPhotoUri && (
+              <View style={styles.previewImageContainer}>
+                <Image 
+                  source={{ uri: capturedPhotoUri }} 
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+            
+            <View style={styles.previewActions}>
+              <TouchableOpacity
+                style={[createNeumorphicCard(), styles.retakeButton]}
+                onPress={handleRetake}
+              >
+                <Ionicons name="refresh" size={20} color={Colors.textSecondary} />
+                <Text style={[NeumorphicTextStyles.buttonSecondary, { color: Colors.textSecondary, marginLeft: 8 }]}>
+                  Retake
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[createNeumorphicCard(), styles.usePhotoButton]}
+                onPress={handleUsePhoto}
+              >
+                <Ionicons name="checkmark" size={20} color={Colors.primary} />
+                <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.primary, marginLeft: 8 }]}>
+                  Use Photo
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -214,204 +475,351 @@ export const RealCamera: React.FC<RealCameraProps> = ({ onPhotoTaken, onCancel }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#000',
   },
   camera: {
     flex: 1,
   },
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 50,
+    paddingTop: 14,
+    paddingBottom: 14,
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  locationWidgetContainer: {
+    position: 'absolute',
+    top: 85,
+    left: 30,
+    right: 30,
+    zIndex: 10,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 12,
   },
   headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  headerButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  gaugeFrame: {
+  scanningArea: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingVertical: 40,
   },
   frameGuide: {
-    width: 280,
-    height: 350,
+    width: 320,
+    height: 420,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
   },
   corner: {
     position: 'absolute',
-    width: 30,
-    height: 30,
-    borderColor: Colors.primary,
-    borderWidth: 3,
+    width: 50,
+    height: 50,
+    borderColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 5,
+    borderRadius: 6,
   },
   topLeft: {
     top: 0,
     left: 0,
     borderBottomWidth: 0,
     borderRightWidth: 0,
+    borderTopLeftRadius: 12,
   },
   topRight: {
     top: 0,
     right: 0,
     borderBottomWidth: 0,
     borderLeftWidth: 0,
+    borderTopRightRadius: 12,
   },
   bottomLeft: {
     bottom: 0,
     left: 0,
     borderTopWidth: 0,
     borderRightWidth: 0,
+    borderBottomLeftRadius: 12,
   },
   bottomRight: {
     bottom: 0,
     right: 0,
     borderTopWidth: 0,
     borderLeftWidth: 0,
+    borderBottomRightRadius: 12,
   },
-  centerCrosshair: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
+  gridOverlay: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  horizontalLine: {
+  gridLine: {
     position: 'absolute',
-    width: 60,
-    height: 2,
-    backgroundColor: Colors.primary,
+    width: '100%',
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
-  verticalLine: {
-    position: 'absolute',
-    width: 2,
-    height: 60,
-    backgroundColor: Colors.primary,
+  gridLineVertical: {
+    width: 1,
+    height: '100%',
+  },
+  instructionContainer: {
+    marginTop: 30,
+    alignItems: 'center',
+  },
+  instructionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    gap: 8,
   },
   instruction: {
     color: '#fff',
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 30,
+    fontSize: 15,
     fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    letterSpacing: 0.3,
   },
-  subInstruction: {
-    color: '#fff',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 8,
-    textShadowColor: 'rgba(0,0,0,0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+  controlsContainer: {
+    paddingBottom: 18,
+    paddingTop: 18,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   controls: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
-    paddingHorizontal: 40,
-    paddingBottom: 30,
+    paddingHorizontal: 30,
   },
   flipButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
-  flipButtonText: {
-    fontSize: 24,
+  flashButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  flashButtonActive: {
+    backgroundColor: 'rgba(255,215,0,0.3)',
+    borderColor: 'rgba(255,215,0,0.6)',
   },
   captureButtonContainer: {
     alignItems: 'center',
+    gap: 12,
   },
   captureButton: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderWidth: 4,
-    borderColor: '#fff',
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+    elevation: 10,
   },
   capturingButton: {
     backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
   },
   captureButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#fff',
-  },
-  placeholderButton: {
-    width: 50,
-    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   captureText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center',
-    paddingBottom: 20,
-    textShadowColor: 'rgba(0,0,0,0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
-  },
-  infoPanel: {
-    margin: 20,
-    padding: 20,
-  },
-  processingIndicator: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: Colors.background,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     margin: 20,
-    padding: 30,
+    padding: 40,
+  },
+  permissionIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: `${Colors.primary}20`,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   permissionButton: {
     marginTop: 30,
     paddingHorizontal: 30,
     paddingVertical: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   cancelButton: {
     marginTop: 20,
     padding: 15,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  tipsModal: {
+    width: '100%',
+    maxWidth: 400,
+    padding: 24,
+    borderRadius: 20,
+  },
+  tipsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  tipsIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: `${Colors.primary}20`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseButton: {
+    marginLeft: 'auto',
+    padding: 4,
+  },
+  tipsContent: {
+    gap: 16,
+  },
+  tipItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  tipIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  tipText: {
+    flex: 1,
+    color: Colors.textSecondary,
+    lineHeight: 22,
+  },
+  gotItButton: {
+    marginTop: 24,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  previewModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  previewModal: {
+    width: '100%',
+    maxWidth: 450,
+    padding: 24,
+    borderRadius: 20,
+  },
+  previewHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  successIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: `${Colors.success}20`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewImageContainer: {
+    width: '100%',
+    height: 400,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    marginBottom: 20,
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  previewActions: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  retakeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: Colors.textSecondary,
+  },
+  usePhotoButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    backgroundColor: `${Colors.primary}15`,
   },
 });

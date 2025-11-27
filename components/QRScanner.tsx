@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { useSimpleBackHandler } from '../hooks/useBackHandler';
 
 // Mock implementations for missing dependencies
 const Camera = {
@@ -76,6 +77,11 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
     getCameraPermissions();
   }, []);
 
+  // Handle back button to close scanner
+  useSimpleBackHandler(() => {
+    onCancel();
+  });
+
   const getCameraPermissions = async () => {
     const { status } = await Camera.requestCameraPermissionsAsync();
     setHasPermission(status === 'granted');
@@ -135,7 +141,9 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
 
       const isWithinGeofence = distance <= siteData.geofenceRadius;
 
-      const errorMessage = isWithinGeofence ? undefined : `You are ${Math.round(distance)}m away from the monitoring site. Required: within ${siteData.geofenceRadius}m`;
+      const formattedDistance = distance < 500 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)}km`;
+      const formattedRadius = siteData.geofenceRadius < 500 ? `${siteData.geofenceRadius}m` : `${(siteData.geofenceRadius / 1000).toFixed(1)}km`;
+      const errorMessage = isWithinGeofence ? undefined : `You are ${formattedDistance} away from the monitoring site. Required: within ${formattedRadius}`;
       return {
         isValid: isWithinGeofence,
         distance: Math.round(distance),

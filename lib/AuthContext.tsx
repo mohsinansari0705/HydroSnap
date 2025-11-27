@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { Profile } from '../types/profile';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthContextType {
   session: Session | null;
@@ -30,46 +31,118 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
 
-  // Fetch user profile
-  const fetchProfile = async (userId: string, retryCount = 0): Promise<void> => {
+  // Load cached profile first (like WhatsApp/Instagram), then sync in background
+  const loadProfileWithCache = async (userId: string): Promise<void> => {
     try {
-      console.log('Fetching profile for user:', userId, 'Retry:', retryCount);
+      console.log('🚀 Loading profile with cache-first strategy for:', userId);
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // Step 1: Try to load from cache immediately (works offline)
+      const cacheKey = `profile_${userId}`;
+      const cachedProfile = await AsyncStorage.getItem(cacheKey);
+      
+      if (cachedProfile) {
+        const profile = JSON.parse(cachedProfile);
+        console.log('✅ Loaded profile from cache:', profile.email);
+        setProfile(profile);
+        setLoading(false); // App can now continue with cached data
+        
+        // Step 2: Sync in background (non-blocking)
+        console.log('🔄 Syncing profile in background...');
+        syncProfileInBackground(userId);
+        return;
+      }
+      
+      // Step 3: No cache - fetch from server (first time only)
+      console.log('📦 No cached profile found, fetching from server...');
+      await fetchProfileFromServer(userId);
+      
+    } catch (error) {
+      console.error('Cache loading error:', error);
+      // Fallback to server fetch
+      await fetchProfileFromServer(userId);
+    }
+  };
+
+  // Background sync (non-blocking like production apps)
+  const syncProfileInBackground = async (userId: string): Promise<void> => {
+    try {
+      const { data, error } = await Promise.race([
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Background sync timeout')), 8000)
+        )
+      ]);
+      
+      if (error) {
+        console.log('🔄 Background sync failed (using cached data):', error.message);
+        return;
+      }
+      
+      // Update cache and state with fresh data
+      const cacheKey = `profile_${userId}`;
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+      setProfile(data);
+      console.log('✅ Profile synced in background:', data.email);
+      
+    } catch (error) {
+      console.log('🔄 Background sync timeout (app continues with cache)');
+    }
+  };
+
+  // Server fetch (used for first-time loads)
+  const fetchProfileFromServer = async (userId: string, retryCount = 0): Promise<void> => {
+    try {
+      console.log('📡 Fetching profile from server:', userId, 'Retry:', retryCount);
+      
+      const { data, error } = await Promise.race([
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Server fetch timeout')), 5000)
+        )
+      ]);
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // Profile not found
-          if (retryCount < 8) { // Increase retry count
-            console.log(`Profile not found (attempt ${retryCount + 1}) - will retry in 1000ms`);
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Increase delay
-            return fetchProfile(userId, retryCount + 1);
+          // Profile not found - only retry once
+          if (retryCount < 1) {
+            console.log(`Profile not found, retrying once...`);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return fetchProfileFromServer(userId, retryCount + 1);
           } else {
-            console.error('Profile not found after 8 attempts');
+            console.error('Profile not found after retry');
             setError('Profile not found. Please contact support.');
             setProfile(null);
             setLoading(false);
             return;
           }
         }
-        console.error('Profile fetch error:', error);
-        setError('Failed to load profile');
+        
+        // Network or other errors
+        console.error('Profile fetch error:', error.message);
+        setError('Failed to load profile. Please check your connection.');
         setProfile(null);
         setLoading(false);
         return;
       }
 
-      console.log('Profile loaded successfully:', data?.email);
+      // Success - cache the profile and update state
+      console.log('✅ Profile loaded from server:', data?.email);
+      const cacheKey = `profile_${userId}`;
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
       setProfile(data);
       setError(null);
       setLoading(false);
-    } catch (e) {
-      console.error('Unexpected profile fetch error:', e);
-      setError('An unexpected error occurred');
+      
+    } catch (error: any) {
+      console.error('Server fetch error:', error.message);
+      
+      if (error.message === 'Server fetch timeout') {
+        setError('Connection timeout. Please check your internet.');
+      } else {
+        setError('Failed to load profile. Please try again.');
+      }
+      
+      setProfile(null);
       setLoading(false);
     }
   };
@@ -83,7 +156,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         if (session) {
           setSession(session);
-          await fetchProfile(session.user.id);
+          // Use cache-first strategy like WhatsApp
+          await loadProfileWithCache(session.user.id);
         } else {
           setSession(null);
           setProfile(null);
@@ -110,7 +184,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setSession(session);
 
         if (!isRegistering) {
-          await fetchProfile(session.user.id);
+          // Use cache-first strategy for better user experience
+          await loadProfileWithCache(session.user.id);
         } else {
           console.log('Skipping auto profile fetch during registration');
           setLoading(false);
@@ -145,12 +220,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  // Refresh profile
+  // Refresh profile (forced sync)
   const refreshProfile = async () => {
     if (session) {
       setLoading(true);
       try {
-        await fetchProfile(session.user.id);
+        // Force fresh fetch (bypass cache)
+        await fetchProfileFromServer(session.user.id);
       } catch (error) {
         console.error('Error refreshing profile:', error);
         setLoading(false);
@@ -170,7 +246,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (error) throw error;
       if (data.session) {
         setSession(data.session);
-        await fetchProfile(data.session.user.id);
+        await loadProfileWithCache(data.session.user.id);
       }
     } catch (error) {
       console.error('Error refreshing session:', error);

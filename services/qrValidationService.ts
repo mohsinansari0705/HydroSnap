@@ -91,9 +91,11 @@ export const validateQRCode = async (
 
     // Check if user is within geofence (skip if geofence is disabled/zero)
     if (siteData.geofenceRadius > 0 && distance > siteData.geofenceRadius) {
+      const formattedDistance = distance < 500 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)}km`;
+      const formattedRadius = siteData.geofenceRadius < 500 ? `${siteData.geofenceRadius}m` : `${(siteData.geofenceRadius / 1000).toFixed(1)}km`;
       return {
         success: false,
-        message: `You are ${Math.round(distance)}m away from the monitoring site. You must be within ${siteData.geofenceRadius}m to take readings.`,
+        message: `You are ${formattedDistance} away from the monitoring site. You must be within ${formattedRadius} to take readings.`,
         siteData,
         distance: Math.round(distance)
       };

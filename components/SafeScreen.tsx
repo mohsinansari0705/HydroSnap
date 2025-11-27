@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Platform, StatusBar as RNStatusBar } from 'react-native';
+import { StyleSheet, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../lib/colors';
 
@@ -45,18 +45,13 @@ const SafeScreen: React.FC<SafeScreenProps> = ({
         />
       )}
       
-      <View style={styles.content}>
-        {children}
-      </View>
+      {children}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
-    flex: 1,
-  },
-  content: {
     flex: 1,
   },
 });
