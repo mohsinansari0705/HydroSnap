@@ -1,0 +1,150 @@
+{
+  "common": {
+    "appName": "HydroSnap",
+    "tagline": "സ്മാർട്ട് ജല നിരപ്പ് നിരീക്ഷണം",
+    "ok": "ശരി",
+    "cancel": "റദ്ദാക്കുക",
+    "save": "സേവ്",
+    "delete": "ഇല്ലാതാക്കുക",
+    "edit": "തിരുത്തുക",
+    "yes": "അതെ",
+    "no": "ഇല്ല",
+    "close": "അടയ്ക്കുക",
+    "back": "തിരികെ",
+    "next": "അടുത്തത്",
+    "retry": "വീണ്ടും ശ്രമിക്കുക",
+    "search": "തിരയുക",
+    "takeReading": "റീഡിംഗ് എടുക്കുക"
+  },
+  "auth": {
+    "login": "ലോഗിൻ",
+    "signup": "സൈൻ അപ്പ്",
+    "email": "ഇമെയിൽ",
+    "password": "പാസ്‌വേഡ്",
+    "forgotPassword": "പാസ്‌വേഡ് മറന്നോ?",
+    "name": "പേര്",
+    "language": "ഭാഷ",
+    "changeLanguage": "ഭാഷ മാറ്റുക"
+  },
+  "settings": {
+    "title": "ക്രമീകരണങ്ങൾ",
+    "language": "ഭാഷ",
+    "selected": "തിരഞ്ഞെടുത്തത്: {lang}"
+  },
+  "profile": {
+    "title": "പ്രൊഫൈൽ",
+    "editProfile": "പ്രൊഫൈൽ തിരുത്തുക",
+    "myReadings": "എന്റെ റീഡിംഗുകൾ",
+    "role": "പങ്ക്",
+    "phone": "ഫോൺ",
+    "email": "ഇമെയിൽ"
+  },
+  "dashboard": {
+    "title": "ഡാഷ്ബോർഡ്",
+    "sites": "മോണിറ്ററിംഗ് സൈറ്റുകൾ",
+    "alerts": "അലർട്ടുകൾ",
+    "recentActivity": "സമീപകാല പ്രവർത്തനം"
+  },
+  "sites": {
+    "title": "സൈറ്റുകൾ",
+    "details": "സൈറ്റ് വിശദാംശങ്ങൾ",
+    "location": "സ്ഥലം",
+    "waterLevel": "ജലനിരപ്പ്",
+    "lastReading": "അവസാന റീഡിംഗ്",
+    "newReading": "പുതിയ റീഡിംഗ്",
+    "publicUpload": "പബ്ലിക് അപ്‌ലോഡ്"
+  },
+  "qr": {
+    "scan": "QR സ്കാൻ",
+    "validate": "QR സാധൂകരിക്കുക",
+    "result": "QR ഫലം",
+    "invalid": "അസാധുവായ QR കോഡ്",
+    "valid": "സാധുവായ QR കോഡ്",
+    "requestingCameraPermission": "ക്യാമറാനുമതി അഭ്യർത്ഥിക്കുന്നു...",
+    "noCameraAccess": "ക്യാമറ ആക്സസ് നിരസിച്ചു.",
+    "grantPermission": "അനുമതി നൽകുക",
+    "scanMonitoringSiteQR": "മോണിറ്ററിംഗ് സൈറ്റ് QR സ്കാൻ",
+    "positionInstruction": "QR കോഡ് ഫ്രെയിമിന് ഉള്ളിൽ വയ്ക്കുക",
+    "validatingSite": "സൈറ്റ് സാധൂകരിക്കുന്നു...",
+    "retryScan": "വീണ്ടും സ്കാൻ",
+    "codeValidationTitle": "QR കോഡ് സാധൂകരണം",
+    "scanOrEnter": "സ്കാൻ ചെയ്യുക അല്ലെങ്കിൽ QR കോഡ് നൽകുക",
+    "enterDescription": "സ്ഥലവും റീഡിംഗും സാധൂകരിക്കാൻ സൈറ്റിന്റെ QR കോഡ് നൽകുക.",
+    "placeholder": "QR കോഡ് നൽകുക (ഉദാ. QR-YMN-DI-001)",
+    "scanCode": "QR കോഡ് സ്കാൻ",
+    "validating": "സാധൂകരിക്കുന്നു...",
+    "validateCode": "QR കോഡ് സാധൂകരിക്കുക",
+    "yourLocation": "നിങ്ങളുടെ സ്ഥാനം",
+    "locationServicesActive": "ലൊക്കേഷൻ സേവനങ്ങൾ സജീവം",
+    "codeResult": "QR കോഡ് ഫലം",
+    "siteInformation": "സൈറ്റ് വിവരം",
+    "siteDetails": "സൈറ്റ് വിശദാംശങ്ങൾ",
+    "siteId": "സൈറ്റ് ID",
+    "name": "പേര്",
+    "location": "സ്ഥലം",
+    "coordinates": "കോഅോർഡിനേറ്റുകൾ",
+    "waterLevels": "ജലനിരപ്പുകൾ",
+    "safe": "സുരക്ഷിതം",
+    "warning": "മുന്നറിയിപ്പ്",
+    "danger": "അപകടം",
+    "inRange": "പരിധിയിൽ",
+    "outOfRange": "പരിധിക്ക് പുറത്താണ്",
+    "requiredDistance": "ആവശ്യമായ ദൂരം",
+    "yourDistance": "നിങ്ങളുടെ ദൂരം",
+    "moveCloser": "റീഡിംഗ് നേടാൻ സൈറ്റിനോട് അടുത്തേക്ക് പോകുക",
+    "enterManually": "മാനുവൽ ആയി നൽകുക",
+    "cameraPermissionRequired": "ക്യാമറാനുമതി ആവശ്യമാണ്",
+    "allowCameraAccess": "QR സ്കാൻ ചെയ്യാൻ ക്യാമറ ആക്സസ് നൽകുക.",
+    "decrypting": "സൈറ്റ് ഡാറ്റ ഡിക്രിപ്റ്റ് ചെയ്തു സാധൂകരിക്കുന്നു...",
+    "invalidInputTitle": "അസാധുവായ ഇൻപുട്ട്",
+    "invalidInputMessage": "സാധുവായ QR കോഡ് നൽകുക.",
+    "invalidFormatTitle": "അസാധുവായ QR ഫോർമാറ്റ്",
+    "invalidFormatMessage": "ഈ QR-ൽ സാധുവായ സൈറ്റ് ഡാറ്റയില്ല.",
+    "validationFailedGeneric": "QR സാധൂകരണം പരാജയപ്പെട്ടു. വീണ്ടും ശ്രമിക്കുക.",
+    "mockCameraMessage": "ക്യാമറ മോക്ക് കാഴ്ച\nപ്രൊഡക്ഷനിൽ സ്കാനർ പ്രവർത്തിക്കും",
+    "autoScanInstruction": "കോഡ് സ്വയം സ്കാൻ ചെയ്യും",
+    "scannedCodePlaceholder": "സ്കാൻ ചെയ്ത QR"
+  },
+  "notifications": {
+    "markAllRead": "എല്ലാം വായിച്ചതായി കാണിക്കുക",
+    "noActiveAlerts": "സജീവ അലർട്ടുകളില്ല"
+  },
+  "home": {
+    "floodAlertStatus": "പ്രളയ അലർട്ട് നില"
+  },
+  "siteDetails": {
+    "back": "തിരികെ",
+    "currentWaterLevel": "ഇപ്പോഴത്തെ ജല നില",
+    "danger": "അപകടം",
+    "warning": "മുന്നറിയിപ്പ്",
+    "safe": "സുരക്ഷിതം",
+    "lastReadingDetails": "അവസാന റീഡിംഗ് വിശദാംശങ്ങൾ",
+    "timestamp": "സമയമുദ്ര",
+    "operator": "ഓപ്പറേറ്റർ",
+    "qrCode": "QR കോഡ്",
+    "overview": "അവലോകനം",
+    "history": "ചരിത്രം",
+    "map": "മാപ്പ്",
+    "readingHistory": "റീഡിംഗ് ചരിത്രം",
+    "by": "",
+    "locationGeofence": "സ്ഥലം & ജിയൊഫെൻസ്",
+    "mapViewComingSoon": "മാപ്പ് ദൃശ്യം ഉടൻ",
+    "coordinates": "കോഓർഡിനേറ്റുകൾ",
+    "geofenceRadius": "ജിയൊഫെൻസ് റേഡിയസ്",
+    "loadingSiteDetails": "സൈറ്റ് വിശദാംശങ്ങൾ ലോഡ് ചെയ്യുന്നു...",
+    "takeNewReading": "പുതിയ റീഡിംഗ് എടുക്കുക"
+  },
+  "notificationsPanel": {
+    "waterLevel": "ജല നില",
+    "threshold": "ത്രെഷോൾഡ്"
+  },
+  "alerts": {
+    "title": "അലർട്ടുകൾ",
+    "noAlerts": "അലർട്ടുകളില്ല",
+    "newAlert": "പുതിയ അലർട്ട്"
+  },
+  "errors": {
+    "network": "നെറ്റ്‌വർക്ക് പിശക്. ദയവായി വീണ്ടും ശ്രമിക്കുക.",
+    "unknown": "എന്തോ തെറ്റ് സംഭവിച്ചു."
+  }
+}

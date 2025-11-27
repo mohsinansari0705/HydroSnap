@@ -28,29 +28,23 @@ interface AuthScreenProps {
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const { refreshProfile, setIsRegistering } = useAuth(); // changed to include refreshProfile
   const { t } = useTranslation();
-
-  // Main state
-  const [isLogin, setIsLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
-  
-  // Language selector
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
-  
-  // Signup steps: 1=Basic Info, 2=Site ID, 3=Credentials & OTP
-  const [signupStep, setSignupStep] = useState(1);
-  
-  // Step 1: Basic Info
-  const [fullName, setFullName] = useState('');
-  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
-  const [role, setRole] = useState<Profile['role']>('public');
-  const [organization, setOrganization] = useState('');
-  const [location, setLocation] = useState('');
-  
-  // Step 2: Site ID
-  const [siteId, setSiteId] = useState('');
-  
-  // Step 3: Credentials & Password
+    const { showLanguageModal, setShowLanguageModal } = useState(false);
+    return (
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+        <View style={{ position: 'absolute', top: 8, right: 8 }}>
+          <LanguageSelector />
+        </View>
+        {/* Existing Auth UI, ensure texts use t('auth.*') where applicable */}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');

@@ -1,0 +1,150 @@
+{
+  "common": {
+    "appName": "HydroSnap",
+    "tagline": "ஸ்மார்ட் நீர் நிலை கண்காணிப்பு",
+    "ok": "சரி",
+    "cancel": "ரத்து",
+    "save": "சேமிக்க",
+    "delete": "அழி",
+    "edit": "திருத்த",
+    "yes": "ஆம்",
+    "no": "இல்லை",
+    "close": "மூடு",
+    "back": "பின்",
+    "next": "அடுத்து",
+    "retry": "மீண்டும் முயற்சி",
+    "search": "தேடல்",
+    "takeReading": "பதிவு எடுக்க"
+  },
+  "auth": {
+    "login": "உள்நுழை",
+    "signup": "பதிவு",
+    "email": "மின்னஞ்சல்",
+    "password": "கடவுச்சொல்",
+    "forgotPassword": "கடவுச்சொல் மறந்துவிட்டீர்களா?",
+    "name": "பெயர்",
+    "language": "மொழி",
+    "changeLanguage": "மொழி மாற்று"
+  },
+  "settings": {
+    "title": "அமைப்புகள்",
+    "language": "மொழி",
+    "selected": "தேர்ந்தெடுக்கப்பட்டது: {lang}"
+  },
+  "profile": {
+    "title": "சுயவிவரம்",
+    "editProfile": "சுயவிவரம் திருத்த",
+    "myReadings": "என் பதிவுகள்",
+    "role": "பங்கு",
+    "phone": "தொலைபேசி",
+    "email": "மின்னஞ்சல்"
+  },
+  "dashboard": {
+    "title": "டாஷ்போர்டு",
+    "sites": "மேற்பார்வை தளங்கள்",
+    "alerts": "எச்சரிக்கைகள்",
+    "recentActivity": "சமீபத்திய செயல்பாடு"
+  },
+  "sites": {
+    "title": "தளங்கள்",
+    "details": "தள விவரங்கள்",
+    "location": "இடம்",
+    "waterLevel": "நீர் நிலை",
+    "lastReading": "கடைசி பதிவு",
+    "newReading": "புதிய பதிவு",
+    "publicUpload": "பொது பதிவேற்றம்"
+  },
+  "qr": {
+    "scan": "QR ஸ்கேன்",
+    "validate": "QR சரிபார்",
+    "result": "QR முடிவு",
+    "invalid": "தவறான QR குறியீடு",
+    "valid": "சரி QR குறியீடு",
+    "requestingCameraPermission": "கேமரா அனுமதி கோருகிறது...",
+    "noCameraAccess": "கேமரா அணுகல் மறுக்கப்பட்டது.",
+    "grantPermission": "அனுமதி வழங்க",
+    "scanMonitoringSiteQR": "மோனிட்டரிங் தள QR ஸ்கேன்",
+    "positionInstruction": "QR குறியீட்டை பெட்டியின் உள்ளே வையுங்கள்",
+    "validatingSite": "தளம் சரிபார்க்கப்படுகிறது...",
+    "retryScan": "மீண்டும் ஸ்கேன்",
+    "codeValidationTitle": "QR குறியீடு சரிபார்ப்பு",
+    "scanOrEnter": "ஸ்கேன் செய் அல்லது QR குறியீடு உள்ளிடு",
+    "enterDescription": "இடத்தை சரிபார்த்து பதிவு எடுக்க தளத்தின் QR குறியீட்டை உள்ளிடவும்.",
+    "placeholder": "QR குறியீட்டை உள்ளிடவும் (எ.கா. QR-YMN-DI-001)",
+    "scanCode": "QR குறியீடு ஸ்கேன்",
+    "validating": "சரிபார்க்கிறது...",
+    "validateCode": "QR குறியீடு சரிபார்",
+    "yourLocation": "உங்கள் இருப்பிடம்",
+    "locationServicesActive": "இருப்பிடம் சேவை செயலில்",
+    "codeResult": "QR குறியீடு முடிவு",
+    "siteInformation": "தள தகவல்",
+    "siteDetails": "தள விவரங்கள்",
+    "siteId": "தள ஐடி",
+    "name": "பெயர்",
+    "location": "இடம்",
+    "coordinates": "கோஆர்டினேட்கள்",
+    "waterLevels": "நீர் நிலைகள்",
+    "safe": "பாதுகாப்பானது",
+    "warning": "எச்சரிக்கை",
+    "danger": "அபாயம்",
+    "inRange": "வரம்பில்",
+    "outOfRange": "வரம்புக்கு வெளியே",
+    "requiredDistance": "தேவையான தூரம்",
+    "yourDistance": "உங்கள் தூரம்",
+    "moveCloser": "பதிவெடுக்க தளத்துக்கு அருகில் செல்லவும்",
+    "enterManually": "கையேடு உள்ளீடு",
+    "cameraPermissionRequired": "கேமரா அனுமதி தேவை",
+    "allowCameraAccess": "QR குறியீட்டை ஸ்கேன் செய்ய கேமரா அணுகலை அனுமதிக்கவும்.",
+    "decrypting": "தள தரவு டிக்ரிப்ட் செய்து சரிபார்க்கிறது...",
+    "invalidInputTitle": "தவறான உள்ளீடு",
+    "invalidInputMessage": "சரியான QR குறியீட்டை உள்ளிடவும்.",
+    "invalidFormatTitle": "தவறான QR வடிவம்",
+    "invalidFormatMessage": "இந்த QR குறியீட்டில் செல்லுபடியான தளத் தரவு இல்லை.",
+    "validationFailedGeneric": "QR சரிபார்ப்பு தோல்வி. மீண்டும் முயற்சி.",
+    "mockCameraMessage": "கேமரா மோக் பார்வை\nஉற்பத்தியில் ஸ்கேனர் இயங்கும்",
+    "autoScanInstruction": "குறியீடு தானாக ஸ்கேன் செய்யப்படும்",
+    "scannedCodePlaceholder": "ஸ்கேன் செய்யப்பட்ட QR"
+  },
+  "notifications": {
+    "markAllRead": "அனைத்தும் படித்தது",
+    "noActiveAlerts": "செயலில் எச்சரிக்கைகள் இல்லை"
+  },
+  "home": {
+    "floodAlertStatus": "வெள்ள எச்சரிக்கை நிலை"
+  },
+  "siteDetails": {
+    "back": "பின்",
+    "currentWaterLevel": "தற்போதைய நீர் நிலை",
+    "danger": "அபாயம்",
+    "warning": "எச்சரிக்கை",
+    "safe": "பாதுகாப்பானது",
+    "lastReadingDetails": "கடைசி பதிவு விவரங்கள்",
+    "timestamp": "நேர முத்திரை",
+    "operator": "ஆபரேட்டர்",
+    "qrCode": "QR குறியீடு",
+    "overview": "மேலோட்டம்",
+    "history": "வரலாறு",
+    "map": "வரைபடம்",
+    "readingHistory": "பதிவு வரலாறு",
+    "by": "",
+    "locationGeofence": "இடம் & ஜியோஃபென்ஸ்",
+    "mapViewComingSoon": "வரைபடம் விரைவில்",
+    "coordinates": "கோஆர்டினேட்கள்",
+    "geofenceRadius": "ஜியோஃபென்ஸ் வட்டார",
+    "loadingSiteDetails": "தள விவரங்கள் ஏறுகிறது...",
+    "takeNewReading": "புதிய பதிவு எடுக்க"
+  },
+  "notificationsPanel": {
+    "waterLevel": "நீர் நிலை",
+    "threshold": "விமான மதிப்பு"
+  },
+  "alerts": {
+    "title": "எச்சரிக்கைகள்",
+    "noAlerts": "எச்சரிக்கைகள் இல்லை",
+    "newAlert": "புதிய எச்சரிக்கை"
+  },
+  "errors": {
+    "network": "நெட்வொர்க் பிழை. மீண்டும் முயற்சிக்கவும்.",
+    "unknown": "ஏதோ தவறு ஏற்பட்டது."
+  }
+}

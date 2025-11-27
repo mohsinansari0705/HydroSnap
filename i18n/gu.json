@@ -1,0 +1,150 @@
+{
+  "common": {
+    "appName": "HydroSnap",
+    "tagline": "સ્માર્ટ પાણીનો સ્તર મોનિટરિંગ",
+    "ok": "બરાબર",
+    "cancel": "રદ કરો",
+    "save": "સાચવો",
+    "delete": "કાઢી નાખો",
+    "edit": "ફેરફાર",
+    "yes": "હા",
+    "no": "ના",
+    "close": "બંધ કરો",
+    "back": "પાછા",
+    "next": "આગળ",
+    "retry": "ફરી પ્રયાસ કરો",
+    "search": "શોધ",
+    "takeReading": "રીડિંગ લો"
+  },
+  "auth": {
+    "login": "લોગિન",
+    "signup": "સાઇન અપ",
+    "email": "ઇમેઇલ",
+    "password": "પાસવર્ડ",
+    "forgotPassword": "પાસવર્ડ ભૂલી ગયા?",
+    "name": "નામ",
+    "language": "ભાષા",
+    "changeLanguage": "ભાષા બદલો"
+  },
+  "settings": {
+    "title": "સેટિંગ્સ",
+    "language": "ભાષા",
+    "selected": "પસંદ: {lang}"
+  },
+  "profile": {
+    "title": "પ્રોફાઇલ",
+    "editProfile": "પ્રોફાઇલ ફેરફાર",
+    "myReadings": "મારા રીડિંગ્સ",
+    "role": "ભૂમિકા",
+    "phone": "ફોન",
+    "email": "ઇમેઇલ"
+  },
+  "dashboard": {
+    "title": "ડેશબોર્ડ",
+    "sites": "મોનીટરીંગ સાઇટ્સ",
+    "alerts": "ચેતવનીઓ",
+    "recentActivity": "તાજેતરની પ્રવૃત્તિ"
+  },
+  "sites": {
+    "title": "સાઇટ્સ",
+    "details": "સાઇટ વિગતો",
+    "location": "સ્થાન",
+    "waterLevel": "પાણીનો સ્તર",
+    "lastReading": "છેલ્લું રીડિંગ",
+    "newReading": "નવું રીડિંગ",
+    "publicUpload": "જાહેર અપલોડ"
+  },
+  "qr": {
+    "scan": "QR સ્કેન",
+    "validate": "QR ચકાસો",
+    "result": "QR પરિણામ",
+    "invalid": "અમાન્ય QR કોડ",
+    "valid": "માન્ય QR કોડ",
+    "requestingCameraPermission": "કૅમેરા પરવાનગી માંગી રહ્યા છીએ...",
+    "noCameraAccess": "કૅમેરા પ્રવેશ નકારાયો.",
+    "grantPermission": "પરવાનગી આપો",
+    "scanMonitoringSiteQR": "મોનિટરિંગ સાઇટ QR સ્કેન કરો",
+    "positionInstruction": "QR કોડને ફ્રેમમાં રાખો",
+    "validatingSite": "સાઇટ ચકાસી રહ્યા છીએ...",
+    "retryScan": "ફરી સ્કેન કરો",
+    "codeValidationTitle": "QR કોડ ચકાસણી",
+    "scanOrEnter": "સ્કેન કરો અથવા QR કોડ દાખલ કરો",
+    "enterDescription": "સ્થાન ચકાસવા અને રીડિંગ મેળવવા સાઇટ QR કોડ દાખલ કરો.",
+    "placeholder": "QR કોડ દાખલ કરો (ઉદાહ. QR-YMN-DI-001)",
+    "scanCode": "QR કોડ સ્કેન કરો",
+    "validating": "ચકાસી રહ્યા...",
+    "validateCode": "QR કોડ ચકાસો",
+    "yourLocation": "તમારું સ્થાન",
+    "locationServicesActive": "સ્થાન સેવાઓ સક્રિય",
+    "codeResult": "QR કોડ પરિણામ",
+    "siteInformation": "સાઇટ માહિતી",
+    "siteDetails": "સાઇટ વિગતો",
+    "siteId": "સાઇટ ID",
+    "name": "નામ",
+    "location": "સ્થાન",
+    "coordinates": "કૉઓર્ડિનેટ્સ",
+    "waterLevels": "પાણીના સ્તરો",
+    "safe": "સુરક્ષિત",
+    "warning": "ચેતવણી",
+    "danger": "જોખમ",
+    "inRange": "પરિસરમાં",
+    "outOfRange": "પરિસર બહાર",
+    "requiredDistance": "જરૂરી અંતર",
+    "yourDistance": "તમારું અંતર",
+    "moveCloser": "રીડિંગ લેવા સાઇટ નજીક જાઓ",
+    "enterManually": "હસ્તે દાખલ કરો",
+    "cameraPermissionRequired": "કૅમેરા પરવાનગી જરૂરી",
+    "allowCameraAccess": "QR સ્કેન કરવા કૅમેરા પ્રવેશ આપો.",
+    "decrypting": "સાઇટ ડેટા ડિક્રિપ્ટ અને ચકાસી રહ્યા...",
+    "invalidInputTitle": "અમાન્ય ઇનપુટ",
+    "invalidInputMessage": "માન્ય QR કોડ દાખલ કરો.",
+    "invalidFormatTitle": "અમાન્ય QR ફોર્મેટ",
+    "invalidFormatMessage": "આ QR માં માન્ય સાઇટ ડેટા નથી.",
+    "validationFailedGeneric": "QR ચકાસણી નિષ્ફળ. ફરી પ્રયાસ કરો.",
+    "mockCameraMessage": "કેમેરા મૉક વિહંગાવલોકન\nપ્રોડક્શનમાં સ્કેનર ચાલશે",
+    "autoScanInstruction": "કોડ આપમેળે સ્કેન થશે",
+    "scannedCodePlaceholder": "સ્કેન કરેલ QR"
+  },
+  "notifications": {
+    "markAllRead": "બધાને વાંચેલ ગણો",
+    "noActiveAlerts": "કોઈ સક્રિય ચેતવણીઓ નથી"
+  },
+  "home": {
+    "floodAlertStatus": "પૂરની ચેતવણી સ્થિતિ"
+  },
+  "siteDetails": {
+    "back": "પાછા",
+    "currentWaterLevel": "વર્તમાન પાણીનો સ્તર",
+    "danger": "જોખમ",
+    "warning": "ચેતવણી",
+    "safe": "સુરક્ષિત",
+    "lastReadingDetails": "છેલ્લું રીડિંગ વિગતો",
+    "timestamp": "સમય મુદ્રા",
+    "operator": "ઓપરેટર",
+    "qrCode": "QR કોડ",
+    "overview": "ઓવરવ્યૂ",
+    "history": "ઇતિહાસ",
+    "map": "નકશો",
+    "readingHistory": "રીડિંગ ઇતિહાસ",
+    "by": "",
+    "locationGeofence": "સ્થાન અને જીઓફેન્સ",
+    "mapViewComingSoon": "નકશો દ્રશ્ય જલ્દી જ",
+    "coordinates": "કૉઓર્ડિનેટ્સ",
+    "geofenceRadius": "જીઓફેન્સ વ્યાસ",
+    "loadingSiteDetails": "સાઇટ વિગતો લોડ થઈ રહી છે...",
+    "takeNewReading": "નવી રીડિંગ લો"
+  },
+  "notificationsPanel": {
+    "waterLevel": "પાણીનો સ્તર",
+    "threshold": "થ્રેશોલ્ડ"
+  },
+  "alerts": {
+    "title": "ચેતવનીઓ",
+    "noAlerts": "કોઈ ચેતવનીઓ નથી",
+    "newAlert": "નવી ચેતવણી"
+  },
+  "errors": {
+    "network": "નેટવર્ક ભૂલ. કૃપા કરીને ફરી પ્રયત્ન કરો.",
+    "unknown": "કંઇક ખોટું થયું."
+  }
+}

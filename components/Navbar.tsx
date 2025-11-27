@@ -234,7 +234,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   {/* Reuse NotificationPanel's content but render inline here for tighter UX control */}
                   <ScrollView style={styles.notificationListScroll} contentContainerStyle={styles.notificationListContainer} scrollEnabled={true} nestedScrollEnabled={true}>
                     {alerts.length === 0 ? (
-                      <Text style={styles.noAlertsText}>{t('notifications.noActiveAlerts', { defaultValue: 'No active alerts' })}</Text>
+                      <Text style={styles.noAlertsText}>{t('notifications.noActiveAlerts')}</Text>
                     ) : (
                       alerts.map((alert) => (
                         <TouchableOpacity
@@ -258,7 +258,7 @@ const Navbar: React.FC<NavbarProps> = ({
                               {alert.severity.toUpperCase()}
                             </Text>
                           </View>
-                          <Text style={styles.waterLevel}>Water Level: {alert.waterLevel}m (Threshold: {alert.threshold}m)</Text>
+                          <Text style={styles.waterLevel}>{t('notificationsPanel.waterLevel')}: {alert.waterLevel}m ({t('notificationsPanel.threshold')}: {alert.threshold}m)</Text>
                           <Text style={styles.weather}>{alert.weatherConditions}</Text>
                           <Text style={styles.timestamp}>{new Date(alert.timestamp).toLocaleString()}</Text>
                         </TouchableOpacity>
@@ -288,7 +288,7 @@ const Navbar: React.FC<NavbarProps> = ({
                 <View style={styles.dropdownModalContent}>
                       {(
                     [
-                      { key: 'profile', label: `👤 ${t('profile.profile')}`, disabled: false, action: navigateToProfile, icon: null },
+                      { key: 'profile', label: `👤 ${t('profile.title')}`, disabled: false, action: navigateToProfile, icon: null },
                       { key: 'dashboard', label: t('common.dashboard', { defaultValue: 'Dashboard' }), disabled: false, action: navigateToDashboard, icon: <DashboardIcon /> },
                       { key: 'settings', label: `⚙️ ${t('settings.settings')}`, disabled: false, action: onSettingsPress || navigateToSettings, icon: null },
                     ] as Array<any>

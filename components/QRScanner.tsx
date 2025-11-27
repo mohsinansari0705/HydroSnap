@@ -13,13 +13,14 @@ const Camera = {
   requestCameraPermissionsAsync: async () => ({ status: 'granted' }),
 };
 
-const CameraView = ({ style }: any) => (
-  <View style={[style, { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
-    <Text style={{ color: 'white', textAlign: 'center' }}>
-      Camera Mock View{'\n'}QR Scanner will work in production
-    </Text>
-  </View>
-);
+const CameraView = ({ style }: any) => {
+  const { t } = useTranslation();
+  return (
+    <View style={[style, { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
+      <Text style={{ color: 'white', textAlign: 'center' }}>{t('qr.mockCameraMessage')}</Text>
+    </View>
+  );
+};
 
 const Location = {
   requestForegroundPermissionsAsync: async (_options?: any) => ({ status: 'granted' }),
@@ -211,7 +212,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
           <View style={styles.header}>
             <Text style={styles.title}>{t('qr.scanMonitoringSiteQR')}</Text>
             <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-              <Text style={styles.cancelText}>?</Text>
+              <Text style={styles.cancelText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </View>
 

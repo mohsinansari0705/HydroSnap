@@ -1,0 +1,150 @@
+{
+  "common": {
+    "appName": "HydroSnap",
+    "tagline": "स्मार्ट जल स्तर मॉनिटरिंग",
+    "ok": "ठीक",
+    "cancel": "रद्द",
+    "save": "सहेजें",
+    "delete": "हटाएँ",
+    "edit": "संपादित करें",
+    "yes": "हाँ",
+    "no": "नहीं",
+    "close": "बंद करें",
+    "back": "वापस",
+    "next": "आगे",
+    "retry": "फिर से प्रयास करें",
+    "search": "खोज",
+    "takeReading": "रीडिंग लें"
+  },
+  "auth": {
+    "login": "लॉगिन",
+    "signup": "साइन अप",
+    "email": "ईमेल",
+    "password": "पासवर्ड",
+    "forgotPassword": "पासवर्ड भूल गए?",
+    "name": "नाम",
+    "language": "भाषा",
+    "changeLanguage": "भाषा बदलें"
+  },
+  "settings": {
+    "title": "सेटिंग्स",
+    "language": "भाषा",
+    "selected": "चयनित: {lang}"
+  },
+  "profile": {
+    "title": "प्रोफ़ाइल",
+    "editProfile": "प्रोफ़ाइल संपादित करें",
+    "myReadings": "मेरी रीडिंग्स",
+    "role": "भूमिका",
+    "phone": "फोन",
+    "email": "ईमेल"
+  },
+  "dashboard": {
+    "title": "डैशबोर्ड",
+    "sites": "मॉनिटरिंग साइट्स",
+    "alerts": "अलर्ट",
+    "recentActivity": "हाल की गतिविधि"
+  },
+  "sites": {
+    "title": "साइट्स",
+    "details": "साइट विवरण",
+    "location": "स्थान",
+    "waterLevel": "जल स्तर",
+    "lastReading": "अंतिम रीडिंग",
+    "newReading": "नई रीडिंग",
+    "publicUpload": "सार्वजनिक अपलोड"
+  },
+  "qr": {
+    "scan": "क्यूआर स्कैन करें",
+    "validate": "क्यूआर सत्यापित करें",
+    "result": "क्यूआर परिणाम",
+    "invalid": "अमान्य क्यूआर कोड",
+    "valid": "मान्य क्यूआर कोड",
+    "requestingCameraPermission": "कैमरा अनुमति माँग रहे हैं...",
+    "noCameraAccess": "कैमरा एक्सेस अस्वीकृत।",
+    "grantPermission": "अनुमति दें",
+    "scanMonitoringSiteQR": "मॉनिटरिंग साइट क्यूआर स्कैन करें",
+    "positionInstruction": "क्यूआर कोड को फ्रेम के अंदर रखें",
+    "validatingSite": "साइट सत्यापित कर रहे हैं...",
+    "retryScan": "स्कैन दोहराएँ",
+    "codeValidationTitle": "क्यूआर कोड सत्यापन",
+    "scanOrEnter": "स्कैन करें या क्यूआर कोड दर्ज करें",
+    "enterDescription": "मॉनिटरिंग साइट का क्यूआर कोड दर्ज करें ताकि स्थान सत्यापित कर रीडिंग लें।",
+    "placeholder": "क्यूआर कोड दर्ज करें (उदा. QR-YMN-DI-001)",
+    "scanCode": "क्यूआर कोड स्कैन करें",
+    "validating": "सत्यापन...",
+    "validateCode": "क्यूआर कोड सत्यापित करें",
+    "yourLocation": "आपका स्थान",
+    "locationServicesActive": "लोकेशन सेवाएँ सक्रिय हैं",
+    "codeResult": "क्यूआर कोड परिणाम",
+    "siteInformation": "साइट जानकारी",
+    "siteDetails": "साइट विवरण",
+    "siteId": "साइट आईडी",
+    "name": "नाम",
+    "location": "स्थान",
+    "coordinates": "निर्देशांक",
+    "waterLevels": "जल स्तर",
+    "safe": "सुरक्षित",
+    "warning": "चेतावनी",
+    "danger": "खतरा",
+    "inRange": "रेंज में",
+    "outOfRange": "रेंज से बाहर",
+    "requiredDistance": "आवश्यक दूरी",
+    "yourDistance": "आपकी दूरी",
+    "moveCloser": "रीडिंग लेने के लिए साइट के पास जाएँ",
+    "enterManually": "मैन्युअल रूप से दर्ज करें",
+    "cameraPermissionRequired": "कैमरा अनुमति आवश्यक",
+    "allowCameraAccess": "क्यूआर स्कैन करने के लिए कैमरा एक्सेस दें।",
+    "decrypting": "साइट डेटा डिक्रिप्ट और सत्यापित कर रहे हैं...",
+    "invalidInputTitle": "अमान्य इनपुट",
+    "invalidInputMessage": "कृपया मान्य क्यूआर कोड दर्ज करें।",
+    "invalidFormatTitle": "अमान्य क्यूआर कोड प्रारूप",
+    "invalidFormatMessage": "यह क्यूआर कोड मान्य मॉनिटरिंग साइट डेटा नहीं रखता। कृपया मान्य क्यूआर कोड स्कैन करें।",
+    "validationFailedGeneric": "क्यूआर कोड सत्यापन विफल। पुनः प्रयास करें।",
+    "mockCameraMessage": "कैमरा मॉक दृश्य\nप्रोडक्शन में स्कैनर काम करेगा",
+    "autoScanInstruction": "कोड स्वतः स्कैन हो जाएगा",
+    "scannedCodePlaceholder": "स्कैन किया गया क्यूआर"
+  },
+  "notifications": {
+    "markAllRead": "सभी पढ़ें",
+    "noActiveAlerts": "कोई सक्रिय अलर्ट नहीं"
+  },
+  "home": {
+    "floodAlertStatus": "बाढ़ अलर्ट स्थिति"
+  },
+  "siteDetails": {
+    "back": "वापस",
+    "currentWaterLevel": "वर्तमान जल स्तर",
+    "danger": "खतरा",
+    "warning": "चेतावनी",
+    "safe": "सुरक्षित",
+    "lastReadingDetails": "अंतिम रीडिंग विवरण",
+    "timestamp": "समय",
+    "operator": "ऑपरेटर",
+    "qrCode": "क्यूआर कोड",
+    "overview": "ओवरव्यू",
+    "history": "इतिहास",
+    "map": "मानचित्र",
+    "readingHistory": "रीडिंग इतिहास",
+    "by": "द्वारा",
+    "locationGeofence": "स्थान और जियोफेंस",
+    "mapViewComingSoon": "मानचित्र दृश्य जल्द आ रहा है",
+    "coordinates": "निर्देशांक",
+    "geofenceRadius": "जियोफेंस त्रिज्या",
+    "loadingSiteDetails": "साइट विवरण लोड हो रहे हैं...",
+    "takeNewReading": "नई रीडिंग लें"
+  },
+  "notificationsPanel": {
+    "waterLevel": "जल स्तर",
+    "threshold": "थ्रेशहोल्ड"
+  },
+  "alerts": {
+    "title": "अलर्ट",
+    "noAlerts": "कोई अलर्ट नहीं",
+    "newAlert": "नया अलर्ट"
+  },
+  "errors": {
+    "network": "नेटवर्क त्रुटि। कृपया पुनः प्रयास करें।",
+    "unknown": "कुछ गलत हो गया।"
+  }
+}

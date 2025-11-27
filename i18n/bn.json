@@ -1,0 +1,150 @@
+{
+  "common": {
+    "appName": "HydroSnap",
+    "tagline": "স্মার্ট জল স্তর মনিটরিং",
+    "ok": "ঠিক আছে",
+    "cancel": "বাতিল",
+    "save": "সংরক্ষণ",
+    "delete": "মুছুন",
+    "edit": "সম্পাদনা",
+    "yes": "হ্যাঁ",
+    "no": "না",
+    "close": "বন্ধ",
+    "back": "ফিরে যান",
+    "next": "পরবর্তী",
+    "retry": "আবার চেষ্টা করুন",
+    "search": "অনুসন্ধান",
+    "takeReading": "রিডিং নিন"
+  },
+  "auth": {
+    "login": "লগইন",
+    "signup": "সাইন আপ",
+    "email": "ইমেইল",
+    "password": "পাসওয়ার্ড",
+    "forgotPassword": "পাসওয়ার্ড ভুলে গেছেন?",
+    "name": "নাম",
+    "language": "ভাষা",
+    "changeLanguage": "ভাষা পরিবর্তন"
+  },
+  "settings": {
+    "title": "সেটিংস",
+    "language": "ভাষা",
+    "selected": "নির্বাচিত: {lang}"
+  },
+  "profile": {
+    "title": "প্রোফাইল",
+    "editProfile": "প্রোফাইল সম্পাদনা",
+    "myReadings": "আমার রিডিংস",
+    "role": "ভূমিকা",
+    "phone": "ফোন",
+    "email": "ইমেইল"
+  },
+  "dashboard": {
+    "title": "ড্যাশবোর্ড",
+    "sites": "মনিটরিং সাইট",
+    "alerts": "অ্যালার্ট",
+    "recentActivity": "সাম্প্রতিক কার্যকলাপ"
+  },
+  "sites": {
+    "title": "সাইট",
+    "details": "সাইটের বিবরণ",
+    "location": "অবস্থান",
+    "waterLevel": "জলের স্তর",
+    "lastReading": "শেষ রিডিং",
+    "newReading": "নতুন রিডিং",
+    "publicUpload": "পাবলিক আপলোড"
+  },
+  "qr": {
+    "scan": "কিউআর স্ক্যান করুন",
+    "validate": "কিউআর যাচাই করুন",
+    "result": "কিউআর ফলাফল",
+    "invalid": "অবৈধ কিউআর কোড",
+    "valid": "বৈধ কিউআর কোড",
+    "requestingCameraPermission": "ক্যামেরা অনুমতি চাইছে...",
+    "noCameraAccess": "ক্যামেরা অ্যাক্সেস প্রত্যাখ্যাত।",
+    "grantPermission": "অনুমতি দিন",
+    "scanMonitoringSiteQR": "মনিটরিং সাইট কিউআর স্ক্যান করুন",
+    "positionInstruction": "কিউআর কোডটি ফ্রেমের ভিতরে রাখুন",
+    "validatingSite": "সাইট যাচাই হচ্ছে...",
+    "retryScan": "পুনরায় স্ক্যান করুন",
+    "codeValidationTitle": "কিউআর কোড যাচাই",
+    "scanOrEnter": "স্ক্যান করুন বা কিউআর কোড লিখুন",
+    "enterDescription": "লোকেশন যাচাই ও রিডিং নিতে মনিটরিং সাইটের কিউআর কোড লিখুন।",
+    "placeholder": "কিউআর কোড লিখুন (যেমন QR-YMN-DI-001)",
+    "scanCode": "কিউআর কোড স্ক্যান করুন",
+    "validating": "যাচাই হচ্ছে...",
+    "validateCode": "কিউআর কোড যাচাই করুন",
+    "yourLocation": "আপনার অবস্থান",
+    "locationServicesActive": "লোকেশন সার্ভিস সক্রিয়",
+    "codeResult": "কিউআর কোড ফলাফল",
+    "siteInformation": "সাইট তথ্য",
+    "siteDetails": "সাইট বিবরণ",
+    "siteId": "সাইট আইডি",
+    "name": "নাম",
+    "location": "অবস্থান",
+    "coordinates": "কোঅর্ডিনেটস",
+    "waterLevels": "জলের স্তর",
+    "safe": "নিরাপদ",
+    "warning": "সতর্কতা",
+    "danger": "বিপদ",
+    "inRange": "পরিসরে",
+    "outOfRange": "পরিসরের বাইরে",
+    "requiredDistance": "প্রয়োজনীয় দূরত্ব",
+    "yourDistance": "আপনার দূরত্ব",
+    "moveCloser": "রিডিং নিতে সাইটের কাছে যান",
+    "enterManually": "ম্যানুয়ালি লিখুন",
+    "cameraPermissionRequired": "ক্যামেরা অনুমতি প্রয়োজন",
+    "allowCameraAccess": "কিউআর স্ক্যান করতে ক্যামেরা অনুমতি দিন।",
+    "decrypting": "সাইট ডেটা ডিক্রিপ্ট ও যাচাই হচ্ছে...",
+    "invalidInputTitle": "অবৈধ ইনপুট",
+    "invalidInputMessage": "একটি বৈধ কিউআর কোড লিখুন।",
+    "invalidFormatTitle": "অবৈধ কিউআর কোড ফরম্যাট",
+    "invalidFormatMessage": "এই কিউআর কোড বৈধ মনিটরিং সাইট ডেটা নেই। বৈধ কিউআর কোড স্ক্যান করুন।",
+    "validationFailedGeneric": "কিউআর যাচাই ব্যর্থ। পুনরায় চেষ্টা করুন।",
+    "mockCameraMessage": "ক্যামেরা মক ভিউ\nপ্রোডাকশন এ স্ক্যানার কাজ করবে",
+    "autoScanInstruction": "কোড স্বয়ংক্রিয়ভাবে স্ক্যান হবে",
+    "scannedCodePlaceholder": "স্ক্যান করা কিউআর"
+  },
+  "notifications": {
+    "markAllRead": "সব পড়া চিহ্নিত করুন",
+    "noActiveAlerts": "কোনও সক্রিয় সতর্কতা নেই"
+  },
+  "home": {
+    "floodAlertStatus": "বন্যা সতর্কতা অবস্থা"
+  },
+  "siteDetails": {
+    "back": "ফিরে যান",
+    "currentWaterLevel": "বর্তমান জলের স্তর",
+    "danger": "বিপদ",
+    "warning": "সতর্কতা",
+    "safe": "নিরাপদ",
+    "lastReadingDetails": "শেষ রিডিং বিবরণ",
+    "timestamp": "সময়",
+    "operator": "অপারেটর",
+    "qrCode": "কিউআর কোড",
+    "overview": "ওভারভিউ",
+    "history": "ইতিহাস",
+    "map": "মানচিত্র",
+    "readingHistory": "রিডিং ইতিহাস",
+    "by": "দ্বারা",
+    "locationGeofence": "অবস্থান ও জিওফেন্স",
+    "mapViewComingSoon": "মানচিত্র দৃশ্য শীঘ্রই আসছে",
+    "coordinates": "কোঅর্ডিনেটস",
+    "geofenceRadius": "জিওফেন্স ব্যাসার্ধ",
+    "loadingSiteDetails": "সাইট বিবরণ লোড হচ্ছে...",
+    "takeNewReading": "নতুন রিডিং নিন"
+  },
+  "notificationsPanel": {
+    "waterLevel": "জলের স্তর",
+    "threshold": "থ্রেশহোল্ড"
+  },
+  "alerts": {
+    "title": "অ্যালার্ট",
+    "noAlerts": "কোনো অ্যালার্ট নেই",
+    "newAlert": "নতুন অ্যালার্ট"
+  },
+  "errors": {
+    "network": "নেটওয়ার্ক ত্রুটি। আবার চেষ্টা করুন।",
+    "unknown": "কিছু ভুল হয়েছে।"
+  }
+}

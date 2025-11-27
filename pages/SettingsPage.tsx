@@ -13,13 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../lib/ThemeContext';
 import { supabase } from '../lib/supabase';
 import SafeScreen from '../components/SafeScreen';
-import {
-  createNeumorphicCard,
-  createNeumorphicButton,
-  NeumorphicTextStyles,
-} from '../lib/neumorphicStyles';
 import { Colors } from '../lib/colors';
-import i18n, { storeLanguage } from '../lib/i18n';
+import i18n, { storeLanguage, languageMeta, SupportedLanguage } from '../lib/i18n';
 
 interface SettingsPageProps {
   onNavigate: (screen: string) => void;
@@ -57,20 +52,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
   const [loading, setLoading] = useState(false);
 
-  const languages = [
-    { code: 'en', name: 'English', nativeName: 'English' },
-    { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
-    { code: 'bn', name: 'Bengali', nativeName: 'বাংলা' },
-    { code: 'mr', name: 'Marathi', nativeName: 'मराठी' },
-    { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
-    { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
-    { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
-    { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી' },
-    { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' },
-    { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' },
-  ];
-
-  const handleLanguageChange = async (languageCode: string) => {
+  const handleLanguageChange = async (languageCode: SupportedLanguage) => {
     await i18n.changeLanguage(languageCode);
     await storeLanguage(languageCode);
     setCurrentLanguage(languageCode);
@@ -195,7 +177,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
         {
           icon: '🌐',
           label: t('settings.language'),
-          value: languages.find(l => l.code === currentLanguage)?.nativeName || 'English',
+          value: languageMeta.find((l: { code: SupportedLanguage; name: string; nativeName: string }) => l.code === currentLanguage)?.nativeName || 'English',
           onPress: () => setShowLanguageModal(true),
         },
       ],
@@ -370,7 +352,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, onBack }) => {
           <View style={[styles.modalContent, styles.languageModalContent]}>
             <Text style={styles.modalTitle}>{t('settings.selectLanguage')}</Text>
             <ScrollView style={styles.languageList}>
-              {languages.map((lang) => (
+              {languageMeta.map((lang: { code: SupportedLanguage; name: string; nativeName: string }) => (
                 <TouchableOpacity
                   key={lang.code}
                   style={[
@@ -422,13 +404,20 @@ const createStyles = () => StyleSheet.create({
     elevation: 8,
   },
   backButton: {
-    ...createNeumorphicCard({ size: 'small', borderRadius: 22 }),
     padding: 10,
     backgroundColor: Colors.softLightGrey,
     width: 44,
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 22,
+    shadowColor: Colors.darkShadow,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 1,
+    borderWidth: 0.5,
+    borderColor: Colors.lightShadow,
   },
   backIcon: {
     fontSize: 20,
@@ -436,9 +425,10 @@ const createStyles = () => StyleSheet.create({
     fontWeight: 'bold',
   },
   headerTitle: {
-    ...NeumorphicTextStyles.heading,
     fontSize: 22,
     color: Colors.white,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
   headerRight: {
     width: 44,
@@ -451,14 +441,24 @@ const createStyles = () => StyleSheet.create({
     marginVertical: 16,
   },
   sectionTitle: {
-    ...NeumorphicTextStyles.subheading,
     marginBottom: 16,
     marginLeft: 6,
     color: Colors.textPrimary,
+    fontWeight: '600',
+    fontSize: 18,
+    letterSpacing: -0.25,
   },
   sectionContent: {
-    ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
     overflow: 'hidden',
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 20,
+    shadowColor: Colors.darkShadow,
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 9,
+    elevation: 4,
+    borderWidth: 0.5,
+    borderColor: Colors.lightShadow,
   },
   settingItem: {
     flexDirection: 'row',
@@ -491,15 +491,17 @@ const createStyles = () => StyleSheet.create({
     flex: 1,
   },
   settingLabel: {
-    ...NeumorphicTextStyles.body,
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
     color: Colors.textPrimary,
+    lineHeight: 24,
   },
   settingValue: {
-    ...NeumorphicTextStyles.bodySecondary,
     fontSize: 14,
+    color: Colors.textSecondary,
+    fontWeight: '400',
+    lineHeight: 20,
   },
   settingArrow: {
     fontSize: 20,
@@ -515,12 +517,19 @@ const createStyles = () => StyleSheet.create({
     paddingHorizontal: 4,
   },
   logoutButton: {
-    ...createNeumorphicButton('danger', { size: 'large', borderRadius: 16 }),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 18,
     paddingHorizontal: 24,
+    backgroundColor: Colors.alertRed,
+    borderRadius: 16,
+    shadowColor: Colors.alertRed + '40',
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.25,
+    elevation: 6,
+    borderWidth: 0.5,
+    borderColor: Colors.lightShadow,
   },
   logoutIcon: {
     fontSize: 22,
@@ -528,9 +537,10 @@ const createStyles = () => StyleSheet.create({
     color: Colors.white,
   },
   logoutText: {
-    ...NeumorphicTextStyles.buttonPrimary,
     fontSize: 20,
     fontWeight: '700',
+    color: Colors.textOnDark,
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
@@ -540,24 +550,34 @@ const createStyles = () => StyleSheet.create({
     paddingHorizontal: 20,
   },
   modalContent: {
-    ...createNeumorphicCard({ size: 'large', borderRadius: 24 }),
     padding: 30,
     width: '100%',
     maxWidth: 360,
     elevation: 20,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 24,
+    shadowColor: Colors.darkShadow,
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 9,
+    borderWidth: 0.5,
+    borderColor: Colors.lightShadow,
   },
   modalTitle: {
-    ...NeumorphicTextStyles.heading,
     textAlign: 'center',
     marginBottom: 16,
     color: Colors.textPrimary,
+    fontWeight: '700',
+    fontSize: 24,
+    letterSpacing: -0.5,
   },
   modalMessage: {
-    ...NeumorphicTextStyles.body,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 28,
     color: Colors.textSecondary,
+    fontWeight: '400',
+    fontSize: 16,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -570,22 +590,37 @@ const createStyles = () => StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    ...createNeumorphicCard({ size: 'medium', borderRadius: 14 }),
     backgroundColor: Colors.softLightGrey,
+    borderRadius: 14,
+    shadowColor: Colors.darkShadow,
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
+    borderWidth: 0.5,
+    borderColor: Colors.lightShadow,
   },
   confirmButton: {
-    ...createNeumorphicButton('danger', { size: 'medium', borderRadius: 14 }),
+    backgroundColor: Colors.alertRed,
+    borderRadius: 14,
+    shadowColor: Colors.alertRed + '40',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.25,
+    elevation: 4,
+    borderWidth: 0.5,
+    borderColor: Colors.lightShadow,
   },
   cancelButtonText: {
-    ...NeumorphicTextStyles.body,
     fontSize: 16,
     fontWeight: '600',
     color: Colors.textPrimary,
+    lineHeight: 24,
   },
   confirmButtonText: {
-    ...NeumorphicTextStyles.buttonPrimary,
     fontSize: 16,
     fontWeight: '700',
+    color: Colors.textOnDark,
+    textAlign: 'center',
   },
   languageModalContent: {
     maxHeight: '70%',

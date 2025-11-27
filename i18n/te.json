@@ -1,0 +1,150 @@
+{
+  "common": {
+    "appName": "HydroSnap",
+    "tagline": "స్మార్ట్ నీటి స్థాయి మానిటరింగ్",
+    "ok": "సరే",
+    "cancel": "రద్దు",
+    "save": "సేవ్",
+    "delete": "తొలగించు",
+    "edit": "సవరించు",
+    "yes": "అవును",
+    "no": "కాదు",
+    "close": "మూసివేయి",
+    "back": "వెనక్కి",
+    "next": "తరువాత",
+    "retry": "మళ్లీ ప్రయత్నించండి",
+    "search": "వెతుకు",
+    "takeReading": "రీడింగ్ తీసుకోండి"
+  },
+  "auth": {
+    "login": "లాగిన్",
+    "signup": "సైన్ అప్",
+    "email": "ఈమెయిల్",
+    "password": "పాస్‌వర్డ్",
+    "forgotPassword": "పాస్‌వర్డ్ మర్చిపోయారా?",
+    "name": "పేరు",
+    "language": "భాష",
+    "changeLanguage": "భాష మార్చు"
+  },
+  "settings": {
+    "title": "సెట్టింగ్స్",
+    "language": "భాష",
+    "selected": "ఎంచుకున్నది: {lang}"
+  },
+  "profile": {
+    "title": "ప్రొఫైల్",
+    "editProfile": "ప్రొఫైల్ సవరించు",
+    "myReadings": "నా రీడింగ్స్",
+    "role": "పాత్ర",
+    "phone": "ఫోన్",
+    "email": "ఈమెయిల్"
+  },
+  "dashboard": {
+    "title": "డ్యాష్‌బోర్డ్",
+    "sites": "మానిటరింగ్ సైట్స్",
+    "alerts": "అలర్ట్స్",
+    "recentActivity": "తాజా కార్యకలాపాలు"
+  },
+  "sites": {
+    "title": "సైట్స్",
+    "details": "సైట్ వివరాలు",
+    "location": "స్థానం",
+    "waterLevel": "నీటి స్థాయి",
+    "lastReading": "చివరి రీడింగ్",
+    "newReading": "కొత్త రీడింగ్",
+    "publicUpload": "పబ్లిక్ అప్‌లోడ్"
+  },
+  "qr": {
+    "scan": "QR స్కాన్",
+    "validate": "QR నిర్ధారించు",
+    "result": "QR ఫలితం",
+    "invalid": "చెల్లని QR కోడ్",
+    "mockCameraMessage": "కెమెరా మాక్ వీక్షణ\nప్రొడక్షన్‌లో స్కానర్ నడుస్తుంది",
+    "autoScanInstruction": "కోడ్ స్వయంచాలకంగా స్కాన్ అవుతుంది",
+    "scannedCodePlaceholder": "స్కాన్ చేసిన QR"
+    "valid": "చెల్లుబాటు అయ్యే QR కోడ్",
+    "requestingCameraPermission": "కెమెరా అనుమతి కోరుతోంది...",
+    "noCameraAccess": "కెమెరా యాక్సెస్ తిరస్కరించబడింది.",
+    "grantPermission": "అనుమతి ఇవ్వండి",
+    "scanMonitoringSiteQR": "మానిటరింగ్ సైట్ QR స్కాన్ చేయండి",
+    "positionInstruction": "QR కోడ్‌ని ఫ్రేమ్‌లో ఉంచండి",
+    "validatingSite": "సైట్‌ని నిర్ధారిస్తోంది...",
+    "retryScan": "మళ్లీ స్కాన్ చేయండి",
+    "codeValidationTitle": "QR కోడ్ నిర్ధారణ",
+    "scanOrEnter": "స్కాన్ చేయండి లేదా QR కోడ్ నమోదు చేయండి",
+    "enterDescription": "స్థానాన్ని నిర్ధారించడానికి మరియు రీడింగ్ తీసుకోవడానికి సైట్ QR కోడ్ నమోదు చేయండి.",
+    "placeholder": "QR కోడ్ నమోదు చేయండి (ఉదా. QR-YMN-DI-001)",
+    "scanCode": "QR కోడ్ స్కాన్ చేయండి",
+    "validating": "నిర్ధారిస్తోంది...",
+    "validateCode": "QR కోడ్ నిర్ధారించు",
+    "yourLocation": "మీ స్థానం",
+    "locationServicesActive": "లోకేషన్ సేవలు యాక్టివ్‌గా ఉన్నాయి",
+    "codeResult": "QR కోడ్ ఫలితం",
+    "siteInformation": "సైట్ సమాచారం",
+    "siteDetails": "సైట్ వివరాలు",
+    "siteId": "సైట్ ID",
+    "name": "పేరు",
+    "location": "స్థానం",
+    "coordinates": "కోఆర్డినేట్లు",
+    "waterLevels": "నీటి స్థాయిలు",
+    "safe": "సురక్షితం",
+    "warning": "హెచ్చరిక",
+    "danger": "ప్రమాదం",
+    "inRange": "పరిధిలో",
+    "outOfRange": "పరిధి బయట",
+    "requiredDistance": "అవసరమైన దూరం",
+    "yourDistance": "మీ దూరం",
+    "moveCloser": "రీడింగ్ కోసం సైట్‌కు దగ్గర కదలండి",
+    "enterManually": "మాన్యువల్‌గా నమోదు చేయండి",
+    "cameraPermissionRequired": "కెమెరా అనుమతి అవసరం",
+    "allowCameraAccess": "QR కోడ్ స్కాన్ చేయడానికి కెమెరా యాక్సెస్ అనుమతించండి.",
+    "decrypting": "సైట్ డేటాను డీక్రిప్ట్ చేసి నిర్ధారిస్తోంది...",
+    "invalidInputTitle": "చెల్లని ఇన్పుట్",
+    "invalidInputMessage": "దయచేసి చెల్లుబాటు అయిన QR కోడ్ ని నమోదు చేయండి.",
+    "invalidFormatTitle": "చెల్లని QR ఫార్మాట్",
+    "invalidFormatMessage": "ఈ QR లో చెల్లుబాటు సైట్ డేటా లేదు.",
+    "validationFailedGeneric": "QR నిర్ధారణ విఫలమైంది. మళ్లీ ప్రయత్నించండి."
+  },
+  "notifications": {
+    "markAllRead": "అన్నీ చదివారు",
+    "noActiveAlerts": "క్రియాశీల హెచ్చరికలు లేవు"
+  },
+  "home": {
+    "floodAlertStatus": "వరద హెచ్చరిక స్థితి"
+  },
+  "siteDetails": {
+    "back": "వెనక్కి",
+    "currentWaterLevel": "ప్రస్తుత నీటి స్థాయి",
+    "danger": "ప్రమాదం",
+    "warning": "హెచ్చరిక",
+    "safe": "సురక్షితం",
+    "lastReadingDetails": "చివరి రీడింగ్ వివరాలు",
+    "timestamp": "సమయ ముద్ర",
+    "operator": "ఆపరేటర్",
+    "qrCode": "QR కోడ్",
+    "overview": "అవలోకనం",
+    "history": "చరిత్ర",
+    "map": "మ్యాప్",
+    "readingHistory": "రీడింగ్ చరిత్ర",
+    "by": "",
+    "locationGeofence": "స్థానం & జియోఫెన్స్",
+    "mapViewComingSoon": "మ్యాప్ వీక్షణ త్వరలో",
+    "coordinates": "కోఆర్డినేట్లు",
+    "geofenceRadius": "జియోఫెన్స్ వ్యాసార్థం",
+    "loadingSiteDetails": "సైట్ వివరాలు లోడ్ అవుతున్నాయి...",
+    "takeNewReading": "కొత్త రీడింగ్ తీసుకోండి"
+  },
+  "notificationsPanel": {
+    "waterLevel": "నీటి స్థాయి",
+    "threshold": "థ్రెషోల్డ్"
+  },
+  "alerts": {
+    "title": "అలర్ట్స్",
+    "noAlerts": "అలర్ట్స్ లేవు",
+    "newAlert": "కొత్త అలర్ట్"
+  },
+  "errors": {
+    "network": "నెట్‌వర్క్ లోపం. దయచేసి మళ్లీ ప్రయత్నించండి.",
+    "unknown": "ఏదో తప్పు జరిగింది."
+  }
+}

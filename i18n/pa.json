@@ -1,0 +1,147 @@
+{
+  "common": {
+    "appName": "HydroSnap",
+    "tagline": "ਸਮਾਰਟ ਪਾਣੀ ਲੈਵਲ ਮਾਨੀਟਰਿੰਗ",
+    "ok": "ਠੀਕ",
+    "cancel": "ਰੱਦ ਕਰੋ",
+    "save": "ਸੇਵ",
+    "delete": "ਹਟਾਓ",
+    "edit": "ਸੋਧ",
+    "yes": "ਹਾਂ",
+    "no": "ਨਹੀਂ",
+    "close": "ਬੰਦ ਕਰੋ",
+    "back": "ਵਾਪਸ",
+    "next": "ਅਗਲਾ",
+    "retry": "ਫਿਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
+    "search": "ਖੋਜ",
+    "takeReading": "ਰੀਡਿੰਗ ਲਵੋ"
+  },
+  "auth": {
+    "login": "ਲੋਗਿਨ",
+    "signup": "ਸਾਇਨ ਅੱਪ",
+    "email": "ਈਮੇਲ",
+    "password": "ਪਾਸਵਰਡ",
+    "forgotPassword": "ਪਾਸਵਰਡ ਭੁੱਲ ਗਏ?",
+    "name": "ਨਾਮ",
+    "language": "ਭਾਸ਼ਾ",
+    "changeLanguage": "ਭਾਸ਼ਾ ਬਦਲੋ"
+  },
+  "settings": {
+    "title": "ਸੈਟਿੰਗਜ਼",
+    "language": "ਭਾਸ਼ਾ",
+    "selected": "ਚੁਣਿਆ: {lang}"
+  },
+  "profile": {
+    "title": "ਪ੍ਰੋਫ਼ਾਈਲ",
+    "editProfile": "ਪ੍ਰੋਫ਼ਾਈਲ ਸੋਧ",
+    "myReadings": "ਮੇਰੀਆਂ ਰੀਡਿੰਗਾਂ",
+    "role": "ਭੂਮਿਕਾ",
+    "phone": "ਫੋਨ",
+    "email": "ਈਮੇਲ"
+  },
+  "dashboard": {
+    "title": "ਡੈਸ਼ਬੋਰਡ",
+    "sites": "ਮਾਨੀਟਰਿੰਗ ਸਾਈਟਾਂ",
+    "alerts": "ਚੇਤਾਵਨੀਆਂ",
+    "recentActivity": "ਤਾਜ਼ਾ ਗਤੀਵਿਧੀ"
+  },
+  "sites": {
+    "title": "ਸਾਈਟਾਂ",
+    "details": "ਸਾਈਟ ਵੇਰਵਾ",
+    "location": "ਸਥਿਤੀ",
+    "waterLevel": "ਪਾਣੀ ਦਾ ਪੱਧਰ",
+    "lastReading": "ਆਖਰੀ ਰੀਡਿੰਗ",
+    "newReading": "ਨਵੀਂ ਰੀਡਿੰਗ",
+    "publicUpload": "ਪਬਲਿਕ ਅੱਪਲੋਡ"
+  },
+  "qr": {
+    "scan": "QR ਸਕੈਨ",
+    "validate": "QR ਵੈਰੀਫਾਈ",
+    "result": "QR ਨਤੀਜਾ",
+    "invalid": "ਗ਼ੈਰ-ਵੈਧ QR ਕੋਡ",
+    "valid": "ਵੈਧ QR ਕੋਡ",
+    "requestingCameraPermission": "ਕੈਮਰਾ ਅਨੁਮਤੀ ਲਈ ਬੇਨਤੀ...",
+    "noCameraAccess": "ਕੈਮਰਾ ਐਕਸੈੱਸ ਰੱਦ ਕੀਤਾ ਗਿਆ।",
+    "grantPermission": "ਅਨੁਮਤੀ ਦਿਓ",
+    "scanMonitoringSiteQR": "ਮਾਨੀਟਰਿੰਗ ਸਾਈਟ QR ਸਕੈਨ ਕਰੋ",
+    "positionInstruction": "QR ਕੋਡ ਨੂੰ ਫਰੇਮ ਵਿੱਚ ਰੱਖੋ",
+    "validatingSite": "ਸਾਈਟ ਵੈਰੀਫਾਈ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ...",
+    "retryScan": "ਦੁਬਾਰਾ ਸਕੈਨ ਕਰੋ",
+    "codeValidationTitle": "QR ਕੋਡ ਵੈਰੀਫਿਕੇਸ਼ਨ",
+    "scanOrEnter": "ਸਕੈਨ ਕਰੋ ਜਾਂ QR ਕੋਡ ਦਰਜ ਕਰੋ",
+    "enterDescription": "ਸਥਿਤੀ ਵੈਰੀਫਾਈ ਕਰਨ ਅਤੇ ਰੀਡਿੰਗ ਲੈਣ ਲਈ ਸਾਈਟ QR ਕੋਡ ਦਰਜ ਕਰੋ।",
+    "placeholder": "QR ਕੋਡ ਦਰਜ ਕਰੋ (ਉਦਾਹ. QR-YMN-DI-001)",
+    "scanCode": "QR ਕੋਡ ਸਕੈਨ ਕਰੋ",
+    "validating": "ਵੈਰੀਫਾਈ ਕਰ ਰਿਹਾ ਹੈ...",
+    "validateCode": "QR ਕੋਡ ਵੈਰੀਫਾਈ ਕਰੋ",
+    "yourLocation": "ਤੁਹਾਡੀ ਸਥਿਤੀ",
+    "locationServicesActive": "ਲੋਕੇਸ਼ਨ ਸਰਵਿਸ ਐਕਟਿਵ",
+    "codeResult": "QR ਕੋਡ ਨਤੀਜਾ",
+    "siteInformation": "ਸਾਈਟ ਜਾਣਕਾਰੀ",
+    "siteDetails": "ਸਾਈਟ ਵੇਰਵੇ",
+    "siteId": "ਸਾਈਟ ID",
+    "name": "ਨਾਂ",
+    "location": "ਸਥਾਨ",
+    "coordinates": "ਕੋਆਰਡੀਨੇਟਸ",
+    "waterLevels": "ਪਾਣੀ ਦੇ ਪੱਧਰ",
+    "safe": "ਸੁਰੱਖਿਅਤ",
+    "warning": "ਚੇਤਾਵਨੀ",
+    "danger": "ਖ਼ਤਰਾ",
+    "inRange": "ਰੇਂਜ ਵਿੱਚ",
+    "outOfRange": "ਰੇਂਜ ਤੋਂ ਬਾਹਰ",
+    "requiredDistance": "ਲੋੜੀਂਦਾ ਫਾਸਲਾ",
+    "yourDistance": "ਤੁਹਾਡਾ ਫਾਸਲਾ",
+    "moveCloser": "ਰੀਡਿੰਗ ਲੈਣ ਲਈ ਨੇੜੇ ਜਾਓ",
+    "enterManually": "ਹੱਥੋਂ ਦਰਜ ਕਰੋ",
+    "cameraPermissionRequired": "ਕੈਮਰਾ ਅਨੁਮਤੀ ਲਾਜ਼ਮੀ",
+    "allowCameraAccess": "QR ਸਕੈਨ ਕਰਨ ਲਈ ਕੈਮਰਾ ਐਕਸੈੱਸ ਦਿਓ।",
+    "decrypting": "ਸਾਈਟ ਡਾਟਾ ਡੀਕ੍ਰਿਪਟ ਅਤੇ ਵੈਰੀਫਾਈ ਕਰ ਰਿਹਾ ਹੈ...",
+    "invalidInputTitle": "ਗੈਰ ਵੈਧ ਇਨਪੁੱਟ",
+    "invalidInputMessage": "ਕਿਰਪਾ ਕਰਕੇ ਵੈਧ QR ਕੋਡ ਦਰਜ ਕਰੋ।",
+    "invalidFormatTitle": "ਗੈਰ ਵੈਧ QR ਫਾਰਮੈਟ",
+    "invalidFormatMessage": "ਇਸ QR ਵਿੱਚ ਵੈਧ ਸਾਈਟ ਡਾਟਾ ਨਹੀਂ ਹੈ।",
+    "validationFailedGeneric": "QR ਵੈਰੀਫਿਕੇਸ਼ਨ ਅਸਫਲ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
+  },
+  "notifications": {
+    "markAllRead": "ਸਾਰੇ ਪੜ੍ਹੇ ਮੰਨੋ",
+    "noActiveAlerts": "ਕੋਈ ਐਕਟਿਵ ਚੇਤਾਵਨੀ ਨਹੀਂ"
+  },
+  "home": {
+    "floodAlertStatus": "ਬਾੜ ਚੇਤਾਵਨੀ ਸਥਿਤੀ"
+  },
+  "siteDetails": {
+    "back": "ਵਾਪਸ",
+    "currentWaterLevel": "ਮੌਜੂਦਾ ਪਾਣੀ ਪੱਧਰ",
+    "danger": "ਖ਼ਤਰਾ",
+    "warning": "ਚੇਤਾਵਨੀ",
+    "safe": "ਸੁਰੱਖਿਅਤ",
+    "lastReadingDetails": "ਆਖਰੀ ਰੀਡਿੰਗ ਵੇਰਵਾ",
+    "timestamp": "ਟਾਈਮਸਟੈਂਪ",
+    "operator": "ਆਪਰੇਟਰ",
+    "qrCode": "QR ਕੋਡ",
+    "overview": "ਓਵਰਵਿਊ",
+    "history": "ਇਤਿਹਾਸ",
+    "map": "ਨਕਸ਼ਾ",
+    "readingHistory": "ਰੀਡਿੰਗ ਇਤਿਹਾਸ",
+    "by": "",
+    "locationGeofence": "ਸਥਾਨ ਅਤੇ ਜਿਓਫੈਂਸ",
+    "mapViewComingSoon": "ਨਕਸ਼ਾ ਦ੍ਰਿਸ਼ ਜਲਦੀ",
+    "coordinates": "ਕੋਆਰਡੀਨੇਟਸ",
+    "geofenceRadius": "ਜਿਓਫੈਂਸ ਰੇਡੀਅਸ",
+    "loadingSiteDetails": "ਸਾਈਟ ਵੇਰਵੇ ਲੋਡ ਹੋ ਰਹੇ ਹਨ...",
+    "takeNewReading": "ਨਵੀਂ ਰੀਡਿੰਗ ਲਵੋ"
+  },
+  "notificationsPanel": {
+    "waterLevel": "ਪਾਣੀ ਪੱਧਰ",
+    "threshold": "ਥ੍ਰੈਸ਼ਹੋਲਡ"
+  },
+  "alerts": {
+    "title": "ਚੇਤਾਵਨੀਆਂ",
+    "noAlerts": "ਕੋਈ ਚੇਤਾਵਨੀ ਨਹੀਂ",
+    "newAlert": "ਨਵੀਂ ਚੇਤਾਵਨੀ"
+  },
+  "errors": {
+    "network": "ਨੈੱਟਵਰਕ ਦੀ ਗਲਤੀ। ਕਿਰਪਾ ਕਰਕੇ ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+    "unknown": "ਕੁਝ ਗਲਤ ਹੋ ਗਿਆ।"
+  }
+}

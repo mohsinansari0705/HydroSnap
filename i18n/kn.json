@@ -1,0 +1,150 @@
+{
+  "common": {
+    "appName": "HydroSnap",
+    "tagline": "ಸ್ಮಾರ್ಟ್ ನೀರಿನ ಮಟ್ಟ ಮೇಲ್ವಿಚಾರಣೆ",
+    "ok": "ಸರಿ",
+    "cancel": "ರದ್ದು",
+    "save": "ಉಳಿಸು",
+    "delete": "ಅಳಿಸು",
+    "edit": "ತಿದ್ದು",
+    "yes": "ಹೌದು",
+    "no": "ಇಲ್ಲ",
+    "close": "ಮುಚ್ಚು",
+    "back": "ಹಿಂದೆ",
+    "next": "ಮುಂದೆ",
+    "retry": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ",
+    "search": "ಹುಡುಕು",
+    "takeReading": "ಓದು ತೆಗೆದುಕು"
+  },
+  "auth": {
+    "login": "ಲಾಗಿನ್",
+    "signup": "ಸೈನ್ ಅಪ್",
+    "email": "ಇಮೇಲ್",
+    "password": "ಪಾಸ್‌ವರ್ಡ್",
+    "forgotPassword": "ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?",
+    "name": "ಹೆಸರು",
+    "language": "ಭಾಷೆ",
+    "changeLanguage": "ಭಾಷೆ ಬದಲಿಸಿ"
+  },
+  "settings": {
+    "title": "ಸೆಟ್ಟಿಂಗ್ಸ್",
+    "language": "ಭಾಷೆ",
+    "selected": "ಆಯ್ಕೆ: {lang}"
+  },
+  "profile": {
+    "title": "ಪ್ರೊಫೈಲ್",
+    "editProfile": "ಪ್ರೊಫೈಲ್ ತಿದ್ದು",
+    "myReadings": "ನನ್ನ ಓದುಗಳು",
+    "role": "ಪಾತ್ರ",
+    "phone": "ಫೋನ್",
+    "email": "ಇಮೇಲ್"
+  },
+  "dashboard": {
+    "title": "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
+    "sites": "ಮಾನೆಟರಿಂಗ್ ಸೈಟ್ಸ್",
+    "alerts": "ಎಚ್ಚರಿಕೆಗಳು",
+    "recentActivity": "ಇತ್ತೀಚಿನ ಚಟುವಟಿಕೆ"
+  },
+  "sites": {
+    "title": "ಸೈಟ್ಸ್",
+    "details": "ಸೈಟ್ ವಿವರಗಳು",
+    "location": "ಸ್ಥಳ",
+    "waterLevel": "ನೀರಿನ ಮಟ್ಟ",
+    "lastReading": "ಕೊನೆಯ ಓದು",
+    "newReading": "ಹೊಸ ಓದು",
+    "publicUpload": "ಜನಸಾಮಾನ್ಯ ಅಪ್ಲೋಡ್"
+  },
+  "qr": {
+    "scan": "QR ಸ್ಕ್ಯಾನ್",
+    "validate": "QR ಪರಿಶೀಲನೆ",
+    "result": "QR ಫಲಿತಾಂಶ",
+    "invalid": "ಅಮಾನ್ಯ QR ಕೋಡ್",
+    "valid": "ಮಾನ್ಯ QR ಕೋಡ್",
+    "requestingCameraPermission": "ಕ್ಯಾಮೆರಾ ಅನುಮತಿ ಕೇಳುತ್ತಿದೆ...",
+    "noCameraAccess": "ಕ್ಯಾಮೆರಾ ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ.",
+    "grantPermission": "ಅನುಮತಿ ನೀಡಿ",
+    "scanMonitoringSiteQR": "ಮಾನದಂಡ ಸೈಟ್ QR ಸ್ಕ್ಯಾನ್",
+    "positionInstruction": "QR ಕೋಡ್ ಅನ್ನು ಫ್ರೇಮ್ ಒಳಗೆ ಇರಿಸಿ",
+    "validatingSite": "ಸೈಟ್ ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ...",
+    "retryScan": "ಮತ್ತೆ ಸ್ಕ್ಯಾನ್",
+    "codeValidationTitle": "QR ಕೋಡ್ ಪರಿಶೀಲನೆ",
+    "scanOrEnter": "ಸ್ಕ್ಯಾನ್ ಅಥವಾ QR ಕೋಡ್ ನಮೂದಿಸಿ",
+    "enterDescription": "ಸ್ಥಳ ಪರಿಶೀಲಿಸಲು ಮತ್ತು ಓದು ಪಡೆಯಲು ಸೈಟ್ QR ಕೋಡ್ ನಮೂದಿಸಿ.",
+    "placeholder": "QR ಕೋಡ್ ನಮೂದಿಸಿ (ಉದಾ. QR-YMN-DI-001)",
+    "scanCode": "QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್",
+    "validating": "ಪರಿಶೀಲನೆ...",
+    "validateCode": "QR ಕೋಡ್ ಪರಿಶೀಲನೆ",
+    "yourLocation": "ನಿಮ್ಮ ಸ್ಥಳ",
+    "locationServicesActive": "ಸ್ಥಳ ಸೇವೆಗಳು ಸಕ್ರಿಯ",
+    "codeResult": "QR ಕೋಡ್ ಫಲಿತಾಂಶ",
+    "siteInformation": "ಸೈಟ್ ಮಾಹಿತಿ",
+      "validationFailedGeneric": "QR ಮಾನ್ಯೀಕರಣ ವಿಫಲವಾಗಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+      "mockCameraMessage": "ಕ್ಯಾಮೆರಾ ಮಾಕ್ ವೀಕ್ಷಣೆ\nಉತ್ಪಾದನೆಯಲ್ಲಿ ಸ್ಕ್ಯಾನರ್ ಚಾಲನೆಯಲ್ಲಿರುತ್ತದೆ",
+      "autoScanInstruction": "ಕೋಡ್ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಸ್ಕ್ಯಾನ್ ಆಗುತ್ತದೆ",
+      "scannedCodePlaceholder": "ಸ್ಕ್ಯಾನ್ ಮಾಡಿದ QR"
+    "siteId": "ಸೈಟ್ ID",
+    "name": "ಹೆಸರು",
+    "location": "ಸ್ಥಳ",
+    "coordinates": "ಕೋಆರ್ಡಿನೇಟ್ಸ್",
+    "waterLevels": "ನೀರಿನ ಮಟ್ಟಗಳು",
+    "safe": "ಸುರಕ್ಷಿತ",
+    "warning": "ಎಚ್ಚರಿಕೆ",
+    "danger": "ಅಪಾಯ",
+    "inRange": "ಪರಿಧಿಯಲ್ಲಿ",
+    "outOfRange": "ಪರಿಧಿ ಹೊರಗೆ",
+    "requiredDistance": "ಅವಶ್ಯಕ ಅಂತರ",
+    "yourDistance": "ನಿಮ್ಮ ಅಂತರ",
+    "moveCloser": "ಓದು ಪಡೆಯಲು ಸೈಟ್ closer ಹೋಗಿ",
+    "enterManually": "ಹಸ್ತಚಾಲಿತ ನಮೂದಿಸಿ",
+    "cameraPermissionRequired": "ಕ್ಯಾಮೆರಾ ಅನುಮತಿ ಅಗತ್ಯ",
+    "allowCameraAccess": "QR ಸ್ಕ್ಯಾನ್ ಮಾಡಲು ಕ್ಯಾಮೆರಾ ಪ್ರವೇಶ ಅನುಮತಿಸಿ.",
+    "decrypting": "ಸೈಟ್ ಡೇಟಾ ಡಿಕ್ರಿಪ್ಟ್ & ಪರಿಶೀಲನೆ...",
+    "invalidInputTitle": "ಅಮಾನ್ಯ ಇನ್‌ಪುಟ್",
+    "invalidInputMessage": "ಮಾನ್ಯ QR ಕೋಡ್ ನಮೂದಿಸಿ.",
+    "invalidFormatTitle": "ಅಮಾನ್ಯ QR ಸ್ವರೂಪ",
+    "invalidFormatMessage": "ಈ QR ನಲ್ಲಿ ಮಾನ್ಯ ಸೈಟ್ ಡೇಟಾ ಇಲ್ಲ.",
+    "validationFailedGeneric": "QR ಪರಿಶೀಲನೆ ವಿಫಲವಾಗಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
+  },
+  "notifications": {
+    "markAllRead": "ಎಲ್ಲವನ್ನು ಓದಾಗಿ ಗುರುತು",
+    "noActiveAlerts": "ಸಕ್ರಿಯ ಎಚ್ಚರಿಕೆಗಳಿಲ್ಲ"
+  },
+  "home": {
+    "floodAlertStatus": "ಪ್ರವಾಹ ಎಚ್ಚರಿಕೆ ಸ್ಥಿತಿ"
+  },
+  "siteDetails": {
+    "back": "ಹಿಂದೆ",
+    "currentWaterLevel": "ಪ್ರಸ್ತುತ ನೀರಿನ ಮಟ್ಟ",
+    "danger": "ಅಪಾಯ",
+    "warning": "ಎಚ್ಚರಿಕೆ",
+    "safe": "ಸುರಕ್ಷಿತ",
+    "lastReadingDetails": "ಕೊನೆಯ ಓದು ವಿವರಗಳು",
+    "timestamp": "ಟೈಮ್ಸ್‌ಟ್ಯಾಂಪ್",
+    "operator": "ಆಪರೇಟರ್",
+    "qrCode": "QR ಕೋಡ್",
+    "overview": "ಒವರ್‌ವ್ಯೂ",
+    "history": "ಇತಿಹಾಸ",
+    "map": "ನಕ್ಷೆ",
+    "readingHistory": "ಓದು ಇತಿಹಾಸ",
+    "by": "",
+    "locationGeofence": "ಸ್ಥಳ & ಜಿಯೊಫೆನ್ಸ್",
+    "mapViewComingSoon": "ನಕ್ಷೆ ದೃಶ್ಯ ಶೀಘ್ರದಲ್ಲಿ",
+    "coordinates": "ಕೋಆರ್ಡಿನೇಟ್ಸ್",
+    "geofenceRadius": "ಜಿಯೊಫೆನ್ಸ್ ತ್ರಿಜ್ಯ",
+    "loadingSiteDetails": "ಸೈಟ್ ವಿವರಗಳು ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+    "takeNewReading": "ಹೊಸ ಓದು ತೆಗೆದುಕು"
+  },
+  "notificationsPanel": {
+    "waterLevel": "ನೀರಿನ ಮಟ್ಟ",
+    "threshold": "ಥ್ರೆಶ್‌ಹೋಲ್ಡ್"
+  },
+  "alerts": {
+    "title": "ಎಚ್ಚರಿಕೆಗಳು",
+    "noAlerts": "ಎಚ್ಚರಿಕೆಗಳಿಲ್ಲ",
+    "newAlert": "ಹೊಸ ಎಚ್ಚರಿಕೆ"
+  },
+  "errors": {
+    "network": "ನೆಟ್‌ವರ್ಕ್ ದೋಷ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+    "unknown": "ಏನೋ ತಪ್ಪಾಗಿದೆ."
+  }
+}
