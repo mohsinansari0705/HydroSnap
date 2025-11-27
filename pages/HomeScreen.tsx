@@ -382,7 +382,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       
       <TouchableOpacity 
         style={styles.secondaryActionButton}
-        onPress={() => Alert.alert('Map View', 'Interactive map view for monitoring sites is coming soon!')}
+        onPress={() => setCurrentScreen('map')}
       >
         <Text style={styles.secondaryActionIcon}>🗺️</Text>
         <Text style={styles.secondaryActionText}>Map View</Text>
