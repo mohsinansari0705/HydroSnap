@@ -72,14 +72,14 @@ const MyReadingsScreen: React.FC<MyReadingsScreenProps> = ({ profile, onBack }) 
         <View style={styles.itemHeader}>
           <Text style={styles.siteName}>{item.name}</Text>
           <Text style={styles.timestamp}>
-            {reading ? new Date(reading.submission_timestamp || reading.created_at || '').toLocaleString() : 'No readings'}
+            {reading ? new Date(reading.submission_timestamp || '').toLocaleString() : 'No readings'}
           </Text>
         </View>
         <Text style={styles.location}>{item.location}</Text>
         {reading ? (
           <View style={styles.readingRow}>
-            <Text style={styles.waterLevel}>Water Level: {reading.water_level} m</Text>
-            {item.danger_level && reading.water_level >= item.danger_level && (
+            <Text style={styles.waterLevel}>Water Level: {reading.predicted_water_level || 0} m</Text>
+            {item.danger_level && (reading.predicted_water_level || 0) >= item.danger_level && (
               <Text style={[styles.status, { color: Colors.criticalRed }]}>
                 DANGER
               </Text>

@@ -18,6 +18,7 @@ import PublicUploadScreen from '../pages/PublicUploadScreen';
 import SettingsPage from '../pages/SettingsPage';
 import EditProfileScreen from '../pages/EditProfileScreen';
 import DashboardScreen from '../pages/DashboardScreen';
+import MapLibreMapScreen from '../pages/MapLibreMapScreen';
 import { Colors } from '../lib/colors';
 
 export default function AppNavigator() {
@@ -236,6 +237,9 @@ export default function AppNavigator() {
             onBack={navigateBack}
           />
         );
+
+      case 'map':
+        return <MapLibreMapScreen />;
 
       default:
         return <SplashScreen onAnimationComplete={() => setCurrentScreen('auth')} />;
