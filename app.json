@@ -13,11 +13,27 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "HydroSnap needs your location to verify you're at the monitoring site.",
+          "locationAlwaysPermission": "HydroSnap needs background location to maintain geofence validation during readings.",
+          "locationWhenInUsePermission": "HydroSnap needs your location to verify you're at the monitoring site.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to capture water gauge readings for monitoring purposes.",
-        "NSPhotoLibraryUsageDescription": "This app saves captured gauge photos to your photo library for record keeping."
+        "NSPhotoLibraryUsageDescription": "This app saves captured gauge photos to your photo library for record keeping.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "HydroSnap needs your location to verify you're at the monitoring site.",
+        "NSLocationWhenInUseUsageDescription": "HydroSnap needs your location to verify you're at the monitoring site.",
+        "NSLocationAlwaysUsageDescription": "HydroSnap needs background location to maintain geofence validation during readings.",
+        "UIBackgroundModes": ["location"]
       }
     },
     "android": {
@@ -29,6 +45,9 @@
         "CAMERA",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
         "WRITE_EXTERNAL_STORAGE",
         "READ_EXTERNAL_STORAGE"
       ]
