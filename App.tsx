@@ -8,6 +8,7 @@ import { AuthProvider } from './lib/AuthContext';
 import { NavigationProvider } from './lib/NavigationContext';
 import AppNavigator from './components/AppNavigator';
 import { Colors } from './lib/colors';
+import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function App() {
@@ -21,7 +22,9 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <NavigationProvider>
-            <AppNavigator />
+            <NavigationContainer>
+              <AppNavigator />
+            </NavigationContainer>
             <StatusBar style="dark" translucent={false} backgroundColor={Colors.softLightGrey} />
             
             {/* Hidden icon preloader - loads icons into memory */}
