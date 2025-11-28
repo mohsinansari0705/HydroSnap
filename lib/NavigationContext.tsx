@@ -15,7 +15,8 @@ export type AppScreen =
   | 'new-reading'
   | 'public-upload'
   | 'settings'
-  | 'dashboard';
+  | 'dashboard'
+  | 'map';
 
 interface NavigationContextType {
   currentScreen: AppScreen;
@@ -32,6 +33,7 @@ interface NavigationContextType {
   navigateToMyReadings: () => void;
   navigateToProfile: () => void;
   navigateToDashboard: () => void;
+  navigateToMap: () => void;
   // Notification visibility helpers (global)
   notificationsVisible: boolean;
   showNotifications: () => void;
@@ -92,6 +94,10 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     setCurrentScreen('auth');
   };
 
+  const navigateToMap = () => {
+    setCurrentScreen('map');
+  };
+
   const navigateBack = () => {
     // Simple back navigation - can be enhanced
     setCurrentScreen('home');
@@ -116,6 +122,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     toggleNotifications,
     navigateToSettings,
     navigateToAuth,
+    navigateToMap,
     navigateBack,
   };
 

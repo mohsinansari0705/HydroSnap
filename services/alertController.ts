@@ -83,7 +83,7 @@ class AlertController {
   public async processNewReading(reading: {
     site_id: string;
     site_name: string;
-    water_level: number;
+    predicted_water_level: number;
     latitude: number;
     longitude: number;
     weather_conditions: string;
@@ -91,7 +91,7 @@ class AlertController {
     await this.processWaterLevelReading(
       reading.site_id,
       reading.site_name,
-      reading.water_level,
+      reading.predicted_water_level,
       reading.latitude,
       reading.longitude,
       reading.weather_conditions

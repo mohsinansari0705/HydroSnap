@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Text, Modal, Pressable, ScrollView, Animated } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../lib/colors';
 import { Alert } from '../types/alerts';
 import { useNavigation } from '../lib/NavigationContext';
@@ -8,7 +9,6 @@ interface NavbarProps {
   onQRScanPress?: () => void;
   onNotificationPress?: () => void;
   onSettingsPress?: () => void;
-  userName?: string;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
@@ -19,7 +19,7 @@ const Navbar: React.FC<NavbarProps> = ({
   console.log('Navbar: onSettingsPress is', typeof onSettingsPress);
   const [showMenu, setShowMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const { notificationsVisible, hideNotifications, toggleNotifications, navigateToSite, navigateToSettings, navigateToProfile, navigateToDashboard } = useNavigation();
+  const { navigateToSite, navigateToSettings, navigateToProfile, navigateToDashboard } = useNavigation();
 
   // Sample notifications for testing
   const sampleNotifications: Alert[] = [
@@ -104,24 +104,10 @@ const Navbar: React.FC<NavbarProps> = ({
     setShowMenu(!showMenu);
   };
 
-  const handleMenuItemPress = (action: () => void) => {
-    console.log('Menu item pressed, calling action');
-    setShowMenu(false);
-    action();
-  };
-
-  // QR Code Icon SVG
+  // QR Code Icon
   const QRIcon = () => (
     <View style={styles.iconContainer}>
-      <View style={styles.qrContainer}>
-        <View style={styles.qrFrame}>
-          <View style={styles.qrTopLeft} />
-          <View style={styles.qrTopRight} />
-          <View style={styles.qrBottomLeft} />
-          <View style={styles.qrBottomRight} />
-          <View style={styles.qrCenter} />
-        </View>
-      </View>
+      <MaterialCommunityIcons name="qrcode-scan" size={20} color={Colors.white} />
     </View>
   );
 
@@ -290,36 +276,27 @@ const Navbar: React.FC<NavbarProps> = ({
             <Pressable style={styles.menuModalBackdrop} onPress={() => setShowMenu(false)}>
               <View style={styles.menuModalWrapper} pointerEvents="box-none">
                 <View style={styles.dropdownModalContent}>
-                  {(
-                    [
-                      { key: 'profile', label: '👤 Profile', disabled: false, action: navigateToProfile, icon: null },
-                      { key: 'dashboard', label: 'Dashboard', disabled: false, action: navigateToDashboard, icon: <DashboardIcon /> },
-                      { key: 'settings', label: '⚙️ Settings', disabled: false, action: onSettingsPress || navigateToSettings, icon: null },
-                    ] as Array<any>
-                  ).map((item) => (
-                    item.disabled ? (
-                      <View key={item.key} style={[styles.menuItem, styles.disabledMenuItem]}>
-                        <Text style={[styles.menuItemText, styles.disabledMenuText]}>{item.label}</Text>
-                        {item.note && <Text style={styles.comingSoonText}>{item.note}</Text>}
-                      </View>
-                    ) : (
-                      <TouchableOpacity
-                        key={item.key}
-                        style={styles.menuItem}
-                        onPress={() => {
-                          console.log(`${item.label} pressed`);
-                          setShowMenu(false);
-                          try {
-                            item.action();
-                          } catch (err) {
-                            console.warn('menu action failed', err);
-                          }
-                        }}
-                      >
-                        {item.icon && <View style={styles.menuItemIcon}>{item.icon}</View>}
-                        <Text style={styles.menuItemText}>{item.label}</Text>
-                      </TouchableOpacity>
-                    )
+                  {[
+                    { key: 'profile', label: '👤 Profile', action: navigateToProfile, icon: null },
+                    { key: 'dashboard', label: 'Dashboard', action: navigateToDashboard, icon: <DashboardIcon /> },
+                    { key: 'settings', label: '⚙️ Settings', action: onSettingsPress || navigateToSettings, icon: null },
+                  ].map((item) => (
+                    <TouchableOpacity
+                      key={item.key}
+                      style={styles.menuItem}
+                      onPress={() => {
+                        console.log(`${item.label} pressed`);
+                        setShowMenu(false);
+                        try {
+                          item.action();
+                        } catch (err) {
+                          console.warn('menu action failed', err);
+                        }
+                      }}
+                    >
+                      {item.icon && <View style={styles.menuItemIcon}>{item.icon}</View>}
+                      <Text style={styles.menuItemText}>{item.label}</Text>
+                    </TouchableOpacity>
                   ))}
                 </View>
               </View>
@@ -387,67 +364,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // QR Code Icon Styles
-  qrContainer: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrFrame: {
-    width: 18,
-    height: 18,
-    position: 'relative',
-  },
-  qrTopLeft: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 6,
-    height: 6,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: Colors.white,
-  },
-  qrTopRight: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 6,
-    height: 6,
-    borderTopWidth: 2,
-    borderRightWidth: 2,
-    borderColor: Colors.white,
-  },
-  qrBottomLeft: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: 6,
-    height: 6,
-    borderBottomWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: Colors.white,
-  },
-  qrBottomRight: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 6,
-    height: 6,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
-    borderColor: Colors.white,
-  },
-  qrCenter: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    width: 6,
-    height: 6,
-    backgroundColor: Colors.white,
-    borderRadius: 1,
-  },
   // Notification Bell Icon Styles
   bellContainer: {
     alignItems: 'center',
@@ -491,21 +407,6 @@ const styles = StyleSheet.create({
   // Menu Dropdown Styles
   menuContainer: {
     position: 'relative',
-  },
-  dropdownMenu: {
-    position: 'absolute',
-    top: 50,
-    right: 0,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    paddingVertical: 8,
-    minWidth: 150,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 1000,
   },
   menuItem: {
     paddingHorizontal: 16,
@@ -682,18 +583,6 @@ const styles = StyleSheet.create({
     padding: 16,
     textAlign: 'center',
     color: Colors.textSecondary,
-  },
-  disabledMenuItem: {
-    opacity: 0.6,
-  },
-  disabledMenuText: {
-    color: Colors.textSecondary,
-  },
-  comingSoonText: {
-    fontSize: 12,
-    color: Colors.aquaTechBlue,
-    fontWeight: '600',
-    marginTop: 2,
   },
   /* Modal menu styles */
   menuModalBackdrop: {

@@ -23,7 +23,7 @@ import { useSiteCache } from '../lib/SiteCacheContext';
 import { useNavigation } from '../lib/NavigationContext';
 
 interface HomeScreenProps {
-  profile: Profile;
+  profile: Profile | null;
   onNavigateToSite: (siteId: string) => void;
   onNavigateToNewReading: (siteId: string) => void;
   onNavigateToMyReadings: () => void;
@@ -113,8 +113,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     refresh,
   } = useMonitoringSites({
     ...(userLocation && { userLocation }),
-    userId: profile.id,
-    userRole: profile.role,
+    userId: profile?.id || 'anonymous',
+    userRole: profile?.role || 'user',
     autoRefresh: false, // Disable auto-refresh on startup to improve performance
     refreshInterval: 10 * 60 * 1000, // Refresh every 10 minutes instead of 5
     skipInitialFetch: cachedSites.length > 0 && isCacheValid(), // Skip initial fetch if we have valid cached data
@@ -279,7 +279,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
       <View style={styles.siteFooter}>
         <Text style={[styles.distance, NeumorphicTextStyles.caption]}>
-          📏 {site.distanceFromUser ? `${site.distanceFromUser}m away` : 'Distance unknown'}
+          📏 {site.distanceFromUser ? (site.distanceFromUser < 500 ? `${Math.round(site.distanceFromUser)}m away` : `${(site.distanceFromUser / 1000).toFixed(1)}km away`) : 'Distance unknown'}
         </Text>
         
         {canTakeReading(site) && (
@@ -325,7 +325,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <View style={styles.avatarContainer}>
               <View style={styles.avatarGradient}>
                 <Text style={styles.avatarText}>
-                  {(profile.full_name || 'User')
+                  {(profile?.full_name || 'User')
                     .split(' ')
                     .map(n => n?.[0] ?? '')
                     .slice(0, 2)
@@ -338,8 +338,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             {/* Greeting + Name + subtitle */}
             <View style={styles.greetingTextContainer}>
               <Text style={styles.greetingLabel}>{getGreeting()},</Text>
-              <Text numberOfLines={1} style={styles.userName}>{(profile.full_name || 'User')}</Text>
-              {profile.role && (<Text style={styles.userRole}>{profile.role}</Text>)}
+              <Text numberOfLines={1} style={styles.userName}>{(profile?.full_name || 'User')}</Text>
+              {(profile?.role || 'user') && (<Text style={styles.userRole}>{profile?.role || 'user'}</Text>)}
             </View>
           </View>
           
@@ -382,7 +382,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       
       <TouchableOpacity 
         style={styles.secondaryActionButton}
-        onPress={() => Alert.alert('Map View', 'Interactive map view for monitoring sites is coming soon!')}
+        onPress={() => setCurrentScreen('map')}
       >
         <Text style={styles.secondaryActionIcon}>🗺️</Text>
         <Text style={styles.secondaryActionText}>Map View</Text>

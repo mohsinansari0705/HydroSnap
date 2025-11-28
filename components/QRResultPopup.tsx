@@ -11,6 +11,7 @@ import {
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { ValidatedSiteData } from '../services/qrValidationService';
+import { useSimpleBackHandler } from '../hooks/useBackHandler';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -68,6 +69,12 @@ export const QRResultPopup: React.FC<QRResultPopupProps> = ({
   isInRange,
   validationMessage,
 }) => {
+  // Handle back button when popup is visible
+  useSimpleBackHandler(() => {
+    if (visible) {
+      onClose();
+    }
+  }, visible);
   if (!siteData) {
     return (
       <Modal visible={visible} transparent animationType="fade">
@@ -218,7 +225,7 @@ export const QRResultPopup: React.FC<QRResultPopupProps> = ({
                     Required Distance
                   </Text>
                   <Text style={[NeumorphicTextStyles.body, styles.geofenceValue]}>
-                    {siteData.geofenceRadius || 0}m
+                    {siteData.geofenceRadius < 500 ? `${siteData.geofenceRadius || 0}m` : `${((siteData.geofenceRadius || 0) / 1000).toFixed(1)}km`}
                   </Text>
                 </View>
                 
@@ -229,7 +236,7 @@ export const QRResultPopup: React.FC<QRResultPopupProps> = ({
                       Your Distance
                     </Text>
                     <Text style={[NeumorphicTextStyles.body, styles.geofenceValue]}>
-                      {Math.round(distance)}m
+                      {distance < 500 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)}km`}
                     </Text>
                   </View>
                 )}
@@ -254,23 +261,28 @@ export const QRResultPopup: React.FC<QRResultPopupProps> = ({
               </Text>
             </TouchableOpacity>
             
+            {/* ========== RANGE CHECK DISABLED FOR TESTING - START ========== */}
+            {/* Comment: Button is enabled even when out of range for testing purposes */}
             <TouchableOpacity
               style={[
                 createNeumorphicCard(), 
                 styles.button, 
-                isInRange ? styles.proceedButton : styles.disabledButton
+                styles.proceedButton  // Always use proceed button style (testing mode)
+                // isInRange ? styles.proceedButton : styles.disabledButton  // Original code
               ]}
-              onPress={isInRange ? onProceedToCamera : undefined}
-              disabled={!isInRange}
+              onPress={onProceedToCamera}  // Always allow proceeding (testing mode)
+              // onPress={isInRange ? onProceedToCamera : undefined}  // Original code
+              // disabled={!isInRange}  // Original code - button is never disabled in testing mode
             >
               <Text style={[
                 NeumorphicTextStyles.buttonPrimary, 
                 styles.buttonText,
-                !isInRange && styles.disabledButtonText
+                // !isInRange && styles.disabledButtonText  // Original code - disabled text style
               ]}>
                 Take Reading
               </Text>
             </TouchableOpacity>
+            {/* ========== RANGE CHECK DISABLED FOR TESTING - END ========== */}
           </View>
         </View>
       </View>

@@ -18,6 +18,7 @@ import PublicUploadScreen from '../pages/PublicUploadScreen';
 import SettingsPage from '../pages/SettingsPage';
 import EditProfileScreen from '../pages/EditProfileScreen';
 import DashboardScreen from '../pages/DashboardScreen';
+import MapLibreMapScreen from '../pages/MapLibreMapScreen';
 import { Colors } from '../lib/colors';
 
 export default function AppNavigator() {
@@ -121,7 +122,7 @@ export default function AppNavigator() {
         if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
         
         // Role-based home screen
-        if (profile.role === 'supervisor') {
+        if (profile?.role === 'supervisor') {
           return (
             <SupervisorDashboard
               profile={profile}
@@ -133,7 +134,7 @@ export default function AppNavigator() {
         } else {
           return (
             <HomeScreen
-              profile={profile}
+              profile={profile!}
               onNavigateToSite={navigateToSiteDetails}
               onNavigateToNewReading={navigateToNewReadingScreen}
               onNavigateToMyReadings={() => navigateToMyReadings()}
@@ -172,7 +173,7 @@ export default function AppNavigator() {
         );
 
       case 'new-reading':
-        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        if (!session) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
         return (
           <NewReadingScreen
             onSubmitReading={(data) => {
@@ -193,7 +194,7 @@ export default function AppNavigator() {
         );
 
       case 'public-upload':
-        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        if (!session) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
         return (
           <PublicUploadScreen
             onSubmitReport={(data) => {
@@ -220,18 +221,8 @@ export default function AppNavigator() {
           />
         );
 
-      case 'profile':
-        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
-        return (
-          <ProfileScreen
-            profile={profile}
-            onEditProfile={() => setCurrentScreen('profile-setup')}
-            onBack={navigateBack}
-          />
-        );
-
       case 'edit-profile':
-        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        if (!session) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
         return (
           <EditProfileScreen
             onBack={navigateBack}
@@ -246,6 +237,9 @@ export default function AppNavigator() {
             onBack={navigateBack}
           />
         );
+
+      case 'map':
+        return <MapLibreMapScreen />;
 
       default:
         return <SplashScreen onAnimationComplete={() => setCurrentScreen('auth')} />;

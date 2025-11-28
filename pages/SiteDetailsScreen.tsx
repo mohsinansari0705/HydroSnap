@@ -319,7 +319,7 @@ const SiteDetailsScreen: React.FC<SiteDetailsScreenProps> = ({
         </View>
         <View style={styles.locationRow}>
           <Text style={styles.locationLabel}>Geofence Radius:</Text>
-          <Text style={styles.locationValue}>{siteDetails?.geofenceRadius}m</Text>
+          <Text style={styles.locationValue}>{siteDetails?.geofenceRadius ? (siteDetails.geofenceRadius < 500 ? `${siteDetails.geofenceRadius}m` : `${(siteDetails.geofenceRadius / 1000).toFixed(1)}km`) : 'N/A'}</Text>
         </View>
       </View>
     </View>
