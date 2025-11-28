@@ -7,8 +7,6 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types/profile';
@@ -16,11 +14,12 @@ import {
   createNeumorphicCard,
   createNeumorphicButton,
   createNeumorphicInput,
-  NeumorphicTextStyles,
 } from '../lib/neumorphicStyles';
 import { Colors } from '../lib/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '../lib/NavigationContext';
+import SafeScreen from './SafeScreen';
+import { useSimpleBackHandler } from '../hooks/useBackHandler';
 
 interface ProfileSetupProps {
   userId: string;
@@ -28,56 +27,85 @@ interface ProfileSetupProps {
 }
 
 export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetupProps) {
-  const { navigateBack } = useNavigation(); // Use custom navigation context
   const styles = React.useMemo(() => createStyles(), []);
+  const { navigateBack } = useNavigation();
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<Profile['role']>('public');
   const [organization, setOrganization] = useState('');
   const [location, setLocation] = useState('');
   const [siteId, setSiteId] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [gender, setGender] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fullNameError, setFullNameError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+
+  // Handle hardware back button
+  useSimpleBackHandler(() => {
+    navigateBack();
+  });
 
   useEffect(() => {
-    // Try to get user metadata from auth
     const getUserData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.user_metadata) {
-        setFullName(user.user_metadata.full_name || '');
-        setRole(user.user_metadata.role || 'public');
-        setOrganization(user.user_metadata.organization || '');
-        setLocation(user.user_metadata.location || '');
-        setSiteId(user.user_metadata.site_id || '');
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error('Error fetching user data:', error);
+          return;
+        }
+
+        if (user?.user_metadata) {
+          console.log('User Metadata:', user.user_metadata);
+          console.log('Fetched display_name:', user.user_metadata.display_name);
+          setFullName(user.user_metadata.display_name || '');
+          setRole(user.user_metadata.role || 'public');
+          setOrganization(user.user_metadata.organization || '');
+          setLocation(user.user_metadata.location || '');
+          setSiteId(user.user_metadata.site_id || '');
+          setPhone(user.user_metadata.phone || '');
+          setEmail(user.email || '');
+          setGender(user.user_metadata.gender || '');
+        } else {
+          console.warn('User metadata is missing.');
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching user data:', err);
       }
     };
+
     getUserData();
   }, []);
 
-  const roles: { value: Profile['role']; label: string; description: string }[] = [
-    { 
-      value: 'central_analyst', 
-      label: 'Central Analyst', 
-      description: 'CWC headquarters staff for data analysis'
-    },
-    { 
-      value: 'supervisor', 
-      label: 'Supervisor', 
-      description: 'Regional supervisors managing multiple sites'
-    },
-    { 
-      value: 'field_personnel', 
-      label: 'Field Personnel', 
-      description: 'On-ground staff taking water level readings'
-    },
-    { 
-      value: 'public', 
-      label: 'Public User', 
-      description: 'General public contributing to monitoring'
-    },
-  ];
+  const validateFullName = (name: string) => {
+    const words = name.trim().split(' ');
+    return words.length > 1 && words.every(word => word.length > 0); // Ensure at least two words with non-empty values
+  };
+
+  const validatePhoneNumber = (phone: string) => {
+    const isValid = /^[0-9]{10}$/.test(phone); // Ensure exactly 10 digits
+    if (!isValid) {
+      setPhoneError('Please enter a valid 10-digit phone number');
+    } else {
+      setPhoneError('');
+    }
+    return isValid;
+  };
 
   const handleSubmit = async () => {
-    if (!fullName || !organization || !location) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    if (!validateFullName(fullName)) {
+      setFullNameError('Please enter your full name');
+      return;
+    } else {
+      setFullNameError('');
+    }
+
+    if (!validatePhoneNumber(phone)) {
+      return;
+    }
+
+    if (!fullName || !organization || !location || !phone) {
+      Alert.alert('Error', 'Please fill in all required fields.');
       return;
     }
 
@@ -89,21 +117,49 @@ export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetup
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
-        .insert({
-          id: userId,
-          full_name: fullName,
-          role,
-          organization,
-          location,
-          site_id: role === 'field_personnel' ? siteId : null,
-        });
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-      if (error) {
-        Alert.alert('Error', error.message);
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+
+      let response;
+
+      if (existingProfile) {
+        response = await supabase
+          .from('profiles')
+          .update({
+            full_name: fullName,
+            organization,
+            location,
+            phone,
+            site_id: role === 'field_personnel' ? siteId : null,
+          })
+          .eq('id', userId);
       } else {
-        Alert.alert('Success', 'Profile created successfully!');
+        response = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            full_name: fullName,
+            role,
+            organization,
+            location,
+            email,
+            phone,
+            gender,
+            site_id: role === 'field_personnel' ? siteId : null,
+          });
+      }
+
+      if (response.error) {
+        Alert.alert('Error', response.error.message);
+      } else {
+        Alert.alert('Success', 'Profile saved successfully!');
         onProfileComplete();
       }
     } catch (error) {
@@ -114,93 +170,86 @@ export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetup
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      {/* Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={navigateBack} // Use custom navigation method
+    <SafeScreen backgroundColor={Colors.background} statusBarStyle="dark">
+      <View style={styles.header}>
+        <TouchableOpacity onPress={navigateBack} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
       >
-        <Ionicons name="arrow-back" size={24} color={Colors.deepSecurityBlue} />
-      </TouchableOpacity>
-
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.formContainer}>
-          <Text style={styles.title}>Complete Your Profile</Text>
-          <Text style={styles.subtitle}>
-            Set up your HydroSnap monitoring profile
-          </Text>
-
+          <Text style={styles.sectionTitle}>Personal Information</Text>
+          
+          <Text style={styles.label}>Full Name *</Text>
           <TextInput
             style={styles.input}
-            placeholder="Full Name"
+            placeholder="Enter your full name"
+            placeholderTextColor={Colors.textSecondary}
             value={fullName}
             onChangeText={setFullName}
             autoCapitalize="words"
           />
+          {fullNameError ? (
+            <Text style={styles.errorText}>{fullNameError}</Text>
+          ) : null}
 
-          <Text style={styles.label}>Role</Text>
-          <View style={styles.roleContainer}>
-            {roles.map((roleOption) => (
-              <TouchableOpacity
-                key={roleOption.value}
-                style={[
-                  styles.roleButton,
-                  role === roleOption.value && styles.roleButtonSelected,
-                ]}
-                onPress={() => setRole(roleOption.value)}
-              >
-                <Text
-                  style={[
-                    styles.roleButtonText,
-                    role === roleOption.value && styles.roleButtonTextSelected,
-                  ]}
-                >
-                  {roleOption.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.roleDescriptionText,
-                    role === roleOption.value && styles.roleDescriptionTextSelected,
-                  ]}
-                >
-                  {roleOption.description}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
+          <Text style={styles.label}>Phone Number *</Text>
           <TextInput
             style={styles.input}
-            placeholder="Organization (e.g., Central Water Commission)"
-            value={organization}
-            onChangeText={setOrganization}
-            autoCapitalize="words"
+            placeholder="Enter your 10-digit phone number"
+            placeholderTextColor={Colors.textSecondary}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            maxLength={10}
           />
+          {phoneError ? (
+            <Text style={styles.errorText}>{phoneError}</Text>
+          ) : null}
 
+          <Text style={styles.label}>Location *</Text>
           <TextInput
             style={styles.input}
-            placeholder="Location/Region"
+            placeholder="Enter your city or region"
+            placeholderTextColor={Colors.textSecondary}
             value={location}
             onChangeText={setLocation}
             autoCapitalize="words"
           />
 
+          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Work Information</Text>
+          
+          <Text style={styles.label}>Organization *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your organization name"
+            placeholderTextColor={Colors.textSecondary}
+            value={organization}
+            onChangeText={setOrganization}
+            autoCapitalize="words"
+          />
+
           {role === 'field_personnel' && (
-            <View style={styles.siteIdContainer}>
+            <>
+              <Text style={styles.label}>Site ID *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Site ID (e.g., CWC-GAN-001)"
+                placeholder="Enter your assigned site ID"
+                placeholderTextColor={Colors.textSecondary}
                 value={siteId}
                 onChangeText={setSiteId}
                 autoCapitalize="characters"
               />
               <Text style={styles.helperText}>
-                Enter the monitoring site ID assigned to you
+                Field personnel must provide their assigned site ID
               </Text>
-            </View>
+            </>
           )}
 
           <TouchableOpacity
@@ -208,118 +257,103 @@ export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetup
             onPress={handleSubmit}
             disabled={loading}
           >
-            <Text style={styles.buttonText}>
-              {loading ? 'Creating Profile...' : 'Complete Setup'}
-            </Text>
+            {loading ? (
+              <Text style={styles.buttonText}>Saving...</Text>
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={20} color={Colors.white} style={{ marginRight: 8 }} />
+                <Text style={styles.buttonText}>Save Changes</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </SafeScreen>
   );
 }
 
 const createStyles = () => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.softLightGrey,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: Colors.cardBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.background,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  placeholder: {
+    width: 40,
   },
   scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
     padding: 20,
+    paddingBottom: 40,
   },
   formContainer: {
-    ...createNeumorphicCard({ size: 'large', borderRadius: 24 }),
-    padding: 32,
+    ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
+    padding: 24,
   },
-  title: {
-    ...NeumorphicTextStyles.heading,
-    fontSize: 30,
-    color: Colors.deepSecurityBlue,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  subtitle: {
-    ...NeumorphicTextStyles.body,
-    textAlign: 'center',
-    marginBottom: 32,
-    color: Colors.textSecondary,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 20,
   },
   label: {
-    ...NeumorphicTextStyles.body,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 12,
-    marginTop: 12,
+    marginBottom: 8,
     color: Colors.textPrimary,
   },
   input: {
-    ...createNeumorphicInput({ borderRadius: 14 }),
-    padding: 18,
-    marginBottom: 18,
-    fontSize: 16,
+    ...createNeumorphicInput({ borderRadius: 12 }),
+    padding: 16,
+    marginBottom: 16,
+    fontSize: 15,
     color: Colors.textPrimary,
-  },
-  siteIdContainer: {
-    marginBottom: 15,
   },
   helperText: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: -10,
-    marginBottom: 15,
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginTop: -12,
+    marginBottom: 16,
     fontStyle: 'italic',
   },
-  roleContainer: {
-    gap: 10,
-    marginBottom: 15,
-  },
-  roleButton: {
-    ...createNeumorphicCard({ size: 'small', borderRadius: 14 }),
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-  },
-  roleButtonSelected: {
-    backgroundColor: Colors.deepSecurityBlue,
-    shadowColor: Colors.deepSecurityBlue + '40',
-  },
-  roleButtonText: {
-    ...NeumorphicTextStyles.body,
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: Colors.textPrimary,
-  },
-  roleButtonTextSelected: {
-    color: Colors.white,
-  },
-  roleDescriptionText: {
-    ...NeumorphicTextStyles.bodySecondary,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  roleDescriptionTextSelected: {
-    color: Colors.aquaTechBlue,
-  },
   button: {
-    ...createNeumorphicButton('primary', { size: 'large', borderRadius: 16 }),
-    paddingVertical: 18,
+    ...createNeumorphicButton('primary', { size: 'large', borderRadius: 14 }),
+    flexDirection: 'row',
+    paddingVertical: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 24,
   },
   buttonDisabled: {
-    backgroundColor: Colors.textLight,
-    shadowOpacity: 0,
+    backgroundColor: Colors.textSecondary,
+    opacity: 0.6,
   },
   buttonText: {
-    ...NeumorphicTextStyles.buttonPrimary,
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.white,
   },
-  backButton: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    zIndex: 10,
+  errorText: {
+    fontSize: 13,
+    color: Colors.alertRed,
+    marginTop: -12,
+    marginBottom: 12,
   },
 });
