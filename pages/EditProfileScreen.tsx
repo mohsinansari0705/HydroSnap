@@ -11,71 +11,109 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types/profile';
 import {
   createNeumorphicCard,
-  createNeumorphicButton,
   createNeumorphicInput,
-  NeumorphicTextStyles,
 } from '../lib/neumorphicStyles';
 import { Colors } from '../lib/colors';
 import { useAuth } from '../lib/AuthContext';
+import { useNavigation } from '../lib/NavigationContext';
+import { useSimpleBackHandler } from '../hooks/useBackHandler';
+import { profileCacheService } from '../services/profileCacheService';
+import SafeScreen from '../components/SafeScreen';
 
 interface EditProfileScreenProps {
   onBack: () => void;
+  onSuccess?: () => void;
 }
 
-export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
+export default function EditProfileScreen({ onBack, onSuccess }: EditProfileScreenProps) {
   const { profile, refreshProfile } = useAuth();
+  const navigation = useNavigation();
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<Profile['role']>('public');
-  const [organization, setOrganization] = useState('');
+  const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
-  const [siteId, setSiteId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isFromCache, setIsFromCache] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Handle hardware back button - navigate to home screen
+  useSimpleBackHandler(() => {
+    navigation.setCurrentScreen('home');
+  });
 
   useEffect(() => {
-    if (profile) {
-      setFullName(profile.full_name || '');
-      setRole(profile.role);
-      setOrganization(profile.organization || '');
-      setLocation(profile.location || '');
-      setSiteId(profile.site_id || '');
-    }
+    loadProfileWithCache();
   }, [profile]);
 
-  const roles: { value: Profile['role']; label: string; description: string }[] = [
-    { 
-      value: 'central_analyst', 
-      label: 'Central Analyst', 
-      description: 'CWC headquarters staff for data analysis'
-    },
-    { 
-      value: 'supervisor', 
-      label: 'Supervisor', 
-      description: 'Regional supervisors managing multiple sites'
-    },
-    { 
-      value: 'field_personnel', 
-      label: 'Field Personnel', 
-      description: 'On-ground staff taking water level readings'
-    },
-    { 
-      value: 'public', 
-      label: 'Public User', 
-      description: 'General public contributing to monitoring'
-    },
-  ];
-
-  const handleSave = async () => {
-    if (!fullName || !organization || !location) {
-      Alert.alert('Error', 'Please fill in all required fields');
+  const loadProfileWithCache = async () => {
+    if (!profile?.id) {
+      if (profile) {
+        setFullName(profile.full_name || '');
+        setPhone(profile.phone || '');
+        setLocation(profile.location || '');
+      }
       return;
     }
 
-    if (role === 'field_personnel' && !siteId) {
-      Alert.alert('Error', 'Site ID is required for field personnel');
+    try {
+      setIsSyncing(true);
+      
+      // Use cache-first strategy
+      const result = await profileCacheService.getProfileFast(profile.id);
+      
+      if (result.profile) {
+        const loadedProfile = result.profile;
+        setFullName(loadedProfile.full_name || '');
+        setPhone(loadedProfile.phone || '');
+        setLocation(loadedProfile.location || '');
+        setIsFromCache(result.isFromCache);
+        
+        if (result.isFromCache) {
+          console.log('📱 Profile loaded from cache (offline-ready)');
+          
+          // Monitor background sync
+          if (result.syncPromise) {
+            result.syncPromise
+              .then((freshProfile) => {
+                if (freshProfile) {
+                  setFullName(freshProfile.full_name || '');
+                  setPhone(freshProfile.phone || '');
+                  setLocation(freshProfile.location || '');
+                  setIsFromCache(false);
+                  console.log('✅ Profile synced from server');
+                }
+              })
+              .finally(() => setIsSyncing(false));
+          } else {
+            setIsSyncing(false);
+          }
+        } else {
+          setIsSyncing(false);
+        }
+      } else if (profile) {
+        setFullName(profile.full_name || '');
+        setPhone(profile.phone || '');
+        setLocation(profile.location || '');
+        setIsSyncing(false);
+      }
+    } catch (error) {
+      console.error('Profile load error:', error);
+      if (profile) {
+        setFullName(profile.full_name || '');
+        setPhone(profile.phone || '');
+        setLocation(profile.location || '');
+      }
+      setIsSyncing(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!fullName.trim()) {
+      Alert.alert('Error', 'Please enter your full name');
       return;
     }
 
@@ -85,20 +123,32 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
       const { error } = await supabase
         .from('profiles')
         .update({
-          full_name: fullName,
-          role,
-          organization,
-          location,
-          site_id: role === 'field_personnel' ? siteId : null,
+          full_name: fullName.trim(),
+          phone: phone.trim(),
+          location: location.trim(),
         })
         .eq('id', profile?.id);
 
       if (error) {
         Alert.alert('Error', error.message);
       } else {
-        Alert.alert('Success', 'Profile updated successfully!');
         await refreshProfile();
+        // Update cache
+        await profileCacheService.updateProfile(profile?.id || '', {
+          full_name: fullName.trim(),
+          phone: phone.trim(),
+          location: location.trim(),
+        } as Partial<Profile>);
+        
+        // Navigate back and trigger success popup
         onBack();
+        
+        // Call success callback to show popup on ProfileScreen
+        if (onSuccess) {
+          setTimeout(() => {
+            onSuccess();
+          }, 100);
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred');
@@ -108,167 +158,199 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
     }
   };
 
+  const handleCancel = () => {
+    navigation.setCurrentScreen('home');
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Edit Profile</Text>
-        <View style={{ width: 54 }} />
-      </View>
-
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
+    <SafeScreen backgroundColor={Colors.background} statusBarStyle="dark">
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={[styles.formContainer, createNeumorphicCard({ size: 'large', borderRadius: 16 })]}>
-          <Text style={styles.subtitle}>Update your profile information</Text>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.title}>Edit Profile</Text>
+            {isFromCache && !isSyncing && (
+              <View style={styles.offlineBadge}>
+                <MaterialCommunityIcons name="cloud-off-outline" size={12} color={Colors.warning} />
+                <Text style={styles.offlineText}>Offline</Text>
+              </View>
+            )}
+            {isSyncing && (
+              <View style={styles.syncingBadge}>
+                <ActivityIndicator size="small" color={Colors.aquaTechBlue} />
+                <Text style={styles.syncingText}>Syncing...</Text>
+              </View>
+            )}
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
 
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Full Name"
-            value={fullName}
-            onChangeText={setFullName}
-            autoCapitalize="words"
-            editable={!loading}
-          />
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.formContainer, createNeumorphicCard({ size: 'large', borderRadius: 16 })]}>
+            <Text style={styles.subtitle}>Update your personal information</Text>
 
-          <Text style={styles.label}>Role</Text>
-          <View style={styles.roleContainer}>
-            {roles.map((roleOption) => (
+            <Text style={styles.label}>Full Name *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your full name"
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+              editable={!loading}
+            />
+
+            <Text style={styles.label}>Phone Number</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your phone number"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              editable={!loading}
+            />
+
+            <Text style={styles.label}>Location/Region</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your location"
+              value={location}
+              onChangeText={setLocation}
+              autoCapitalize="words"
+              editable={!loading}
+            />
+
+            {/* Read-only fields */}
+            {profile?.role && (
+              <View style={styles.readOnlySection}>
+                <Text style={styles.readOnlySectionTitle}>Account Information (Read-only)</Text>
+                
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.readOnlyLabel}>Role</Text>
+                  <Text style={styles.readOnlyValue}>
+                    {profile.role === 'central_analyst' ? 'Central Analyst' :
+                     profile.role === 'supervisor' ? 'Supervisor' :
+                     profile.role === 'field_personnel' ? 'Field Personnel' :
+                     'Public User'}
+                  </Text>
+                </View>
+
+                {profile.organization && (
+                  <View style={styles.readOnlyField}>
+                    <Text style={styles.readOnlyLabel}>Organization</Text>
+                    <Text style={styles.readOnlyValue}>{profile.organization}</Text>
+                  </View>
+                )}
+
+                {profile.site_id && (
+                  <View style={styles.readOnlyField}>
+                    <Text style={styles.readOnlyLabel}>Site ID</Text>
+                    <Text style={styles.readOnlyValue}>{profile.site_id}</Text>
+                  </View>
+                )}
+
+                <Text style={styles.helperText}>
+                  Contact your administrator to modify these fields
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.buttonContainer}>
               <TouchableOpacity
-                key={roleOption.value}
-                style={[
-                  styles.roleButton,
-                  role === roleOption.value && styles.roleButtonSelected,
-                ]}
-                onPress={() => !loading && setRole(roleOption.value)}
+                style={[styles.button, styles.cancelButton, loading && styles.buttonDisabled]}
+                onPress={handleCancel}
                 disabled={loading}
               >
-                <Text
-                  style={[
-                    styles.roleButtonText,
-                    role === roleOption.value && styles.roleButtonTextSelected,
-                  ]}
-                >
-                  {roleOption.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.roleDescriptionText,
-                    role === roleOption.value && styles.roleDescriptionTextSelected,
-                  ]}
-                >
-                  {roleOption.description}
-                </Text>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.label}>Organization</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Organization (e.g., Central Water Commission)"
-            value={organization}
-            onChangeText={setOrganization}
-            autoCapitalize="words"
-            editable={!loading}
-          />
-
-          <Text style={styles.label}>Location/Region</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Location/Region"
-            value={location}
-            onChangeText={setLocation}
-            autoCapitalize="words"
-            editable={!loading}
-          />
-
-          {role === 'field_personnel' && (
-            <View style={styles.siteIdContainer}>
-              <Text style={styles.label}>Site ID</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Site ID (e.g., CWC-GAN-001)"
-                value={siteId}
-                onChangeText={setSiteId}
-                autoCapitalize="characters"
-                editable={!loading}
-              />
-              <Text style={styles.helperText}>
-                Enter the monitoring site ID assigned to you
-              </Text>
+              <TouchableOpacity
+                style={[styles.button, styles.saveButton, loading && styles.buttonDisabled]}
+                onPress={handleSave}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color={Colors.white} size="small" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
             </View>
-          )}
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.button, styles.cancelButton, loading && styles.buttonDisabled]}
-              onPress={onBack}
-              disabled={loading}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.saveButton, loading && styles.buttonDisabled]}
-              onPress={handleSave}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={Colors.white} size="small" />
-              ) : (
-                <Text style={styles.saveButtonText}>Save Changes</Text>
-              )}
-            </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.softLightGrey,
+    backgroundColor: Colors.background,
   },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    paddingVertical: 16, 
-    paddingHorizontal: 16, 
-    paddingBottom: 16, 
-    backgroundColor: Colors.deepSecurityBlue, 
-    gap: 12,
-    elevation: 2,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: Colors.cardBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.background,
   },
-  backButton: { 
-    width: 54, 
-    height: 54, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: Colors.softLightGrey, 
-    borderRadius: 27, 
-    elevation: 4,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  backIcon: { 
-    fontSize: 24, 
-    color: Colors.deepSecurityBlue, 
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 20,
     fontWeight: '700',
+    color: Colors.textPrimary,
   },
-  title: { 
-    fontSize: 18, 
-    fontWeight: '600', 
-    color: Colors.white, 
-    flex: 1, 
-    textAlign: 'center',
+  offlineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.warning + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginTop: 4,
+    gap: 4,
+  },
+  offlineText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.warning,
+  },
+  syncingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.aquaTechBlue + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginTop: 4,
+    gap: 4,
+  },
+  syncingText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.aquaTechBlue,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -301,45 +383,41 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     borderRadius: 12,
   },
-  siteIdContainer: {
-    marginTop: 8,
+  readOnlySection: {
+    marginTop: 24,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: Colors.lightShadow,
+  },
+  readOnlySectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    marginBottom: 16,
+  },
+  readOnlyField: {
+    marginBottom: 16,
+  },
+  readOnlyLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    marginBottom: 6,
+  },
+  readOnlyValue: {
+    fontSize: 15,
+    color: Colors.textPrimary,
+    fontWeight: '500',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
   },
   helperText: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 6,
-    marginBottom: 16,
-    fontStyle: 'italic',
-  },
-  roleContainer: {
-    gap: 10,
-    marginBottom: 8,
-  },
-  roleButton: {
-    ...createNeumorphicCard({ size: 'small', borderRadius: 12 }),
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  roleButtonSelected: {
-    backgroundColor: Colors.deepSecurityBlue,
-    shadowColor: Colors.deepSecurityBlue + '40',
-  },
-  roleButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: Colors.textPrimary,
-  },
-  roleButtonTextSelected: {
-    color: Colors.white,
-  },
-  roleDescriptionText: {
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11,
     color: Colors.textSecondary,
-  },
-  roleDescriptionTextSelected: {
-    color: Colors.aquaTechBlue,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   buttonContainer: {
     flexDirection: 'row',
