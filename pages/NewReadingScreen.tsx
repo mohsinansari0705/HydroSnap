@@ -25,6 +25,9 @@ import ReviewReadingScreen from './ReviewReadingScreen';
 import { useSimpleBackHandler } from '../hooks/useBackHandler';
 import SubmissionSuccessPopup from '../components/SubmissionSuccessPopup';
 import { locationCacheService } from '../services/locationCacheService';
+import floodAlertsService from '../services/floodAlertsService';
+import notificationService from '../services/notificationService';
+import { supabase } from '../lib/supabase';
 
 interface NewReadingScreenProps {
   onSubmitReading?: (data: any) => void;
@@ -279,6 +282,31 @@ const NewReadingScreen: React.FC<NewReadingScreenProps> = ({
       setIsMonitoring(false);
 
       if (result.success) {
+        // Get current user ID
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user && result.readingId) {
+          // Generate flood alert based on water level
+          const alert = await floodAlertsService.generateWaterLevelAlert({
+            siteId: validatedSite.siteId,
+            siteName: validatedSite.name,
+            siteLocation: validatedSite.location || `${validatedSite.coordinates.lat.toFixed(4)}, ${validatedSite.coordinates.lng.toFixed(4)}`,
+            readingId: result.readingId,
+            waterLevel: finalWaterLevel,
+            dangerLevel: validatedSite.levels.danger,
+            warningLevel: validatedSite.levels.warning,
+            userId: user.id,
+            latitude: validatedSite.coordinates.lat,
+            longitude: validatedSite.coordinates.lng,
+          });
+
+          // If alert was created, send local notification
+          if (alert) {
+            await notificationService.sendLocalNotification(alert);
+            console.log('✅ Flood alert created and notification sent:', alert.alert_type);
+          }
+        }
+
         // Store result data and show modern popup
         setSubmissionResult({
           siteId: validatedSite.siteId,

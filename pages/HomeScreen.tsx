@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { QRScanner } from '../components/QRScanner';
 import {
   View,
   Text,
@@ -8,7 +7,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  Image,
 } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { Profile } from '../types/profile';
@@ -21,6 +22,9 @@ import { MonitoringSite } from '../services/monitoringSitesService';
 import { DebugUtils } from '../services/debugUtils';
 import { useSiteCache } from '../lib/SiteCacheContext';
 import { useNavigation } from '../lib/NavigationContext';
+import { useNotifications, useMissedReadingScheduler } from '../hooks/useNotifications';
+import notificationService from '../services/notificationService';
+import missedReadingScheduler from '../services/missedReadingScheduler';
 
 interface HomeScreenProps {
   profile: Profile | null;
@@ -31,7 +35,21 @@ interface HomeScreenProps {
   onNavigateToSettings: () => void;
 }
 
-
+// Format role names for display
+const formatRole = (role: string): string => {
+  switch (role) {
+    case 'field_personnel':
+      return 'Field Personnel';
+    case 'central_analyst':
+      return 'Central Analyst';
+    case 'supervisor':
+      return 'Supervisor';
+    case 'public':
+      return 'Public User';
+    default:
+      return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  }
+};
 
 // Flood alerts data
 const floodAlerts = [
@@ -95,9 +113,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'home' | 'sites' | 'profile'>('home');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
-  const [qrScannerVisible, setQRScannerVisible] = useState(false);
   // notification visibility moved to global navigation context
   const { toggleNotifications, setCurrentScreen } = useNavigation();
+
+  // Initialize notification system
+  const { unreadCount } = useNotifications();
+  useMissedReadingScheduler(true); // Enable daily missed reading checks
 
   // Use the site cache to prevent repeated fetching
   const { sites: cachedSites, setCachedSites, isCacheValid, clearCache } = useSiteCache();
@@ -109,7 +130,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     error,
     refreshing,
     todaysReadingsCount,
-    floodAlertsCount,
     refresh,
   } = useMonitoringSites({
     ...(userLocation && { userLocation }),
@@ -137,6 +157,25 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     }, 2000); // 2 second delay
 
     return () => clearTimeout(timer);
+  }, []);
+
+  // Initialize notification permissions and background tasks
+  useEffect(() => {
+    const initializeNotifications = async () => {
+      try {
+        // Request notification permissions
+        await notificationService.registerForPushNotifications();
+        
+        // Register background task for missed readings
+        await missedReadingScheduler.registerBackgroundTask();
+        
+        console.log('✅ Notification system initialized');
+      } catch (error) {
+        console.error('Error initializing notifications:', error);
+      }
+    };
+
+    initializeNotifications();
   }, []);
 
   const fetchUserLocation = async () => {
@@ -230,11 +269,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     }
   };
 
-  const handleNavbarAction = (action: 'qr' | 'notifications' | 'profile' | 'settings') => {
+  const handleNavbarAction = (action: 'notifications' | 'profile' | 'settings') => {
     switch (action) {
-      case 'qr':
-        setQRScannerVisible(true);
-        break;
       case 'notifications':
         toggleNotifications();
         break;
@@ -257,9 +293,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       <View style={styles.siteHeader}>
         <View style={styles.siteInfo}>
           <Text style={[styles.siteName, NeumorphicTextStyles.heading]}>{site.name}</Text>
-          <Text style={[styles.siteLocation, NeumorphicTextStyles.caption]}>
-            📍 {site.location}
-          </Text>
+          <View style={styles.locationRow}>
+            <Ionicons name="location" size={14} color={Colors.textSecondary} />
+            <Text style={[styles.siteLocation, NeumorphicTextStyles.caption]}>
+              {site.location}
+            </Text>
+          </View>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(site.status) }]}>
           <Text style={styles.statusBadgeText}>{getStatusText(site.status)}</Text>
@@ -278,15 +317,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       )}
 
       <View style={styles.siteFooter}>
-        <Text style={[styles.distance, NeumorphicTextStyles.caption]}>
-          📏 {site.distanceFromUser ? (site.distanceFromUser < 500 ? `${Math.round(site.distanceFromUser)}m away` : `${(site.distanceFromUser / 1000).toFixed(1)}km away`) : 'Distance unknown'}
-        </Text>
+        <View style={styles.distanceRow}>
+          <Ionicons name="navigate" size={14} color={Colors.textSecondary} />
+          <Text style={[styles.distance, NeumorphicTextStyles.caption]}>
+            {site.distanceFromUser ? (site.distanceFromUser < 500 ? `${Math.round(site.distanceFromUser)}m away` : `${(site.distanceFromUser / 1000).toFixed(1)}km away`) : 'Distance unknown'}
+          </Text>
+        </View>
         
         {canTakeReading(site) && (
           <TouchableOpacity
             style={[styles.newReadingButton, createNeumorphicCard({ size: 'small' })]}
             onPress={() => onNavigateToNewReading(site.id)}
           >
+            <Ionicons name="add-circle" size={16} color={Colors.white} style={{ marginRight: 6 }} />
             <Text style={styles.newReadingButtonText}>New Reading</Text>
           </TouchableOpacity>
         )}
@@ -302,6 +345,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       return 'Good Evening';
     };
 
+    // Water level status check - can be used for dashboard indicators if needed
+    /*
     const getWaterLevelStatus = () => {
       const warningSites = displaySites.filter(site => site.status === 'warning').length;
       const dangerSites = displaySites.filter(site => site.status === 'danger').length;
@@ -314,24 +359,31 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         return { status: 'Normal', color: Colors.validationGreen, icon: '✅' };
       }
     };
-
     const waterStatus = getWaterLevelStatus();
+    */
 
     return (
       <View style={styles.compactHeader}>
         <View style={styles.greetingSection}>
           <View style={styles.greetingRow}>
-            {/* Avatar / Initials */}
+            {/* Avatar / Profile Photo */}
             <View style={styles.avatarContainer}>
               <View style={styles.avatarGradient}>
-                <Text style={styles.avatarText}>
-                  {(profile?.full_name || 'User')
-                    .split(' ')
-                    .map(n => n?.[0] ?? '')
-                    .slice(0, 2)
-                    .join('')
-                    .toUpperCase()}
-                </Text>
+                {profile?.profile_image_url ? (
+                  <Image 
+                    source={{ uri: profile.profile_image_url }} 
+                    style={styles.profileImage}
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {(profile?.full_name || 'User')
+                      .split(' ')
+                      .map(n => n?.[0] ?? '')
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase()}
+                  </Text>
+                )}
               </View>
             </View>
 
@@ -339,7 +391,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <View style={styles.greetingTextContainer}>
               <Text style={styles.greetingLabel}>{getGreeting()},</Text>
               <Text numberOfLines={1} style={styles.userName}>{(profile?.full_name || 'User')}</Text>
-              {(profile?.role || 'user') && (<Text style={styles.userRole}>{profile?.role || 'user'}</Text>)}
+              {(profile?.role) && (<Text style={styles.userRole}>{formatRole(profile.role)}</Text>)}
             </View>
           </View>
           
@@ -361,10 +413,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <Text style={styles.quickStatNumber}>{todaysReadingsCount}</Text>
             <Text style={styles.quickStatLabel}>Readings</Text>
           </View>
-          <View style={styles.quickStatItem}>
-            <Text style={styles.quickStatNumber}>{floodAlertsCount}</Text>
+          <TouchableOpacity 
+            style={styles.quickStatItem}
+            onPress={() => toggleNotifications()}
+          >
+            <View style={styles.alertBadgeContainer}>
+              <Text style={styles.quickStatNumber}>{unreadCount}</Text>
+              {unreadCount > 0 && <View style={styles.alertDot} />}
+            </View>
             <Text style={styles.quickStatLabel}>Alerts</Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -376,7 +434,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         style={styles.primaryActionButton}
         onPress={() => onNavigateToNewReading('capture')}
       >
-        <Text style={styles.primaryActionIcon}>📸</Text>
+        <View style={styles.actionIconContainer}>
+          <Ionicons name="camera" size={24} color={Colors.white} />
+        </View>
         <Text style={styles.primaryActionText}>Capture Reading</Text>
       </TouchableOpacity>
       
@@ -384,7 +444,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         style={styles.secondaryActionButton}
         onPress={() => setCurrentScreen('map')}
       >
-        <Text style={styles.secondaryActionIcon}>🗺️</Text>
+        <View style={styles.actionIconContainer}>
+          <Ionicons name="map" size={24} color={Colors.white} />
+        </View>
         <Text style={styles.secondaryActionText}>Map View</Text>
       </TouchableOpacity>
     </View>
@@ -411,8 +473,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>🚨 Flood Alert Status</Text>
-          <Text style={styles.sectionSubtitle}>Real-time water level monitoring</Text>
+          <View style={styles.sectionTitleContainer}>
+            <View style={[styles.sectionIconContainer, { backgroundColor: Colors.alertRed + '20' }]}>
+              <Ionicons name="alert-circle" size={24} color={Colors.alertRed} />
+            </View>
+            <View>
+              <Text style={styles.sectionTitle}>Flood Alert Status</Text>
+              <Text style={styles.sectionSubtitle}>Real-time water level monitoring</Text>
+            </View>
+          </View>
         </View>
         {floodAlerts.map(alert => (
           <Card
@@ -435,8 +504,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const renderRecentReadings = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>📊 Recent Water Level Readings</Text>
-        <Text style={styles.sectionSubtitle}>Latest data collection</Text>
+        <View style={styles.sectionTitleContainer}>
+          <View style={[styles.sectionIconContainer, { backgroundColor: Colors.aquaTechBlue + '20' }]}>
+            <Ionicons name="bar-chart" size={24} color={Colors.aquaTechBlue} />
+          </View>
+          <View>
+            <Text style={styles.sectionTitle}>Recent Water Level Readings</Text>
+            <Text style={styles.sectionSubtitle}>Latest data collection</Text>
+          </View>
+        </View>
       </View>
       {recentReadings.map(reading => (
         <Card
@@ -480,28 +556,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     <SafeScreen backgroundColor={Colors.deepSecurityBlue} statusBarStyle="light" edges={['top']}>
       <View style={styles.container}>
         <Navbar 
-          onQRScanPress={() => handleNavbarAction('qr')}
           onNotificationPress={() => handleNavbarAction('notifications')}
           onSettingsPress={() => handleNavbarAction('settings')}
         />
-
-        {/* QR Scanner Modal */}
-        {qrScannerVisible && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, backgroundColor: '#00000099', justifyContent: 'center', alignItems: 'center' }}>
-            <QRScanner
-              onSiteValidated={(siteData: any) => {
-                setQRScannerVisible(false);
-                // Navigate to site details or show info
-                if (siteData && siteData.siteId) {
-                  onNavigateToSite(siteData.siteId);
-                } else {
-                  Alert.alert('Invalid QR', 'Could not validate site data.');
-                }
-              }}
-              onCancel={() => setQRScannerVisible(false)}
-            />
-          </View>
-        )}
 
       {/* NotificationPanel rendering removed from HomeScreen to avoid duplicate panels.
           Navbar now handles displaying notifications near the bell icon. */}
@@ -528,9 +585,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Monitoring Sites Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderWithAction}>
-            <View>
-              <Text style={styles.sectionTitle}>🏗️ Monitoring Sites</Text>
-              <Text style={styles.sectionSubtitle}>Overview • History • Map</Text>
+            <View style={styles.sectionTitleContainer}>
+              <View style={styles.sectionIconContainer}>
+                <MaterialCommunityIcons name="water-pump" size={24} color={Colors.deepSecurityBlue} />
+              </View>
+              <View>
+                <Text style={styles.sectionTitle}>Monitoring Sites</Text>
+                <Text style={styles.sectionSubtitle}>Overview • History • Map</Text>
+              </View>
             </View>
             {displaySites.length > 5 && (
               <TouchableOpacity 
@@ -699,8 +761,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...NeumorphicTextStyles.heading,
-    fontSize: 22,
-    marginBottom: 6,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
     color: Colors.textPrimary,
   },
   sectionSubtitle: {
@@ -714,6 +777,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginHorizontal: 4,
     borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   siteHeader: {
     flexDirection: 'row',
@@ -768,6 +836,8 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   newReadingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -910,9 +980,36 @@ const styles = StyleSheet.create({
   sectionHeaderWithAction: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 20,
     paddingHorizontal: 4,
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  sectionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: Colors.deepSecurityBlue + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  distanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  actionIconContainer: {
+    marginBottom: 8,
   },
   viewAllButton: {
     paddingHorizontal: 16,
@@ -931,13 +1028,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 18,
     marginTop: 10,
     marginRight: 10,
     marginLeft: 10,
     borderRadius: 20,
     backgroundColor: Colors.deepSecurityBlue,
     marginBottom: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   greetingSection: {
     flex: 1,
@@ -948,6 +1050,22 @@ const styles = StyleSheet.create({
   },
   quickStatItem: {
     alignItems: 'center',
+  },
+  alertBadgeContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertDot: {
+    position: 'absolute',
+    top: -2,
+    right: -6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.dangerOrange,
+    borderWidth: 2,
+    borderColor: Colors.primary,
   },
   quickStatNumber: {
     fontSize: 22,
@@ -996,6 +1114,11 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
+  },
   greetingTextContainer: {
     flex: 1,
   },
@@ -1034,14 +1157,15 @@ const styles = StyleSheet.create({
   primaryActionButton: {
     ...createNeumorphicCard({ size: 'medium', borderRadius: 16 }),
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 16,
     alignItems: 'center',
     backgroundColor: Colors.deepSecurityBlue,
-  },
-  primaryActionIcon: {
-    fontSize: 20,
-    marginBottom: 6,
+    shadowColor: Colors.deepSecurityBlue,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   primaryActionText: {
     fontSize: 14,
@@ -1051,14 +1175,15 @@ const styles = StyleSheet.create({
   secondaryActionButton: {
     ...createNeumorphicCard({ size: 'medium', borderRadius: 16 }),
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 16,
     alignItems: 'center',
     backgroundColor: Colors.aquaTechBlue,
-  },
-  secondaryActionIcon: {
-    fontSize: 20,
-    marginBottom: 6,
+    shadowColor: Colors.aquaTechBlue,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   secondaryActionText: {
     fontSize: 14,
