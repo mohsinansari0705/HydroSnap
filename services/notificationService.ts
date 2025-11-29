@@ -1,39 +1,28 @@
-import { Alert, NotificationMessage } from '../types/alerts';
-import * as admin from 'firebase-admin';
-const twilio: any = require('twilio');
-import * as nodemailer from 'nodemailer';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import { FloodAlert } from './floodAlertsService';
+
+// Configure notification behavior
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 class NotificationService {
   private static instance: NotificationService;
-  private firebaseAdmin: typeof admin;
-  private twilioClient: any;
-  private emailTransporter: nodemailer.Transporter;
+  private expoPushToken: string | null = null;
+  private notificationListener: any = null;
+  private responseListener: any = null;
 
   private constructor() {
-    // Initialize Firebase Admin
-    const firebaseOptions: admin.AppOptions = {
-      credential: admin.credential.applicationDefault(),
-      ...(process.env.FIREBASE_PROJECT_ID ? { projectId: process.env.FIREBASE_PROJECT_ID } : {})
-    };
-    admin.initializeApp(firebaseOptions);
-    this.firebaseAdmin = admin;
-
-    // Initialize Twilio
-    this.twilioClient = twilio(
-      process.env.TWILIO_ACCOUNT_SID!,
-      process.env.TWILIO_AUTH_TOKEN!
-    );
-
-    // Initialize Nodemailer
-    this.emailTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: true,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD
-      }
-    });
+    this.initializeNotifications();
   }
 
   public static getInstance(): NotificationService {
@@ -43,106 +32,266 @@ class NotificationService {
     return NotificationService.instance;
   }
 
-  private createNotificationMessage(alert: Alert): NotificationMessage {
-    const severityEmoji = {
-      warning: '⚠️',
-      danger: '🚨',
-      critical: '🆘'
-    };
+  /**
+   * Initialize notifications and request permissions
+   */
+  private async initializeNotifications() {
+    try {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('flood-alerts', {
+          name: 'Flood Alerts',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+          sound: 'default',
+        });
 
-    const message: NotificationMessage = {
-      title: `${severityEmoji[alert.severity]} Flood Alert - ${alert.siteName}`,
-      body: `Current water level: ${alert.waterLevel}m\n` +
-            `Threshold: ${alert.threshold}m\n` +
-            `Weather: ${alert.weatherConditions}\n` +
-            `Time: ${alert.timestamp.toLocaleString()}`,
-      data: alert
-    };
+        await Notifications.setNotificationChannelAsync('water-level-warnings', {
+          name: 'Water Level Warnings',
+          importance: Notifications.AndroidImportance.HIGH,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FFA500',
+          sound: 'default',
+        });
 
-    return message;
+        await Notifications.setNotificationChannelAsync('reminders', {
+          name: 'Reading Reminders',
+          importance: Notifications.AndroidImportance.DEFAULT,
+          sound: 'default',
+        });
+      }
+
+      await this.registerForPushNotifications();
+    } catch (error) {
+      console.error('Error initializing notifications:', error);
+    }
   }
 
-  public async sendPushNotification(recipients: string[], alert: Alert): Promise<void> {
-    const message = this.createNotificationMessage(alert);
+  /**
+   * Register device for push notifications
+   */
+  async registerForPushNotifications(): Promise<string | null> {
+    if (!Device.isDevice) {
+      console.log('Must use physical device for Push Notifications');
+      return null;
+    }
 
-    const notifications = recipients.map(token => 
-      this.firebaseAdmin.messaging().send({
-        token,
-        notification: {
-          title: message.title,
-          body: message.body
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== 'granted') {
+        console.log('Failed to get push token for push notification!');
+        return null;
+      }
+
+      // Get projectId from expo config
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId || 
+                       Constants.easConfig?.projectId;
+      
+      if (!projectId) {
+        console.warn('No projectId found. Push notifications will work locally but may not work for remote notifications.');
+        // Still allow local notifications to work
+        return null;
+      }
+
+      const token = await Notifications.getExpoPushTokenAsync({
+        projectId,
+      });
+
+      this.expoPushToken = token.data;
+      console.log('Push token:', this.expoPushToken);
+
+      return this.expoPushToken;
+    } catch (error) {
+      console.error('Error getting push token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get current push token
+   */
+  getPushToken(): string | null {
+    return this.expoPushToken;
+  }
+
+  /**
+   * Send local notification for flood alert
+   */
+  async sendLocalNotification(alert: FloodAlert): Promise<void> {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: this.getNotificationTitle(alert),
+          body: alert.message,
+          data: {
+            alertId: alert.id,
+            siteId: alert.monitoring_site_id,
+            alertType: alert.alert_type,
+            severity: alert.severity,
+          },
+          sound: true,
+          priority: alert.severity === 'critical' ? 
+            Notifications.AndroidNotificationPriority.MAX : 
+            Notifications.AndroidNotificationPriority.HIGH,
         },
-        data: {
-          alertId: alert.id,
-          siteId: alert.siteId,
-          severity: alert.severity,
-          timestamp: alert.timestamp.toISOString()
-        }
-      })
-    );
+        trigger: null, // Immediate notification
+      });
 
-    try {
-      await Promise.all(notifications);
-      console.log(`Successfully sent push notifications for alert ${alert.id}`);
+      console.log('Local notification sent for alert:', alert.id);
     } catch (error) {
-      console.error('Error sending push notifications:', error);
-      throw error;
+      console.error('Error sending local notification:', error);
     }
   }
 
-  public async sendSMS(phoneNumbers: string[], alert: Alert): Promise<void> {
-    const message = this.createNotificationMessage(alert);
-    const smsText = `${message.title}\n${message.body}`;
-
-    const notifications = phoneNumbers.map(phoneNumber =>
-      this.twilioClient.messages.create({
-        body: smsText,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: phoneNumber
-      })
-    );
-
-    try {
-      await Promise.all(notifications);
-      console.log(`Successfully sent SMS notifications for alert ${alert.id}`);
-    } catch (error) {
-      console.error('Error sending SMS notifications:', error);
-      throw error;
-    }
-  }
-
-  public async sendEmail(emailAddresses: string[], alert: Alert): Promise<void> {
-    const message = this.createNotificationMessage(alert);
-
-    const mailOptions = {
-      from: process.env.SMTP_FROM_ADDRESS,
-      subject: message.title,
-      html: `
-        <h1>${message.title}</h1>
-        <p><strong>Water Level:</strong> ${alert.waterLevel}m</p>
-        <p><strong>Threshold:</strong> ${alert.threshold}m</p>
-        <p><strong>Weather:</strong> ${alert.weatherConditions}</p>
-        <p><strong>Location:</strong> ${alert.location.latitude}, ${alert.location.longitude}</p>
-        <p><strong>Time:</strong> ${alert.timestamp.toLocaleString()}</p>
-        <p>Please take necessary precautions and follow local emergency guidelines.</p>
-      `
+  /**
+   * Get notification title based on alert
+   */
+  private getNotificationTitle(alert: FloodAlert): string {
+    const emoji = {
+      danger: '🚨',
+      warning: '⚠️',
+      missed_reading: '📋',
+      prepared: '📢',
+      normal: 'ℹ️',
     };
 
-    const notifications = emailAddresses.map(email =>
-      this.emailTransporter.sendMail({
-        ...mailOptions,
-        to: email
-      })
-    );
+    const prefix = emoji[alert.alert_type] || 'ℹ️';
+    
+    switch (alert.alert_type) {
+      case 'danger':
+        return `${prefix} CRITICAL: ${alert.site_name}`;
+      case 'warning':
+        return `${prefix} WARNING: ${alert.site_name}`;
+      case 'missed_reading':
+        return `${prefix} Reading Reminder`;
+      case 'prepared':
+        return `${prefix} PREPARE: ${alert.site_name}`;
+      default:
+        return `${prefix} ${alert.site_name}`;
+    }
+  }
 
+  /**
+   * Schedule daily reminder for missed readings
+   * Note: Uses 24-hour interval instead of specific time due to Expo API limitations
+   */
+  async scheduleDailyReminder(_hour: number = 18, _minute: number = 0): Promise<string> {
     try {
-      await Promise.all(notifications);
-      console.log(`Successfully sent email notifications for alert ${alert.id}`);
+      // Schedule notification to repeat every 24 hours
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '📋 Daily Reading Reminder',
+          body: 'Have you submitted your water level readings today?',
+          data: { type: 'daily_reminder' },
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 86400, // 24 hours
+          repeats: true,
+        },
+      });
+
+      console.log('Daily reminder scheduled:', notificationId);
+      return notificationId;
     } catch (error) {
-      console.error('Error sending email notifications:', error);
+      console.error('Error scheduling daily reminder:', error);
       throw error;
     }
+  }
+
+  /**
+   * Cancel a scheduled notification
+   */
+  async cancelNotification(notificationId: string): Promise<void> {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(notificationId);
+      console.log('Notification cancelled:', notificationId);
+    } catch (error) {
+      console.error('Error cancelling notification:', error);
+    }
+  }
+
+  /**
+   * Cancel all scheduled notifications
+   */
+  async cancelAllNotifications(): Promise<void> {
+    try {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      console.log('All notifications cancelled');
+    } catch (error) {
+      console.error('Error cancelling all notifications:', error);
+    }
+  }
+
+  /**
+   * Set up notification listeners
+   */
+  setupNotificationListeners(
+    onNotificationReceived: (notification: Notifications.Notification) => void,
+    onNotificationResponse: (response: Notifications.NotificationResponse) => void
+  ): () => void {
+    // Listen for incoming notifications
+    this.notificationListener = Notifications.addNotificationReceivedListener(onNotificationReceived);
+
+    // Listen for notification interactions
+    this.responseListener = Notifications.addNotificationResponseReceivedListener(onNotificationResponse);
+
+    // Return cleanup function
+    return () => {
+      if (this.notificationListener) {
+        this.notificationListener.remove();
+      }
+      if (this.responseListener) {
+        this.responseListener.remove();
+      }
+    };
+  }
+
+  /**
+   * Get badge count
+   */
+  async getBadgeCount(): Promise<number> {
+    try {
+      return await Notifications.getBadgeCountAsync();
+    } catch (error) {
+      console.error('Error getting badge count:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Set badge count
+   */
+  async setBadgeCount(count: number): Promise<void> {
+    try {
+      await Notifications.setBadgeCountAsync(count);
+    } catch (error) {
+      console.error('Error setting badge count:', error);
+    }
+  }
+
+  /**
+   * Clear badge
+   */
+  async clearBadge(): Promise<void> {
+    await this.setBadgeCount(0);
+  }
+
+  /**
+   * Check notification permissions status
+   */
+  async getPermissionsStatus(): Promise<boolean> {
+    const { status } = await Notifications.getPermissionsAsync();
+    return status === 'granted';
   }
 }
 
-export default NotificationService;
+export default NotificationService.getInstance();
