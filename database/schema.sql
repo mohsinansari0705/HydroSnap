@@ -19,7 +19,8 @@ CREATE TABLE profiles (
   is_active BOOLEAN DEFAULT TRUE
 );
 
--- Water monitoring sites
+
+-- 2. Water monitoring sites
 CREATE TABLE monitoring_sites (
     id VARCHAR(100) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -45,7 +46,8 @@ CREATE TABLE monitoring_sites (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. WATER READINGS TABLE
+
+-- 3. WATER READINGS TABLE
 CREATE TABLE water_level_readings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) NOT NULL,
@@ -92,13 +94,48 @@ CREATE TABLE water_level_readings (
   submission_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+
+-- 4. Create flood_alerts table
+CREATE TABLE flood_alerts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  
+  monitoring_site_id VARCHAR(100) NOT NULL REFERENCES monitoring_sites(id) ON DELETE CASCADE,
+  reading_id UUID REFERENCES water_level_readings(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  
+  -- Alert classification
+  alert_type VARCHAR(50) NOT NULL CHECK (alert_type IN ('danger', 'warning', 'missed_reading', 'normal', 'prepared')),
+  severity VARCHAR(20) NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low')),
+  
+  water_level DECIMAL(10, 2), -- Current water level in meters
+  threshold_level DECIMAL(10, 2), -- The threshold that was crossed
+  
+  site_name VARCHAR(255) NOT NULL,
+  site_location VARCHAR(255),
+  
+  -- Alert content
+  message TEXT NOT NULL, -- Detailed alert message
+  
+  -- Status tracking
+  is_read BOOLEAN DEFAULT FALSE NOT NULL,
+  is_notified BOOLEAN DEFAULT FALSE NOT NULL, -- Track if push notification was sent
+  
+  metadata JSONB, -- Store additional context (weather, trend, previous readings, etc.)
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE -- When the alert is no longer relevant
+);
+
+
 -- ENABLE ROW LEVEL SECURITY
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE monitoring_sites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE water_level_readings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE flood_alerts ENABLE ROW LEVEL SECURITY;
+
 
 -- RLS POLICIES FOR PROFILES
--- Allow public read access for login phone/email lookup
 CREATE POLICY "Public can view profiles" ON profiles
   FOR SELECT USING (true);
 
@@ -107,6 +144,7 @@ CREATE POLICY "Users can insert own profile" ON profiles
 
 CREATE POLICY "Users can update own profile" ON profiles
   FOR UPDATE USING (auth.uid() = id);
+
 
 -- RLS POLICIES FOR WATER LEVEL READINGS
 CREATE POLICY "Anyone can view water level readings" ON water_level_readings
@@ -118,9 +156,34 @@ CREATE POLICY "Users can insert own water level readings" ON water_level_reading
 CREATE POLICY "Users can update own water level readings" ON water_level_readings
   FOR UPDATE USING (auth.uid() = user_id);
 
+
 -- RLS POLICIES FOR MONITORING SITES
 CREATE POLICY "Public can view sites" ON monitoring_sites
   FOR SELECT USING (is_active = TRUE);
+
+
+-- ROW POLICIES FOR FLOOD ALERTS
+CREATE POLICY "Users can view their own alerts" 
+  ON flood_alerts 
+  FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow insert for authenticated users" 
+  ON flood_alerts 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own alerts" 
+  ON flood_alerts 
+  FOR UPDATE 
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own alerts" 
+  ON flood_alerts 
+  FOR DELETE 
+  USING (auth.uid() = user_id);
+
 
 -- RLS POLICIES FOR STORAGE BUCKET: profile-images
 CREATE POLICY "Allow authenticated users to upload profile photos"
@@ -164,6 +227,36 @@ USING (
   AND name LIKE (storage.foldername(name))[1] || '/' || auth.uid()::text || '_photo%'
 );
 
+
+-- INDEXES FOR PERFORMANCE for flood_alerts table
+CREATE INDEX IF NOT EXISTS idx_flood_alerts_user_id 
+  ON flood_alerts(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_flood_alerts_site_id 
+  ON flood_alerts(monitoring_site_id);
+
+CREATE INDEX IF NOT EXISTS idx_flood_alerts_created_at 
+  ON flood_alerts(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_flood_alerts_is_read 
+  ON flood_alerts(is_read) WHERE is_read = FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_flood_alerts_alert_type 
+  ON flood_alerts(alert_type);
+
+CREATE INDEX IF NOT EXISTS idx_flood_alerts_severity 
+  ON flood_alerts(severity);
+
+CREATE INDEX IF NOT EXISTS idx_flood_alerts_reading_id 
+  ON flood_alerts(reading_id) WHERE reading_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_flood_alerts_expires_at 
+  ON flood_alerts(expires_at) WHERE expires_at IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_flood_alerts_user_unread 
+  ON flood_alerts(user_id, is_read, created_at DESC);
+
+
 -- UPDATE TRIGGER FOR PROFILES
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -182,3 +275,57 @@ CREATE TRIGGER update_monitoring_sites_updated_at
   BEFORE UPDATE ON monitoring_sites
   FOR EACH ROW
   EXECUTE PROCEDURE update_updated_at_column();
+
+
+-- TRIGGERS FOR FLOOD ALERTS
+CREATE OR REPLACE FUNCTION update_flood_alerts_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_flood_alerts_updated_at
+  BEFORE UPDATE ON flood_alerts
+  FOR EACH ROW
+  EXECUTE FUNCTION update_flood_alerts_updated_at();
+
+
+-- STORED FUNCTIONS FOR FLOOD ALERTS
+CREATE OR REPLACE FUNCTION get_user_unread_alerts_count(p_user_id UUID)
+RETURNS INTEGER AS $$
+BEGIN
+  RETURN (
+    SELECT COUNT(*)::INTEGER
+    FROM flood_alerts
+    WHERE user_id = p_user_id
+      AND is_read = FALSE
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION mark_all_alerts_read(p_user_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE flood_alerts
+  SET is_read = TRUE,
+      updated_at = NOW()
+  WHERE user_id = p_user_id
+    AND is_read = FALSE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION cleanup_expired_alerts()
+RETURNS INTEGER AS $$
+DECLARE
+  deleted_count INTEGER;
+BEGIN
+  DELETE FROM flood_alerts
+  WHERE expires_at IS NOT NULL
+    AND expires_at < NOW();
+  
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
