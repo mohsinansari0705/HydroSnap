@@ -7,9 +7,11 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types/profile';
+import { profileCacheService } from '../services/profileCacheService';
 import {
   createNeumorphicCard,
   createNeumorphicButton,
@@ -40,6 +42,8 @@ export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetup
   const [loading, setLoading] = useState(false);
   const [fullNameError, setFullNameError] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Handle hardware back button
   useSimpleBackHandler(() => {
@@ -55,19 +59,41 @@ export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetup
           return;
         }
 
-        if (user?.user_metadata) {
-          console.log('User Metadata:', user.user_metadata);
-          console.log('Fetched display_name:', user.user_metadata.display_name);
-          setFullName(user.user_metadata.display_name || '');
-          setRole(user.user_metadata.role || 'public');
-          setOrganization(user.user_metadata.organization || '');
-          setLocation(user.user_metadata.location || '');
-          setSiteId(user.user_metadata.site_id || '');
-          setPhone(user.user_metadata.phone || '');
-          setEmail(user.email || '');
-          setGender(user.user_metadata.gender || '');
-        } else {
-          console.warn('User metadata is missing.');
+        if (user?.id) {
+          // Load profile with cache-first strategy
+          setIsSyncing(true);
+          const result = await profileCacheService.getProfileFast(user.id);
+          setIsSyncing(false);
+
+          if (result.profile) {
+            const profile = result.profile;
+            setFullName(profile.full_name || '');
+            setRole(profile.role || 'public');
+            setOrganization(profile.organization || '');
+            setLocation(profile.location || '');
+            setSiteId(profile.site_id || '');
+            setPhone(profile.phone || '');
+            setEmail(profile.email || user.email || '');
+            setGender(profile.gender || '');
+            setIsOfflineMode(result.isFromCache);
+
+            if (result.isFromCache) {
+              console.log('📱 Profile loaded from cache (offline mode)');
+            }
+          } else if (user.user_metadata) {
+            // Fallback to user metadata
+            console.log('User Metadata:', user.user_metadata);
+            setFullName(user.user_metadata.display_name || '');
+            setRole(user.user_metadata.role || 'public');
+            setOrganization(user.user_metadata.organization || '');
+            setLocation(user.user_metadata.location || '');
+            setSiteId(user.user_metadata.site_id || '');
+            setPhone(user.user_metadata.phone || '');
+            setEmail(user.email || '');
+            setGender(user.user_metadata.gender || '');
+          } else {
+            console.warn('User metadata is missing.');
+          }
         }
       } catch (err) {
         console.error('Unexpected error fetching user data:', err);
@@ -117,53 +143,122 @@ export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetup
     setLoading(true);
 
     try {
-      const { data: existingProfile, error: fetchError } = await supabase
+      // Check if profile exists in cache first
+      const { data: existingProfile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        throw fetchError;
-      }
-
-      let response;
+      const updates: Partial<Profile> = {
+        full_name: fullName,
+        organization,
+        location,
+        phone,
+        ...(role === 'field_personnel' && siteId ? { site_id: siteId } : {}),
+      };
 
       if (existingProfile) {
-        response = await supabase
-          .from('profiles')
-          .update({
-            full_name: fullName,
-            organization,
-            location,
-            phone,
-            site_id: role === 'field_personnel' ? siteId : null,
-          })
-          .eq('id', userId);
-      } else {
-        response = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            full_name: fullName,
-            role,
-            organization,
-            location,
-            email,
-            phone,
-            gender,
-            site_id: role === 'field_personnel' ? siteId : null,
-          });
-      }
+        // Update existing profile using cache service (offline-capable)
+        const result = await profileCacheService.updateProfile(userId, updates);
 
-      if (response.error) {
-        Alert.alert('Error', response.error.message);
+        if (result.success) {
+          if (result.isOffline) {
+            // Saved offline
+            Alert.alert(
+              'Saved Offline',
+              result.error || 'Changes saved locally. Will sync when connection improves.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => onProfileComplete(),
+                },
+              ]
+            );
+          } else {
+            // Saved online
+            Alert.alert('Success', 'Profile saved successfully!', [
+              {
+                text: 'OK',
+                onPress: () => onProfileComplete(),
+              },
+            ]);
+          }
+        } else {
+          Alert.alert('Error', result.error || 'Failed to save profile');
+        }
       } else {
-        Alert.alert('Success', 'Profile saved successfully!');
-        onProfileComplete();
+        // Create new profile
+        const newProfile = {
+          id: userId,
+          full_name: fullName,
+          role,
+          organization,
+          location,
+          email,
+          phone,
+          gender,
+          site_id: role === 'field_personnel' ? siteId : null,
+        };
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .insert(newProfile)
+          .select()
+          .single();
+
+        if (error) {
+          // Try to save offline
+          await profileCacheService.saveToCache(userId, newProfile as Profile);
+          Alert.alert(
+            'Saved Offline',
+            'Profile created locally. Will sync when connection improves.',
+            [
+              {
+                text: 'OK',
+                onPress: () => onProfileComplete(),
+              },
+            ]
+          );
+        } else {
+          // Cache the new profile
+          await profileCacheService.saveToCache(userId, data);
+          Alert.alert('Success', 'Profile created successfully!', [
+            {
+              text: 'OK',
+              onPress: () => onProfileComplete(),
+            },
+          ]);
+        }
       }
-    } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+    } catch (error: any) {
+      console.error('Profile submit error:', error);
+      
+      // Try to save offline as last resort
+      const offlineProfile = {
+        id: userId,
+        full_name: fullName,
+        role,
+        organization,
+        location,
+        email,
+        phone,
+        gender,
+        site_id: role === 'field_personnel' ? siteId : null,
+      } as Profile;
+
+      await profileCacheService.saveToCache(userId, offlineProfile);
+      
+      Alert.alert(
+        'Saved Offline',
+        'Connection issue detected. Changes saved locally and will sync automatically.',
+        [
+          {
+            text: 'OK',
+            onPress: () => onProfileComplete(),
+          },
+        ]
+      );
     } finally {
       setLoading(false);
     }
@@ -175,7 +270,21 @@ export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetup
         <TouchableOpacity onPress={navigateBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Edit Profile</Text>
+          {isOfflineMode && !isSyncing && (
+            <View style={styles.offlineBadge}>
+              <Ionicons name="cloud-offline" size={12} color={Colors.warning} />
+              <Text style={styles.offlineText}>Offline Mode</Text>
+            </View>
+          )}
+          {isSyncing && (
+            <View style={styles.syncingBadge}>
+              <ActivityIndicator size="small" color={Colors.aquaTechBlue} />
+              <Text style={styles.syncingText}>Loading...</Text>
+            </View>
+          )}
+        </View>
         <View style={styles.placeholder} />
       </View>
 
@@ -183,6 +292,16 @@ export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetup
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
+        {isOfflineMode && (
+          <View style={[styles.offlineWarning, createNeumorphicCard({ size: 'small', borderRadius: 12 })]}>
+            <Ionicons name="cloud-offline" size={24} color={Colors.warning} />
+            <View style={styles.offlineWarningContent}>
+              <Text style={styles.offlineWarningTitle}>Offline Mode Active</Text>
+              <Text style={styles.offlineWarningText}>Changes will be saved locally and synced when online</Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.formContainer}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
           
@@ -258,11 +377,16 @@ export default function ProfileSetup({ userId, onProfileComplete }: ProfileSetup
             disabled={loading}
           >
             {loading ? (
-              <Text style={styles.buttonText}>Saving...</Text>
+              <>
+                <ActivityIndicator size="small" color={Colors.white} style={{ marginRight: 8 }} />
+                <Text style={styles.buttonText}>Saving...</Text>
+              </>
             ) : (
               <>
                 <Ionicons name="checkmark-circle" size={20} color={Colors.white} style={{ marginRight: 8 }} />
-                <Text style={styles.buttonText}>Save Changes</Text>
+                <Text style={styles.buttonText}>
+                  {isOfflineMode ? 'Save Offline' : 'Save Changes'}
+                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -299,9 +423,65 @@ const createStyles = () => StyleSheet.create({
   placeholder: {
     width: 40,
   },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offlineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.warning + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginTop: 4,
+    gap: 4,
+  },
+  offlineText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.warning,
+  },
+  syncingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.aquaTechBlue + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginTop: 4,
+    gap: 4,
+  },
+  syncingText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.aquaTechBlue,
+  },
   scrollContainer: {
     padding: 20,
     paddingBottom: 40,
+  },
+  offlineWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: Colors.warning + '10',
+  },
+  offlineWarningContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  offlineWarningTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.warning,
+    marginBottom: 2,
+  },
+  offlineWarningText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
   },
   formContainer: {
     ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
