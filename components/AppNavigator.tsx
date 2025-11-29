@@ -1,4 +1,5 @@
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useNavigation } from '../lib/NavigationContext';
 import { SiteCacheProvider } from '../lib/SiteCacheContext';
@@ -35,6 +36,8 @@ export default function AppNavigator() {
     navigateToSettings,
     navigateBack
   } = useNavigation();
+
+  const [showProfileSuccessPopup, setShowProfileSuccessPopup] = useState(false);
 
   // Handle authentication success
   const handleAuthSuccess = () => {
@@ -158,8 +161,10 @@ export default function AppNavigator() {
         return (
           <ProfileScreen
             profile={profile}
-            onEditProfile={() => setCurrentScreen('profile-setup')}
+            onEditProfile={() => setCurrentScreen('edit-profile')}
             onBack={navigateBack}
+            showSuccessPopup={showProfileSuccessPopup}
+            onSuccessPopupDismiss={() => setShowProfileSuccessPopup(false)}
           />
         );
 
@@ -225,7 +230,12 @@ export default function AppNavigator() {
         if (!session) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
         return (
           <EditProfileScreen
-            onBack={navigateBack}
+            onBack={() => {
+              setCurrentScreen('profile');
+            }}
+            onSuccess={() => {
+              setShowProfileSuccessPopup(true);
+            }}
           />
         );
 
