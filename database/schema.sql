@@ -122,6 +122,48 @@ CREATE POLICY "Users can update own water level readings" ON water_level_reading
 CREATE POLICY "Public can view sites" ON monitoring_sites
   FOR SELECT USING (is_active = TRUE);
 
+-- RLS POLICIES FOR STORAGE BUCKET: profile-images
+CREATE POLICY "Allow authenticated users to upload profile photos"
+ON storage.objects
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'profile-images'
+  AND name LIKE (storage.foldername(name))[1] || '/' || auth.uid()::text || '_photo%'
+  AND (storage.foldername(name))[1] IN ('field_personnel', 'central_analyst', 'supervisor', 'public_user')
+);
+
+CREATE POLICY "Allow public to view profile photos"
+ON storage.objects
+FOR SELECT
+TO public
+USING (
+  bucket_id = 'profile-images'
+);
+
+CREATE POLICY "Allow users to update their own profile photos"
+ON storage.objects
+FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'profile-images'
+  AND name LIKE (storage.foldername(name))[1] || '/' || auth.uid()::text || '_photo%'
+)
+WITH CHECK (
+  bucket_id = 'profile-images'
+  AND name LIKE (storage.foldername(name))[1] || '/' || auth.uid()::text || '_photo%'
+  AND (storage.foldername(name))[1] IN ('field_personnel', 'central_analyst', 'supervisor', 'public_user')
+);
+
+CREATE POLICY "Allow users to delete their own profile photos"
+ON storage.objects
+FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'profile-images'
+  AND name LIKE (storage.foldername(name))[1] || '/' || auth.uid()::text || '_photo%'
+);
+
 -- UPDATE TRIGGER FOR PROFILES
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
