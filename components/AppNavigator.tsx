@@ -20,6 +20,7 @@ import SettingsPage from '../pages/SettingsPage';
 import EditProfileScreen from '../pages/EditProfileScreen';
 import DashboardScreen from '../pages/DashboardScreen';
 import MapLibreMapScreen from '../pages/MapLibreMapScreen';
+import NotificationsScreen from '../pages/NotificationsScreen';
 import { Colors } from '../lib/colors';
 
 export default function AppNavigator() {
@@ -250,6 +251,14 @@ export default function AppNavigator() {
 
       case 'map':
         return <MapLibreMapScreen />;
+
+      case 'notifications':
+        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        return (
+          <NotificationsScreen
+            onBack={navigateBack}
+          />
+        );
 
       default:
         return <SplashScreen onAnimationComplete={() => setCurrentScreen('auth')} />;
