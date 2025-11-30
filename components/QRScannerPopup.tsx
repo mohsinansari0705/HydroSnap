@@ -30,13 +30,13 @@ export const QRScannerPopup: React.FC<QRScannerPopupProps> = ({
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    const getCameraPermissions = async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
+    const checkCameraPermissions = async () => {
+      const { status } = await Camera.getCameraPermissionsAsync();
       setHasPermission(status === 'granted');
     };
 
     if (visible) {
-      getCameraPermissions();
+      checkCameraPermissions();
       setScanned(false); // Reset scanned state when popup opens
       
       // Start corner animation with more intensity

@@ -8,6 +8,7 @@ import ProfileSetup from './ProfileSetup';
 import Loading from './Loading';
 import SplashScreen from '../pages/SplashScreen';
 import OnboardingScreen from '../pages/OnboardingScreen';
+import PermissionScreen from './PermissionScreen';
 import HomeScreen from '../pages/HomeScreen';
 import ProfileScreen from '../pages/ProfileScreen';
 import MyReadingsScreen from '../pages/MyReadingsScreen';
@@ -105,6 +106,20 @@ export default function AppNavigator() {
           <OnboardingScreen 
             onComplete={() => {
               setHasSeenOnboarding(true);
+              setCurrentScreen('permissions');
+            }}
+          />
+        );
+
+      case 'permissions':
+        return (
+          <PermissionScreen
+            onComplete={() => {
+              console.log('✅ Permissions granted, navigating to auth');
+              setCurrentScreen('auth');
+            }}
+            onSkip={() => {
+              console.log('⚠️ User skipped permissions');
               setCurrentScreen('auth');
             }}
           />

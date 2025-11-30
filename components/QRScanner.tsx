@@ -11,6 +11,7 @@ import { useSimpleBackHandler } from '../hooks/useBackHandler';
 // Mock implementations for missing dependencies
 const Camera = {
   requestCameraPermissionsAsync: async () => ({ status: 'granted' }),
+  getCameraPermissionsAsync: async () => ({ status: 'granted' }),
 };
 
 const CameraView = ({ style }: any) => (
@@ -23,6 +24,7 @@ const CameraView = ({ style }: any) => (
 
 const Location = {
   requestForegroundPermissionsAsync: async (_options?: any) => ({ status: 'granted' }),
+  getForegroundPermissionsAsync: async () => ({ status: 'granted' }),
   getCurrentPositionAsync: async (_options?: any) => ({
     coords: {
       latitude: 28.6139,
@@ -74,7 +76,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
   // SECRET_KEY would be used in production for decryption
 
   useEffect(() => {
-    getCameraPermissions();
+    checkCameraPermissions();
   }, []);
 
   // Handle back button to close scanner
@@ -82,8 +84,8 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
     onCancel();
   });
 
-  const getCameraPermissions = async () => {
-    const { status } = await Camera.requestCameraPermissionsAsync();
+  const checkCameraPermissions = async () => {
+    const { status } = await Camera.getCameraPermissionsAsync();
     setHasPermission(status === 'granted');
   };
 
@@ -121,10 +123,10 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
 
   const validateLocation = async (siteData: SiteData): Promise<{ isValid: boolean; distance?: number; error?: string }> => {
     try {
-      // Get user's current location
-      const { status } = await Location.requestForegroundPermissionsAsync({});
+      // Check user's location permission
+      const { status } = await Location.getForegroundPermissionsAsync();
       if (status !== 'granted') {
-        return { isValid: false, error: 'Location permission denied' };
+        return { isValid: false, error: 'Location permission not granted. Please grant it in device settings.' };
       }
 
       const location = await Location.getCurrentPositionAsync({});
@@ -196,9 +198,10 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onSiteValidated: _onSiteVa
   if (hasPermission === false) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>No access to camera</Text>
-        <TouchableOpacity style={styles.button} onPress={getCameraPermissions}>
-          <Text style={styles.buttonText}>Grant Permission</Text>
+        <Text style={styles.errorText}>Camera permission is required</Text>
+        <Text style={styles.errorSubText}>Please grant camera access in your device settings to scan QR codes.</Text>
+        <TouchableOpacity style={styles.button} onPress={onCancel}>
+          <Text style={styles.buttonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -385,7 +388,14 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 18,
     textAlign: 'center',
+    marginBottom: 10,
+  },
+  errorSubText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    textAlign: 'center',
     marginBottom: 30,
+    paddingHorizontal: 20,
   },
   button: {
     backgroundColor: '#007AFF',

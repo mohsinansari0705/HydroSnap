@@ -154,7 +154,7 @@ export const RealCamera: React.FC<RealCameraProps> = ({ onPhotoTaken, onCancel }
   }
 
   if (!permission.granted) {
-    // Camera permissions are not granted yet
+    // Camera permissions are not granted - user needs to grant them in settings
     return (
       <View style={styles.container}>
         <View style={[createNeumorphicCard(), styles.permissionContainer]}>
@@ -162,26 +162,17 @@ export const RealCamera: React.FC<RealCameraProps> = ({ onPhotoTaken, onCancel }
             <Ionicons name="camera-outline" size={64} color={Colors.primary} />
           </View>
           <Text style={[NeumorphicTextStyles.heading, { color: Colors.textPrimary, textAlign: 'center', marginTop: 20 }]}>
-            Camera Permission Required
+            Camera Access Required
           </Text>
           <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary, textAlign: 'center', marginTop: 16, paddingHorizontal: 20 }]}>
-            We need access to your camera to capture gauge readings. This is essential for the water level measurement process.
+            Camera permission is required to capture gauge readings. Please grant camera access in your device settings to continue.
           </Text>
-          <TouchableOpacity
-            style={[createNeumorphicCard(), styles.permissionButton]}
-            onPress={requestPermission}
-          >
-            <Ionicons name="camera" size={20} color={Colors.primary} style={{ marginRight: 8 }} />
-            <Text style={[NeumorphicTextStyles.buttonPrimary, { color: Colors.primary }]}>
-              Grant Permission
-            </Text>
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={onCancel}
           >
             <Text style={[NeumorphicTextStyles.body, { color: Colors.textSecondary }]}>
-              Cancel
+              Go Back
             </Text>
           </TouchableOpacity>
         </View>
