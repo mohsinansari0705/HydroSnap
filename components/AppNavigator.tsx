@@ -12,6 +12,7 @@ import PermissionScreen from './PermissionScreen';
 import HomeScreen from '../pages/HomeScreen';
 import ProfileScreen from '../pages/ProfileScreen';
 import MyReadingsScreen from '../pages/MyReadingsScreen';
+import AllReadingsScreen from '../pages/AllReadingsScreen';
 import SiteDetailsScreen from '../pages/SiteDetailsScreen';
 import SiteLocationsScreen from '../pages/SiteLocationsScreen';
 import NewReadingScreen from '../pages/NewReadingScreen';
@@ -210,6 +211,13 @@ export default function AppNavigator() {
         return (
           <MyReadingsScreen
             profile={profile}
+            onBack={navigateBack}
+          />
+        );
+
+      case 'all-readings':
+        return (
+          <AllReadingsScreen
             onBack={navigateBack}
           />
         );
