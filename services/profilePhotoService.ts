@@ -12,17 +12,17 @@ class ProfilePhotoService {
   private readonly BUCKET_NAME = 'profile-images';
 
   /**
-   * Request camera and media library permissions
+   * Check camera and media library permissions (no longer requests)
    */
-  async requestPermissions(): Promise<boolean> {
+  async checkPermissions(): Promise<boolean> {
     try {
-      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-      const mediaPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const cameraPermission = await ImagePicker.getCameraPermissionsAsync();
+      const mediaPermission = await ImagePicker.getMediaLibraryPermissionsAsync();
 
       if (cameraPermission.status !== 'granted' || mediaPermission.status !== 'granted') {
         Alert.alert(
           'Permissions Required',
-          'Please grant camera and photo library permissions to upload profile photos.',
+          'Camera and photo library permissions are required to upload profile photos. Please grant them in your device settings.',
           [{ text: 'OK' }]
         );
         return false;
@@ -30,7 +30,7 @@ class ProfilePhotoService {
 
       return true;
     } catch (error) {
-      console.error('Permission request failed:', error);
+      console.error('Permission check failed:', error);
       return false;
     }
   }
@@ -40,7 +40,7 @@ class ProfilePhotoService {
    */
   async pickImage(source: 'camera' | 'library'): Promise<string | null> {
     try {
-      const hasPermissions = await this.requestPermissions();
+      const hasPermissions = await this.checkPermissions();
       if (!hasPermissions) return null;
 
       let result: ImagePicker.ImagePickerResult;

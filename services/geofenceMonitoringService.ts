@@ -42,30 +42,31 @@ class GeofenceMonitoringService {
   private maxHistorySize: number = 50;
 
   /**
-   * Request location permissions
+   * Check location permissions (no longer requests, just verifies)
    */
-  async requestPermissions(): Promise<boolean> {
+  async checkPermissions(): Promise<boolean> {
     try {
-      const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+      // Check foreground permission status
+      const { status: foregroundStatus } = await Location.getForegroundPermissionsAsync();
       
       if (foregroundStatus !== 'granted') {
         Alert.alert(
           'Location Permission Required',
-          'This app needs access to your location to validate monitoring site proximity.'
+          'Location access is required to validate monitoring site proximity. Please grant permission in your device settings.'
         );
         return false;
       }
 
-      // Request background permissions for enhanced monitoring (optional)
-      const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+      // Check background permissions status (optional)
+      const { status: backgroundStatus } = await Location.getBackgroundPermissionsAsync();
       
       if (backgroundStatus === 'granted') {
-        console.log('✅ Background location access granted');
+        console.log('✅ Background location access available');
       }
 
       return true;
     } catch (error) {
-      console.error('Error requesting location permissions:', error);
+      console.error('Error checking location permissions:', error);
       return false;
     }
   }
@@ -92,7 +93,7 @@ class GeofenceMonitoringService {
    */
   async getCurrentLocation(): Promise<Location.LocationObject | null> {
     try {
-      const hasPermission = await this.requestPermissions();
+      const hasPermission = await this.checkPermissions();
       if (!hasPermission) return null;
 
       const location = await Location.getCurrentPositionAsync({
@@ -116,7 +117,7 @@ class GeofenceMonitoringService {
     onStatusChange?: (status: LocationStatus) => void
   ): Promise<boolean> {
     try {
-      const hasPermission = await this.requestPermissions();
+      const hasPermission = await this.checkPermissions();
       if (!hasPermission) return false;
 
       // Stop any existing monitoring

@@ -54,9 +54,10 @@ export class LocationCacheService {
    */
   private async getFreshLocation(): Promise<{ latitude: number; longitude: number } | null> {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      // Check permission status without requesting
+      const { status } = await Location.getForegroundPermissionsAsync();
       if (status !== 'granted') {
-        console.warn('Location permission denied');
+        console.warn('Location permission not granted. Please grant permission in app settings.');
         return null;
       }
 
