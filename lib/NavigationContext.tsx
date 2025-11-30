@@ -2,7 +2,8 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 
 export type AppScreen = 
   | 'splash'
-  | 'onboarding' 
+  | 'onboarding'
+  | 'permissions'
   | 'auth'
   | 'profile-setup'
   | 'profile'
