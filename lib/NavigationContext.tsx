@@ -10,6 +10,7 @@ export type AppScreen =
   | 'edit-profile'
   | 'home'
   | 'my-readings'
+  | 'all-readings'
   | 'supervisor-dashboard'
   | 'site-details'
   | 'site-locations'
@@ -33,6 +34,7 @@ interface NavigationContextType {
   navigateToSite: (siteId: string) => void;
   navigateToNewReading: (siteId: string) => void;
   navigateToMyReadings: () => void;
+  navigateToAllReadings: () => void;
   navigateToProfile: () => void;
   navigateToDashboard: () => void;
   navigateToMap: () => void;
@@ -81,6 +83,10 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     setCurrentScreen('my-readings');
   };
 
+  const navigateToAllReadings = () => {
+    setCurrentScreen('all-readings');
+  };
+
   const navigateToProfile = () => {
     setCurrentScreen('profile');
   };
@@ -122,6 +128,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     navigateToSite,
     navigateToNewReading,
     navigateToMyReadings,
+    navigateToAllReadings,
     navigateToProfile,
     notificationsVisible,
     showNotifications,
