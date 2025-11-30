@@ -18,8 +18,9 @@ import Navbar from '../components/Navbar';
 import BottomNavigation from '../components/BottomNavigation';
 import SafeScreen from '../components/SafeScreen';
 import { useMonitoringSites } from '../hooks/useMonitoringSites';
-import { MonitoringSite } from '../services/monitoringSitesService';
+import { MonitoringSite, MonitoringSitesService, WaterLevelReading } from '../services/monitoringSitesService';
 import { DebugUtils } from '../services/debugUtils';
+import { supabase } from '../lib/supabase';
 import { useSiteCache } from '../lib/SiteCacheContext';
 import { useNavigation } from '../lib/NavigationContext';
 import { useNotifications, useMissedReadingScheduler } from '../hooks/useNotifications';
@@ -77,32 +78,6 @@ const floodAlerts = [
   },
 ];
 
-// Recent readings data
-const recentReadings = [
-  {
-    id: 'reading_1',
-    title: 'Latest Water Level Reading',
-    description: 'Automated reading captured via HydroSnap mobile app',
-    location: 'Narmada River - Bhopal',
-    date: '2025-10-14',
-    type: 'reading' as const,
-    severity: 'low' as const,
-    waterLevel: 35.8,
-    fieldPersonnel: 'Rajesh Kumar',
-  },
-  {
-    id: 'reading_2',
-    title: 'Manual Site Inspection',
-    description: 'Field verification and water level measurement',
-    location: 'Yamuna River - Agra',
-    date: '2025-10-14',
-    type: 'reading' as const,
-    severity: 'low' as const,
-    waterLevel: 28.4,
-    fieldPersonnel: 'Priya Sharma',
-  },
-];
-
 const HomeScreen: React.FC<HomeScreenProps> = ({
   profile,
   onNavigateToSite,
@@ -114,7 +89,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'home' | 'sites' | 'profile'>('home');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
   // notification visibility moved to global navigation context
-  const { toggleNotifications, setCurrentScreen } = useNavigation();
+  const { toggleNotifications, setCurrentScreen, navigateToAllReadings } = useNavigation();
+
+  // State for recent water level readings
+  const [recentReadings, setRecentReadings] = useState<WaterLevelReading[]>([]);
+  const [loadingReadings, setLoadingReadings] = useState<boolean>(true);
+  const [readingsError, setReadingsError] = useState<string | null>(null);
+  const [userProfiles, setUserProfiles] = useState<{[userId: string]: string}>({});
 
   // Initialize notification system
   const { unreadCount } = useNotifications();
@@ -178,6 +159,62 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     initializeNotifications();
   }, []);
 
+  // Helper function to fetch user profiles
+  const fetchUserProfiles = async (userIds: string[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', userIds);
+
+      if (error) {
+        console.error('❌ Error fetching user profiles:', error);
+        return {};
+      }
+
+      // Map user IDs to full names, similar to how profile?.full_name is used in Hero section
+      const profileMap: {[userId: string]: string} = {};
+      data?.forEach((profile: any) => {
+        profileMap[profile.id] = profile.full_name || 'Unknown User';
+      });
+
+      return profileMap;
+    } catch (error) {
+      console.error('❌ Error fetching user profiles:', error);
+      return {};
+    }
+  };
+
+  // Fetch recent water level readings
+  useEffect(() => {
+    const fetchRecentReadings = async () => {
+      try {
+        setLoadingReadings(true);
+        setReadingsError(null);
+        console.log('📊 Fetching recent water level readings...');
+        
+        const readings = await MonitoringSitesService.getAllReadings(5);
+        setRecentReadings(readings);
+        console.log('✅ Fetched', readings.length, 'recent readings');
+
+        // Fetch user profiles for the readings
+        if (readings.length > 0) {
+          const uniqueUserIds = [...new Set(readings.map(r => r.user_id))];
+          const profiles = await fetchUserProfiles(uniqueUserIds);
+          setUserProfiles(profiles);
+          console.log('✅ Fetched profiles for', Object.keys(profiles).length, 'users');
+        }
+      } catch (error) {
+        console.error('❌ Error fetching recent readings:', error);
+        setReadingsError('Failed to load recent readings');
+      } finally {
+        setLoadingReadings(false);
+      }
+    };
+
+    fetchRecentReadings();
+  }, []);
+
   const fetchUserLocation = async () => {
     try {
       // TODO: Implement proper location fetching with permissions
@@ -196,7 +233,30 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       // Clear cache to ensure fresh data on refresh
       clearCache();
       console.log('[HomeScreen] Cleared cache for fresh data refresh');
-      await refresh();
+      
+      // Refresh both sites and readings
+      await Promise.all([
+        refresh(),
+        (async () => {
+          try {
+            setLoadingReadings(true);
+            const readings = await MonitoringSitesService.getAllReadings(5);
+            setRecentReadings(readings);
+            console.log('✅ Refreshed recent readings');
+            
+            // Fetch user profiles
+            if (readings.length > 0) {
+              const uniqueUserIds = [...new Set(readings.map(r => r.user_id))];
+              const profiles = await fetchUserProfiles(uniqueUserIds);
+              setUserProfiles(profiles);
+            }
+          } catch (error) {
+            console.error('❌ Error refreshing readings:', error);
+          } finally {
+            setLoadingReadings(false);
+          }
+        })()
+      ]);
     } catch (error) {
       Alert.alert('Error', 'Failed to refresh data. Please try again.');
     }
@@ -503,7 +563,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const renderRecentReadings = () => (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
+      <View style={styles.sectionHeaderWithAction}>
         <View style={styles.sectionTitleContainer}>
           <View style={[styles.sectionIconContainer, { backgroundColor: Colors.aquaTechBlue + '20' }]}>
             <Ionicons name="bar-chart" size={24} color={Colors.aquaTechBlue} />
@@ -513,21 +573,72 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <Text style={styles.sectionSubtitle}>Latest data collection</Text>
           </View>
         </View>
+        {!loadingReadings && recentReadings.length > 0 && (
+          <TouchableOpacity 
+            style={styles.viewAllButton}
+            onPress={() => {
+              console.log('Navigating to all readings');
+              navigateToAllReadings();
+            }}
+          >
+            <Text style={styles.viewAllButtonText}>View All</Text>
+          </TouchableOpacity>
+        )}
       </View>
-      {recentReadings.map(reading => (
-        <Card
-          key={reading.id}
-          type={reading.type}
-          severity={reading.severity}
-          title={reading.title}
-          description={reading.description}
-          location={reading.location}
-          date={reading.date}
-          waterLevel={reading.waterLevel}
-          fieldPersonnel={reading.fieldPersonnel}
-          onPress={() => console.log(`Reading ${reading.id} pressed`)}
-        />
-      ))}
+      
+      {loadingReadings ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading please wait...</Text>
+        </View>
+      ) : readingsError ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{readingsError}</Text>
+          <TouchableOpacity 
+            onPress={async () => {
+              try {
+                setLoadingReadings(true);
+                const readings = await MonitoringSitesService.getAllReadings(5);
+                setRecentReadings(readings);
+                setReadingsError(null);
+                
+                // Fetch user profiles
+                if (readings.length > 0) {
+                  const uniqueUserIds = [...new Set(readings.map(r => r.user_id))];
+                  const profiles = await fetchUserProfiles(uniqueUserIds);
+                  setUserProfiles(profiles);
+                }
+              } catch (error) {
+                setReadingsError('Failed to load recent readings');
+              } finally {
+                setLoadingReadings(false);
+              }
+            }} 
+            style={styles.retryButton}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : recentReadings.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No recent readings available</Text>
+          <Text style={styles.emptySubtext}>Readings will appear here once they are recorded</Text>
+        </View>
+      ) : (
+        recentReadings.slice(0, 5).map(reading => (
+          <Card
+            key={reading.id}
+            type="reading"
+            severity="low"
+            title={reading.site_name || 'Water Level Reading'}
+            description={`Reading method: ${reading.reading_method === 'photo_analysis' ? 'Photo Analysis' : 'Manual'}`}
+            location={reading.site_name}
+            date={reading.submission_timestamp}
+            waterLevel={reading.predicted_water_level}
+            fieldPersonnel={userProfiles[reading.user_id] || 'Unknown User'}
+            onPress={() => console.log(`Reading ${reading.id} pressed`)}
+          />
+        ))
+      )}
     </View>
   );
 
@@ -988,6 +1099,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
+    maxWidth: '70%',
   },
   sectionIconContainer: {
     width: 48,
@@ -1016,6 +1129,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: Colors.aquaTechBlue,
     borderRadius: 20,
+    marginLeft: 8,
   },
   viewAllButtonText: {
     color: Colors.white,
