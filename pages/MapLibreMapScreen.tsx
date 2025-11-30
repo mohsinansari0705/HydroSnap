@@ -294,13 +294,13 @@ export default function MapLibreMapScreen() {
           return;
         }
 
-        // Request permission using expo-location
-        const { status } = await Location.requestForegroundPermissionsAsync();
+        // Check permission status
+        const { status } = await Location.getForegroundPermissionsAsync();
         
         if (status !== 'granted') {
           Alert.alert(
-            'Permission Denied',
-            'Please enable location permissions in your device settings to use this feature.',
+            'Permission Required',
+            'Location permission is required to use this feature. Please grant location access in your device settings.',
             [{ text: 'OK' }]
           );
           return;
