@@ -41,14 +41,18 @@ export const Colors = {
   
   // Status colors (updated to modern palette)
   success: '#10B981',           // Modern emerald green
+  successGreen: '#10B981',      // Alias for success
   warning: '#F59E0B',           // Modern amber
+  warningOrange: '#F59E0B',     // Alias for warning
   error: '#EF4444',             // Modern red
   danger: '#EF4444',            // Alias for error
+  darkRed: '#DC2626',           // Darker red for critical states
   info: '#3B82F6',             // Modern blue
   
   // Background variants
   backgroundSecondary: '#FFFFFF',   // Secondary background (cards)
   backgroundTertiary: '#F8FAFC',    // Tertiary background (sections)
+  backgroundGrey: '#F3F4F6',        // Grey background for certain sections
   
   // Alert colors
   warningYellow: '#F59E0B',    // Warning level alert

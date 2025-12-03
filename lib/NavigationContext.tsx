@@ -10,6 +10,7 @@ export type AppScreen =
   | 'edit-profile'
   | 'home'
   | 'my-readings'
+  | 'reading-details'
   | 'all-readings'
   | 'supervisor-dashboard'
   | 'site-details'
@@ -19,13 +20,19 @@ export type AppScreen =
   | 'settings'
   | 'dashboard'
   | 'map'
-  | 'notifications';
+  | 'notifications'
+  | 'flood-alerts'
+  | 'alert-details';
 
 interface NavigationContextType {
   currentScreen: AppScreen;
-  setCurrentScreen: (screen: AppScreen) => void;
+  setCurrentScreen: (screen: AppScreen, replaceStack?: boolean) => void;
   selectedSiteId: string;
   setSelectedSiteId: (id: string) => void;
+  selectedReadingId: string;
+  setSelectedReadingId: (id: string) => void;
+  selectedAlertId: string;
+  setSelectedAlertId: (id: string) => void;
   hasSeenOnboarding: boolean;
   setHasSeenOnboarding: (seen: boolean) => void;
   
@@ -34,11 +41,14 @@ interface NavigationContextType {
   navigateToSite: (siteId: string) => void;
   navigateToNewReading: (siteId: string) => void;
   navigateToMyReadings: () => void;
+  navigateToReadingDetails: (readingId: string) => void;
   navigateToAllReadings: () => void;
   navigateToProfile: () => void;
   navigateToDashboard: () => void;
   navigateToMap: () => void;
   navigateToNotifications: () => void;
+  navigateToFloodAlerts: () => void;
+  navigateToAlertDetails: (alertId: string) => void;
   // Notification visibility helpers (global)
   notificationsVisible: boolean;
   showNotifications: () => void;
@@ -56,39 +66,86 @@ interface NavigationProviderProps {
 }
 
 export function NavigationProvider({ children }: NavigationProviderProps) {
-  const [currentScreen, setCurrentScreen] = useState<AppScreen>('splash');
+  const [currentScreen, setCurrentScreenState] = useState<AppScreen>('splash');
+  const [navigationStack, setNavigationStack] = useState<AppScreen[]>(['splash']);
   const [selectedSiteId, setSelectedSiteId] = useState<string>('');
+  const [selectedReadingId, setSelectedReadingId] = useState<string>('');
+  const [selectedAlertId, setSelectedAlertId] = useState<string>('');
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
 
+  // Custom setCurrentScreen that also updates the stack
+  const setCurrentScreen = (screen: AppScreen, replaceStack?: boolean) => {
+    console.log('📱 setCurrentScreen called:', screen, 'replaceStack:', replaceStack);
+    setCurrentScreenState(screen);
+    if (replaceStack) {
+      // Replace entire stack with just this screen
+      console.log('📱 Replacing stack with:', [screen]);
+      setNavigationStack([screen]);
+    } else {
+      // Add to stack, but avoid consecutive duplicates
+      setNavigationStack(prev => {
+        // Don't add if the last screen is the same as the new screen
+        if (prev.length > 0 && prev[prev.length - 1] === screen) {
+          console.log('📱 Skipping duplicate screen:', screen);
+          return prev;
+        }
+        const newStack = [...prev, screen];
+        console.log('📱 Adding to stack. Old:', prev, 'New:', newStack);
+        return newStack;
+      });
+    }
+  };
+
+  // Helper function to navigate to a screen and update stack
+  const navigateTo = (screen: AppScreen) => {
+    console.log('📱 navigateTo called:', screen);
+    setCurrentScreenState(screen);
+    setNavigationStack(prev => {
+      // Don't add if the last screen is the same as the new screen
+      if (prev.length > 0 && prev[prev.length - 1] === screen) {
+        console.log('📱 Skipping duplicate screen:', screen);
+        return prev;
+      }
+      const newStack = [...prev, screen];
+      console.log('📱 Stack updated. Old:', prev, 'New:', newStack);
+      return newStack;
+    });
+  };
+
   const navigateToHome = () => {
-    setCurrentScreen('home');
+    navigateTo('home');
   };
 
   const navigateToDashboard = () => {
-    setCurrentScreen('dashboard');
+    navigateTo('dashboard');
   };
 
   const navigateToSite = (siteId: string) => {
     setSelectedSiteId(siteId);
-    setCurrentScreen('site-details');
+    navigateTo('site-details');
   };
 
   const navigateToNewReading = (siteId: string) => {
     setSelectedSiteId(siteId);
-    setCurrentScreen('new-reading');
+    navigateTo('new-reading');
   };
 
   const navigateToMyReadings = () => {
-    setCurrentScreen('my-readings');
+    navigateTo('my-readings');
+  };
+
+  const navigateToReadingDetails = (readingId: string) => {
+    setSelectedReadingId(readingId);
+    navigateTo('reading-details');
   };
 
   const navigateToAllReadings = () => {
-    setCurrentScreen('all-readings');
+    navigateTo('all-readings');
   };
 
   const navigateToProfile = () => {
-    setCurrentScreen('profile');
+    navigateTo('profile');
   };
 
   const showNotifications = () => setNotificationsVisible(true);
@@ -96,24 +153,49 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   const toggleNotifications = () => setNotificationsVisible(v => !v);
 
   const navigateToSettings = () => {
-    setCurrentScreen('settings');
+    navigateTo('settings');
   };
 
   const navigateToAuth = () => {
-    setCurrentScreen('auth');
+    navigateTo('auth');
   };
 
   const navigateToMap = () => {
-    setCurrentScreen('map');
+    navigateTo('map');
   };
 
   const navigateToNotifications = () => {
-    setCurrentScreen('notifications');
+    navigateTo('notifications');
+  };
+
+  const navigateToFloodAlerts = () => {
+    navigateTo('flood-alerts');
+  };
+
+  const navigateToAlertDetails = (alertId: string) => {
+    setSelectedAlertId(alertId);
+    navigateTo('alert-details');
   };
 
   const navigateBack = () => {
-    // Simple back navigation - can be enhanced
-    setCurrentScreen('home');
+    setNavigationStack(prev => {
+      console.log('📱 navigateBack called. Current stack:', prev);
+      
+      if (prev.length <= 1) {
+        // If we're at the bottom of the stack, go to home
+        console.log('📱 At bottom of stack, going to home');
+        setCurrentScreenState('home');
+        return ['home'];
+      }
+      
+      // Remove current screen from stack
+      const newStack = prev.slice(0, -1);
+      // Navigate to the previous screen
+      const previousScreen = newStack[newStack.length - 1];
+      console.log('📱 Going back to:', previousScreen, 'New stack:', newStack);
+      setCurrentScreenState(previousScreen);
+      return newStack;
+    });
   };
 
   const value: NavigationContextType = {
@@ -121,6 +203,10 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     setCurrentScreen,
     selectedSiteId,
     setSelectedSiteId,
+    selectedReadingId,
+    setSelectedReadingId,
+    selectedAlertId,
+    setSelectedAlertId,
     hasSeenOnboarding,
     setHasSeenOnboarding,
     navigateToHome,
@@ -128,6 +214,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     navigateToSite,
     navigateToNewReading,
     navigateToMyReadings,
+    navigateToReadingDetails,
     navigateToAllReadings,
     navigateToProfile,
     notificationsVisible,
@@ -138,8 +225,10 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     navigateToAuth,
     navigateToMap,
     navigateToNotifications,
+    navigateToFloodAlerts,
+    navigateToAlertDetails,
     navigateBack,
-  };
+  }
 
   return (
     <NavigationContext.Provider value={value}>
