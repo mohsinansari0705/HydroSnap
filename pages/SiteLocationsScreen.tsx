@@ -3,17 +3,19 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   RefreshControl,
   TextInput,
-  ScrollView,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { Colors } from '../lib/colors';
-import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
+import { NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { useMonitoringSites } from '../hooks/useMonitoringSites';
 import { MonitoringSite } from '../services/monitoringSitesService';
+import SafeScreen from '../components/SafeScreen';
+import { useBackHandler } from '../hooks/useBackHandler';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface SiteLocationsScreenProps {
   onNavigateToSite: (siteId: string) => void;
@@ -32,7 +34,17 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
   console.log('SiteLocationsScreen: Component loaded');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'river' | 'reservoir' | 'canal' | 'lake'>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'distance' | 'status'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'distance' | 'status'>('distance');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+  
+  // Enable back handler
+  useBackHandler(() => {
+    onBack();
+    return true;
+  });
   
   const {
     sites: allSites,
@@ -74,6 +86,41 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
     }
   });
 
+  // Pagination logic
+  const totalPages = Math.ceil(sortedSites.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedSites = sortedSites.slice(startIndex, endIndex);
+
+  // Reset to first page when filter or sort changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedFilter, sortBy, searchQuery]);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleFilterSelect = (value: typeof selectedFilter) => {
+    setSelectedFilter(value);
+    setShowFilterDropdown(false);
+    setShowSortDropdown(false);
+  };
+
+  const handleSortSelect = (value: typeof sortBy) => {
+    setSortBy(value);
+    setShowSortDropdown(false);
+    setShowFilterDropdown(false);
+  };
+
   const getStatusColor = (status: MonitoringSite['status']) => {
     switch (status) {
       case 'normal': return Colors.validationGreen;
@@ -84,54 +131,42 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
     }
   };
 
-  const renderFilterChip = (label: string, value: typeof selectedFilter, icon: string) => (
-    <TouchableOpacity
-      key={value}
-      style={[
-        styles.filterChip,
-        selectedFilter === value && styles.filterChipActive
-      ]}
-      onPress={() => setSelectedFilter(value)}
-    >
-      <Text style={styles.filterChipIcon}>{icon}</Text>
-      <Text style={[
-        styles.filterChipText,
-        selectedFilter === value && styles.filterChipTextActive
-      ]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-
   const renderSiteItem = ({ item }: { item: MonitoringSite }) => (
     <TouchableOpacity
-      style={[styles.siteItem, createNeumorphicCard({ size: 'medium' })]}
+      style={styles.siteItem}
       onPress={() => onNavigateToSite(item.id)}
       activeOpacity={0.7}
     >
       <View style={styles.siteHeader}>
         <View style={styles.siteInfo}>
           <Text style={styles.siteName}>{item.name}</Text>
-          <Text style={styles.siteLocation}>
-            📍 {item.location}
-          </Text>
+          <View style={styles.siteLocationRow}>
+            <Ionicons name="location" size={14} color={Colors.textSecondary} />
+            <Text style={styles.siteLocation}>{item.location}</Text>
+          </View>
           {item.river_name && (
-            <Text style={styles.riverName}>
-              🌊 {item.river_name}
-            </Text>
+            <View style={styles.riverNameRow}>
+              <MaterialCommunityIcons name="waves" size={14} color={Colors.aquaTechBlue} />
+              <Text style={styles.riverName}>{item.river_name}</Text>
+            </View>
           )}
         </View>
         
         <View style={styles.siteDetails}>
           {item.status && (
             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-              <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+              <Text style={styles.statusText}>
+                {item.status === 'reading_due' ? 'Reading Due' : item.status.toUpperCase()}
+              </Text>
             </View>
           )}
           {item.distanceFromUser && (
-            <Text style={styles.distance}>
-              📏 {Math.round(item.distanceFromUser / 1000 * 10) / 10} km
-            </Text>
+            <View style={styles.distanceRow}>
+              <Ionicons name="navigate-outline" size={14} color={Colors.textSecondary} />
+              <Text style={styles.distance}>
+                {Math.round(item.distanceFromUser / 1000 * 10) / 10} km
+              </Text>
+            </View>
           )}
         </View>
       </View>
@@ -142,19 +177,26 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
             {item.site_type?.toUpperCase() || 'MONITORING'}
           </Text>
         </View>
-        <Text style={styles.organization}>
-          🏢 {item.organization}
-        </Text>
+        <View style={styles.organizationRow}>
+          <Ionicons name="business-outline" size={14} color={Colors.textSecondary} />
+          <Text style={styles.organization}>{item.organization}</Text>
+        </View>
       </View>
       
       <View style={styles.siteFooter}>
         <View style={styles.levelsInfo}>
-          <Text style={styles.levelText}>
-            ⚠️ Warning: {item.warning_level}cm
-          </Text>
-          <Text style={styles.levelText}>
-            🚨 Danger: {item.danger_level}cm
-          </Text>
+          <View style={styles.levelRow}>
+            <Ionicons name="warning" size={12} color={Colors.warning} />
+            <Text style={styles.levelText}>
+              Warning: {item.warning_level}cm
+            </Text>
+          </View>
+          <View style={styles.levelRow}>
+            <Ionicons name="alert-circle" size={12} color={Colors.alertRed} />
+            <Text style={styles.levelText}>
+              Danger: {item.danger_level}cm
+            </Text>
+          </View>
         </View>
         {item.lastReading && (
           <Text style={styles.lastReading}>
@@ -177,19 +219,32 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>🗺️</Text>
+      <Ionicons name="map-outline" size={64} color={Colors.textSecondary} style={styles.emptyIcon} />
       <Text style={styles.emptyTitle}>No Sites Found</Text>
       <Text style={styles.emptyText}>
-        {userLocation 
-          ? 'No monitoring sites found in your area' 
-          : 'Enable location services to find nearby sites'}
+        {searchQuery || selectedFilter !== 'all'
+          ? 'Try adjusting your filters or search criteria'
+          : userLocation 
+            ? 'No monitoring sites found in your area' 
+            : 'Enable location services to find nearby sites'}
       </Text>
+      {(searchQuery || selectedFilter !== 'all') && (
+        <TouchableOpacity 
+          onPress={() => {
+            setSearchQuery('');
+            setSelectedFilter('all');
+          }} 
+          style={styles.resetButton}
+        >
+          <Text style={styles.resetButtonText}>Clear Filters</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
   const renderErrorState = () => (
     <View style={styles.errorContainer}>
-      <Text style={styles.errorIcon}>⚠️</Text>
+      <Ionicons name="warning" size={64} color={Colors.alertRed} style={styles.errorIcon} />
       <Text style={styles.errorTitle}>Failed to Load Sites</Text>
       <Text style={styles.errorText}>{error}</Text>
       <TouchableOpacity onPress={refresh} style={styles.retryButton}>
@@ -198,232 +253,401 @@ const SiteLocationsScreen: React.FC<SiteLocationsScreenProps> = ({
     </View>
   );
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeftRow}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Site Locations ({sortedSites.length})</Text>
-        </View>
-      </View>
+  const filterOptions = [
+    { label: 'All Sites', value: 'all' as const, iconName: 'business' as const },
+    { label: 'Rivers', value: 'river' as const, iconName: 'water' as const },
+    { label: 'Reservoirs', value: 'reservoir' as const, iconName: 'water-outline' as const },
+    { label: 'Canals', value: 'canal' as const, iconName: 'git-merge' as const },
+    { label: 'Lakes', value: 'lake' as const, iconName: 'boat' as const },
+  ];
 
-      {/* Content */}
-      <View style={styles.content}>
-        {error ? (
-          renderErrorState()
-        ) : loading && allSites.length === 0 ? (
-          renderLoadingState()
-        ) : (
-          <FlatList
-            data={sortedSites}
-            renderItem={renderSiteItem}
-            keyExtractor={(item) => item.id}
-            refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
-                onRefresh={refresh}
-                colors={[Colors.aquaTechBlue]}
-                tintColor={Colors.aquaTechBlue}
-              />
-            }
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={renderEmptyState}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            ListHeaderComponent={
-              <>
-                {/* Search and Filters - now scrollable */}
-                <View style={styles.searchSection}>
-                  {/* Search Bar */}
-                  <View style={styles.searchBar}>
-                    <Text style={styles.searchIcon}>🔍</Text>
+  const sortOptions = [
+    { label: 'Distance', value: 'distance' as const, iconName: 'navigate' as const },
+    { label: 'Name', value: 'name' as const, iconName: 'text' as const },
+    { label: 'Status', value: 'status' as const, iconName: 'alert-circle' as const },
+  ];
+
+  const selectedFilterOption = filterOptions.find(opt => opt.value === selectedFilter);
+  const selectedSortOption = sortOptions.find(opt => opt.value === sortBy);
+
+  return (
+    <SafeScreen edges={['top', 'left', 'right', 'bottom']} backgroundColor={Colors.white}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={Colors.deepSecurityBlue} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Site Locations</Text>
+            <Text style={styles.headerSubtitle}>{sortedSites.length} sites found</Text>
+          </View>
+        </View>
+
+        {/* Content */}
+        <View style={styles.content}>
+          {error ? (
+            renderErrorState()
+          ) : loading && allSites.length === 0 ? (
+            renderLoadingState()
+          ) : (
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl 
+                  refreshing={refreshing} 
+                  onRefresh={refresh}
+                  colors={[Colors.aquaTechBlue]}
+                  tintColor={Colors.aquaTechBlue}
+                />
+              }
+              onScrollBeginDrag={() => {
+                setShowFilterDropdown(false);
+                setShowSortDropdown(false);
+              }}
+            >
+              {/* Search Bar */}
+              <View style={styles.searchBar}>
+                    <Ionicons name="search" size={20} color={Colors.textSecondary} style={styles.searchIcon} />
                     <TextInput
                       style={styles.searchInput}
-                      placeholder="Search sites by name, location, or river..."
+                      placeholder="Search sites..."
                       value={searchQuery}
                       onChangeText={setSearchQuery}
                       placeholderTextColor={Colors.textSecondary}
-                      numberOfLines={1}
+                      returnKeyType="search"
+                      autoCapitalize="none"
+                      autoCorrect={false}
                     />
                     {searchQuery !== '' && (
                       <TouchableOpacity onPress={() => setSearchQuery('')}>
-                        <Text style={styles.clearIcon}>✕</Text>
+                        <Ionicons name="close-circle" size={20} color={Colors.textSecondary} />
                       </TouchableOpacity>
                     )}
                   </View>
 
-                  {/* Filter Chips */}
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer}>
-                    {renderFilterChip('All Sites', 'all', '🏗️')}
-                    {renderFilterChip('Rivers', 'river', '🌊')}
-                    {renderFilterChip('Reservoirs', 'reservoir', '🏞️')}
-                    {renderFilterChip('Canals', 'canal', '🚰')}
-                    {renderFilterChip('Lakes', 'lake', '🏔️')}
-                  </ScrollView>
+                  {/* Filter and Sort Row */}
+                  <View style={styles.filterSortRow}>
+                    {/* Filter Dropdown */}
+                    <View style={styles.dropdownContainer}>
+                      <TouchableOpacity 
+                        style={styles.dropdownButton}
+                        onPress={() => {
+                          setShowFilterDropdown(!showFilterDropdown);
+                          setShowSortDropdown(false);
+                        }}
+                      >
+                        <View style={styles.dropdownLabelContainer}>
+                          <Ionicons name={selectedFilterOption?.iconName || 'business'} size={16} color={Colors.deepSecurityBlue} style={styles.dropdownIcon} />
+                          <Text style={styles.dropdownLabel}>{selectedFilterOption?.label}</Text>
+                        </View>
+                        <Ionicons name={showFilterDropdown ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.textSecondary} />
+                      </TouchableOpacity>
+                      
+                      {showFilterDropdown && (
+                        <>
+                          <TouchableOpacity 
+                            style={styles.dropdownBackdrop}
+                            activeOpacity={1}
+                            onPress={() => setShowFilterDropdown(false)}
+                          />
+                          <View style={styles.dropdownMenu}>
+                            {filterOptions.map((option) => (
+                              <TouchableOpacity
+                                key={option.value}
+                                style={[
+                                  styles.dropdownItem,
+                                  selectedFilter === option.value && styles.dropdownItemActive
+                                ]}
+                                onPress={() => handleFilterSelect(option.value)}
+                              >
+                                <Ionicons name={option.iconName} size={18} color={selectedFilter === option.value ? Colors.deepSecurityBlue : Colors.textSecondary} style={styles.dropdownItemIcon} />
+                                <Text style={[
+                                  styles.dropdownItemText,
+                                  selectedFilter === option.value && styles.dropdownItemTextActive
+                                ]}>
+                                  {option.label}
+                                </Text>
+                                {selectedFilter === option.value && (
+                                  <Ionicons name="checkmark" size={20} color={Colors.aquaTechBlue} />
+                                )}
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </>
+                      )}
+                    </View>
 
-                  {/* Sort Options */}
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortContainer}>
-                    <Text style={styles.sortLabel}>Sort by:</Text>
-                    <TouchableOpacity
-                      style={[styles.sortChip, sortBy === 'name' && styles.sortChipActive]}
-                      onPress={() => setSortBy('name')}
-                    >
-                      <Text style={[styles.sortChipText, sortBy === 'name' && styles.sortChipTextActive]}>
-                        Name
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.sortChip, sortBy === 'distance' && styles.sortChipActive]}
-                      onPress={() => setSortBy('distance')}
-                    >
-                      <Text style={[styles.sortChipText, sortBy === 'distance' && styles.sortChipTextActive]}>
-                        Distance
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.sortChip, sortBy === 'status' && styles.sortChipActive]}
-                      onPress={() => setSortBy('status')}
-                    >
-                      <Text style={[styles.sortChipText, sortBy === 'status' && styles.sortChipTextActive]}>
-                        Status
-                      </Text>
-                    </TouchableOpacity>
-                  </ScrollView>
+                    {/* Sort Dropdown */}
+                    <View style={styles.dropdownContainer}>
+                      <TouchableOpacity 
+                        style={styles.dropdownButton}
+                        onPress={() => {
+                          setShowSortDropdown(!showSortDropdown);
+                          setShowFilterDropdown(false);
+                        }}
+                      >
+                        <View style={styles.dropdownLabelContainer}>
+                          <Ionicons name={selectedSortOption?.iconName || 'navigate'} size={16} color={Colors.deepSecurityBlue} style={styles.dropdownIcon} />
+                          <Text style={styles.dropdownLabel}>{selectedSortOption?.label}</Text>
+                        </View>
+                        <Ionicons name={showSortDropdown ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.textSecondary} />
+                      </TouchableOpacity>
+                      
+                      {showSortDropdown && (
+                        <>
+                          <TouchableOpacity 
+                            style={styles.dropdownBackdrop}
+                            activeOpacity={1}
+                            onPress={() => setShowSortDropdown(false)}
+                          />
+                          <View style={[styles.dropdownMenu, styles.dropdownMenuRight]}>
+                            {sortOptions.map((option) => (
+                              <TouchableOpacity
+                                key={option.value}
+                                style={[
+                                  styles.dropdownItem,
+                                  sortBy === option.value && styles.dropdownItemActive
+                                ]}
+                                onPress={() => handleSortSelect(option.value)}
+                              >
+                                <Ionicons name={option.iconName} size={18} color={sortBy === option.value ? Colors.deepSecurityBlue : Colors.textSecondary} style={styles.dropdownItemIcon} />
+                                <Text style={[
+                                  styles.dropdownItemText,
+                                  sortBy === option.value && styles.dropdownItemTextActive
+                                ]}>
+                                  {option.label}
+                                </Text>
+                                {sortBy === option.value && (
+                                  <Ionicons name="checkmark" size={20} color={Colors.aquaTechBlue} />
+                                )}
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </>
+                      )}
+                    </View>
                 </View>
-                <View style={{ height: 16 }} />
-              </>
-            }
-          />
-        )}
-      </View>
 
-      {/* Stats Footer */}
-      <View style={styles.statsFooter}>
-        <View style={styles.statItem}>
-          <View style={styles.statCircle}>
-            <Text style={styles.statNumber}>{sortedSites.length}</Text>
-          </View>
-          <Text style={styles.statLabel}>Sites Found</Text>
+              {/* Site List */}
+              {paginatedSites.length === 0 ? (
+                renderEmptyState()
+              ) : (
+                <View style={styles.sitesContainer}>
+                  {paginatedSites.map((item, index) => (
+                    <View key={item.id}>
+                      {renderSiteItem({ item })}
+                      {index < paginatedSites.length - 1 && <View style={styles.separator} />}
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Pagination Controls */}
+              {sortedSites.length > ITEMS_PER_PAGE && (
+                <View style={styles.paginationContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.paginationButton,
+                      currentPage === 1 && styles.paginationButtonDisabled
+                    ]}
+                    onPress={handlePreviousPage}
+                    disabled={currentPage === 1}
+                  >
+                    <Ionicons 
+                      name="chevron-back" 
+                      size={20} 
+                      color={currentPage === 1 ? Colors.textSecondary : Colors.deepSecurityBlue} 
+                    />
+                    <Text style={[
+                      styles.paginationButtonText,
+                      currentPage === 1 && styles.paginationButtonTextDisabled
+                    ]}>
+                      Previous
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.paginationInfo}>
+                    <Text style={styles.paginationText}>
+                      Page {currentPage} of {totalPages}
+                    </Text>
+                    <Text style={styles.paginationSubtext}>
+                      {startIndex + 1}-{Math.min(endIndex, sortedSites.length)} of {sortedSites.length}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.paginationButton,
+                      currentPage === totalPages && styles.paginationButtonDisabled
+                    ]}
+                    onPress={handleNextPage}
+                    disabled={currentPage === totalPages}
+                  >
+                    <Text style={[
+                      styles.paginationButtonText,
+                      currentPage === totalPages && styles.paginationButtonTextDisabled
+                    ]}>
+                      Next
+                    </Text>
+                    <Ionicons 
+                      name="chevron-forward" 
+                      size={20} 
+                      color={currentPage === totalPages ? Colors.textSecondary : Colors.deepSecurityBlue} 
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Bottom spacing for stats footer */}
+              <View style={{ height: 20 }} />
+            </ScrollView>
+          )}
         </View>
 
-        {userLocation && (
+        {/* Stats Footer */}
+        <View style={styles.statsFooter}>
           <View style={styles.statItem}>
-            <View style={styles.statCircle}>
+            <Text style={styles.statNumber}>{sortedSites.length}</Text>
+            <Text style={styles.statLabel}>Sites</Text>
+          </View>
+
+          {userLocation && (
+            <View style={styles.statItem}>
               <Text style={styles.statNumber}>
                 {sortedSites.filter((site: MonitoringSite) => (site.distanceFromUser || 0) <= 10000).length}
               </Text>
+              <Text style={styles.statLabel}>Nearby</Text>
             </View>
-            <Text style={styles.statLabel}>Within 10km</Text>
-          </View>
-        )}
+          )}
 
-        <View style={styles.statItem}>
-          <View style={styles.statCircle}>
+          <View style={styles.statItem}>
             <Text style={styles.statNumber}>
               {sortedSites.filter((site: MonitoringSite) => site.status === 'danger' || site.status === 'warning').length}
             </Text>
+            <Text style={styles.statLabel}>Alerts</Text>
           </View>
-          <Text style={styles.statLabel}>Alerts</Text>
         </View>
       </View>
-    </View>
+    </SafeScreen>
   );
 };
 
 const styles = StyleSheet.create({
-    backButton: {
-      padding: 8,
-      marginRight: 8,
-      borderRadius: 8,
-      backgroundColor: Colors.softLightGrey,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    content: {
-      flex: 1,
-      backgroundColor: Colors.softLightGrey,
-    },
   container: {
     flex: 1,
     backgroundColor: Colors.softLightGrey,
   },
-  // Removed duplicate header style
+  content: {
+    flex: 1,
+    backgroundColor: Colors.softLightGrey,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.lightShadow,
   },
-  headerLeftRow: {
-    flexDirection: 'row',
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.softLightGrey,
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  headerCenter: {
     flex: 1,
   },
-  backIcon: {
-    fontSize: 24,
-    color: Colors.deepSecurityBlue,
-    fontWeight: 'bold',
-    textShadowColor: Colors.deepSecurityBlue,
-    textShadowRadius: 2,
-    marginTop: -6,
-  },
   headerTitle: {
-    ...NeumorphicTextStyles.heading,
     fontSize: 20,
+    fontWeight: '700',
     color: Colors.deepSecurityBlue,
-    marginLeft: 8,
+    marginBottom: 2,
   },
-  // Removed refreshButton and refreshIcon styles
-  listContainer: {
-    padding: 20,
-    paddingBottom: 100, // Space for stats footer
+  headerSubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 90,
+  },
+  sitesContainer: {
+    marginBottom: 8,
   },
   siteItem: {
-    padding: 20,
-    marginBottom: 16,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 14,
+    backgroundColor: Colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: Colors.lightShadow + '40',
   },
   siteHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   siteInfo: {
     flex: 1,
-    marginRight: 16,
+    marginRight: 12,
   },
   siteName: {
-    ...NeumorphicTextStyles.heading,
-    fontSize: 18,
+    fontSize: 17,
+    fontWeight: '700',
     color: Colors.deepSecurityBlue,
     marginBottom: 6,
   },
-  siteLocation: {
-    ...NeumorphicTextStyles.body,
-    color: Colors.textSecondary,
+  siteLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 4,
-    fontWeight: '600',
+    gap: 4,
+  },
+  siteLocation: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  riverNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   riverName: {
-    ...NeumorphicTextStyles.caption,
+    fontSize: 12,
     color: Colors.aquaTechBlue,
     fontWeight: '600',
   },
   siteDetails: {
     alignItems: 'flex-end',
   },
-  distance: {
-    ...NeumorphicTextStyles.caption,
-    color: Colors.textSecondary,
+  distanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginBottom: 8,
+  },
+  distance: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '500',
   },
   siteTypeBadge: {
     backgroundColor: Colors.aquaTechBlue,
@@ -441,31 +665,48 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.lightShadow,
     paddingTop: 12,
   },
-  organization: {
-    ...NeumorphicTextStyles.caption,
-    color: Colors.textSecondary,
+  organizationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginBottom: 8,
-    fontWeight: '600',
+  },
+  organization: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '500',
   },
   levelsInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 8,
+  },
+  levelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   levelText: {
-    ...NeumorphicTextStyles.caption,
     fontSize: 11,
     color: Colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   separator: {
-    height: 8,
+    height: 14,
   },
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 60,
-    ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
-    marginHorizontal: 20,
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   loadingTitle: {
     ...NeumorphicTextStyles.heading,
@@ -483,10 +724,17 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     padding: 40,
-    ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   emptyIcon: {
-    fontSize: 48,
     marginBottom: 16,
   },
   emptyTitle: {
@@ -504,11 +752,17 @@ const styles = StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     padding: 40,
-    ...createNeumorphicCard({ size: 'large', borderRadius: 20 }),
-    marginHorizontal: 20,
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   errorIcon: {
-    fontSize: 48,
     marginBottom: 16,
   },
   errorTitle: {
@@ -533,6 +787,19 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: '600',
   },
+  resetButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: Colors.aquaTechBlue,
+  },
+  resetButtonText: {
+    color: Colors.aquaTechBlue,
+    fontWeight: '600',
+    fontSize: 14,
+  },
   statsFooter: {
     position: 'absolute',
     bottom: 0,
@@ -549,126 +816,187 @@ const styles = StyleSheet.create({
   statItem: {
     alignItems: 'center',
   },
-  statCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: Colors.deepSecurityBlue,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-    borderWidth: 2,
-    borderColor: Colors.deepSecurityBlue,
-    shadowColor: Colors.lightShadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-  },
   statNumber: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: Colors.white,
-    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: '700',
+    color: Colors.deepSecurityBlue,
+    marginBottom: 4,
   },
   statLabel: {
-    ...NeumorphicTextStyles.caption,
+    fontSize: 12,
     color: Colors.textSecondary,
     fontWeight: '600',
   },
-  // Search and Filter Styles
-  searchSection: {
-    backgroundColor: Colors.white,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightShadow,
-  },
+  // Search Bar Styles
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.softLightGrey,
-    borderRadius: 16,
-    paddingHorizontal: 16,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    marginBottom: 16,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   searchIcon: {
-    fontSize: 18,
-    marginRight: 12,
-    color: Colors.textSecondary,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 15,
     color: Colors.textPrimary,
+    fontWeight: '500',
   },
-  clearIcon: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    padding: 4,
-  },
-  filtersContainer: {
+  // Filter and Sort Row
+  filterSortRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    gap: 10,
     marginBottom: 16,
+    zIndex: 100,
   },
-  filterChip: {
+  dropdownContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  dropdownButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.softLightGrey,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 12,
+    justifyContent: 'space-between',
+    backgroundColor: Colors.white,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 44,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: Colors.lightShadow,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  filterChipActive: {
-    backgroundColor: Colors.aquaTechBlue,
-    borderColor: Colors.deepSecurityBlue,
+  dropdownLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  filterChipIcon: {
-    fontSize: 16,
+  dropdownIcon: {
     marginRight: 6,
   },
-  filterChipText: {
-    fontSize: 14,
-    color: Colors.textPrimary,
-    fontWeight: '500',
-  },
-  filterChipTextActive: {
-    color: Colors.white,
+  dropdownLabel: {
+    fontSize: 13,
     fontWeight: '600',
+    color: Colors.deepSecurityBlue,
   },
-  sortContainer: {
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: 50,
+    left: -1000,
+    right: -1000,
+    bottom: -2000,
+    zIndex: 999,
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.lightShadow,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 10,
+    zIndex: 1000,
+    maxHeight: 250,
+    overflow: 'hidden',
+  },
+  dropdownMenuRight: {
+    left: 0,
+    right: 0,
+  },
+  dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: Colors.lightShadow,
   },
-  sortLabel: {
+  dropdownItemActive: {
+    backgroundColor: Colors.softLightGrey,
+  },
+  dropdownItemIcon: {
+    marginRight: 10,
+  },
+  dropdownItemText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    color: Colors.textPrimary,
+  },
+  dropdownItemTextActive: {
+    color: Colors.deepSecurityBlue,
+    fontWeight: '700',
+  },
+  // Pagination Styles
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 20,
+    marginTop: 12,
+  },
+  paginationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: Colors.deepSecurityBlue,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  paginationButtonDisabled: {
+    backgroundColor: Colors.softLightGrey,
+    borderColor: Colors.lightShadow,
+  },
+  paginationButtonText: {
     fontSize: 14,
+    fontWeight: '600',
+    color: Colors.deepSecurityBlue,
+  },
+  paginationButtonTextDisabled: {
+    color: Colors.textSecondary,
+  },
+  paginationInfo: {
+    alignItems: 'center',
+  },
+  paginationText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.deepSecurityBlue,
+    marginBottom: 2,
+  },
+  paginationSubtext: {
+    fontSize: 12,
     color: Colors.textSecondary,
     fontWeight: '500',
-    marginRight: 12,
-  },
-  sortChip: {
-    backgroundColor: Colors.softLightGrey,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  sortChipActive: {
-    backgroundColor: Colors.deepSecurityBlue,
-    borderColor: Colors.aquaTechBlue,
-  },
-  sortChipText: {
-    fontSize: 13,
-    color: Colors.textPrimary,
-    fontWeight: '500',
-  },
-  sortChipTextActive: {
-    color: Colors.white,
-    fontWeight: '600',
   },
   // Updated Site Item Styles
   siteMiddle: {
@@ -678,15 +1006,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
     marginBottom: 8,
+    minWidth: 70,
+    alignItems: 'center',
   },
   statusText: {
-    fontSize: 10,
+    fontSize: 9,
     color: Colors.white,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   lastReading: {
     ...NeumorphicTextStyles.caption,

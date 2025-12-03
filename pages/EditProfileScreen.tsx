@@ -40,10 +40,8 @@ export default function EditProfileScreen({ onBack, onSuccess }: EditProfileScre
   const [isFromCache, setIsFromCache] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Handle hardware back button - navigate to home screen
-  useSimpleBackHandler(() => {
-    navigation.setCurrentScreen('home');
-  });
+  // Handle hardware back button
+  useSimpleBackHandler(onBack);
 
   useEffect(() => {
     loadProfileWithCache();
@@ -159,7 +157,7 @@ export default function EditProfileScreen({ onBack, onSuccess }: EditProfileScre
   };
 
   const handleCancel = () => {
-    navigation.setCurrentScreen('home');
+    onBack();
   };
 
   return (

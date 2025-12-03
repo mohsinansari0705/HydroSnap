@@ -10,16 +10,21 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../lib/colors';
-import { MonitoringSitesService, WaterLevelReading } from '../services/monitoringSitesService';
+import { MonitoringSitesService } from '../services/monitoringSitesService';
+import { WaterLevelReading } from '../services/waterLevelReadingsService';
 import { supabase } from '../lib/supabase';
 import SafeScreen from '../components/SafeScreen';
-import Card from '../components/Card';
+import { useSimpleBackHandler } from '../hooks/useBackHandler';
+import { useNavigation } from '../lib/NavigationContext';
 
 interface AllReadingsScreenProps {
   onBack: () => void;
 }
 
 const AllReadingsScreen: React.FC<AllReadingsScreenProps> = ({ onBack }) => {
+  // Handle Android hardware back button
+  useSimpleBackHandler(onBack);
+  const { navigateToReadingDetails } = useNavigation();
   const [loadingMain, setLoadingMain] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [readings, setReadings] = useState<WaterLevelReading[]>([]);
@@ -64,14 +69,13 @@ const AllReadingsScreen: React.FC<AllReadingsScreenProps> = ({ onBack }) => {
         setLoadingMain(true);
       }
 
-      console.log(`📊 Fetching readings page ${page}...`);
+      const currentPage = isLoadMore ? page + 1 : 0;
+      const offset = currentPage * pageSize;
+
+      console.log(`📊 Fetching readings page ${currentPage} (offset: ${offset}, limit: ${pageSize})...`);
       
-      // Fetch all readings and paginate on client side
-      const allReadings = await MonitoringSitesService.getAllReadings();
-      
-      const start = (isLoadMore ? page + 1 : 0) * pageSize;
-      const end = start + pageSize;
-      const paginatedReadings = allReadings.slice(start, end);
+      // Server-side pagination - fetch only the required page
+      const paginatedReadings = await MonitoringSitesService.getAllReadings(pageSize, offset) as WaterLevelReading[];
 
       if (isLoadMore) {
         setReadings(prev => [...prev, ...paginatedReadings]);
@@ -81,21 +85,21 @@ const AllReadingsScreen: React.FC<AllReadingsScreenProps> = ({ onBack }) => {
         setPage(0);
       }
 
-      // Check if we've fetched all readings
-      if (end >= allReadings.length) {
+      // Check if we've fetched all readings (less than pageSize means we're at the end)
+      if (paginatedReadings.length < pageSize) {
         setAllReadingsFetched(true);
       } else {
         setAllReadingsFetched(false);
       }
 
-      console.log(`✅ Fetched ${paginatedReadings.length} readings (total: ${allReadings.length})`);
+      console.log(`✅ Fetched ${paginatedReadings.length} readings (page ${currentPage})`);
 
       // Fetch user profiles for the readings (same pattern as HomeScreen)
       const allCurrentReadings = isLoadMore ? [...readings, ...paginatedReadings] : paginatedReadings;
       if (allCurrentReadings.length > 0) {
         const uniqueUserIds = [...new Set(allCurrentReadings.map(r => r.user_id))];
         const profiles = await fetchUserProfiles(uniqueUserIds);
-        setUserProfiles(profiles);
+        setUserProfiles(prevProfiles => ({ ...prevProfiles, ...profiles }));
         console.log('✅ Fetched profiles for', Object.keys(profiles).length, 'users');
       }
 
@@ -108,7 +112,7 @@ const AllReadingsScreen: React.FC<AllReadingsScreenProps> = ({ onBack }) => {
         setLoadingMain(false);
       }
     }
-  }, [page]);
+  }, [page, readings]);
 
   useEffect(() => {
     fetchData();
@@ -125,19 +129,86 @@ const AllReadingsScreen: React.FC<AllReadingsScreenProps> = ({ onBack }) => {
     }
   };
 
+  const getReadingStatusColor = (status?: string) => {
+    switch (status) {
+      case 'safe': return Colors.successGreen;
+      case 'warning': return Colors.warningOrange;
+      case 'danger': return Colors.criticalRed;
+      case 'critical': return Colors.darkRed;
+      default: return Colors.aquaTechBlue;
+    }
+  };
+
+  const formatTimestamp = (timestamp?: string) => {
+    if (!timestamp) return 'Just now';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  };
+
   const renderReading = ({ item }: { item: WaterLevelReading }) => (
-    <Card
+    <TouchableOpacity
       key={item.id}
-      type="reading"
-      severity="low"
-      title={item.site_name || 'Water Level Reading'}
-      description={`Reading method: ${item.reading_method === 'photo_analysis' ? 'Photo Analysis' : 'Manual'}`}
-      location={item.site_name}
-      date={item.submission_timestamp}
-      waterLevel={item.predicted_water_level}
-      fieldPersonnel={userProfiles[item.user_id] || 'Unknown User'}
-      onPress={() => console.log(`Reading ${item.id} pressed`)}
-    />
+      style={styles.readingCard}
+      activeOpacity={0.7}
+      onPress={() => navigateToReadingDetails(item.id)}
+    >
+      <View style={styles.readingCardHeader}>
+        <View style={styles.readingCardLeft}>
+          <View style={[styles.readingStatusDot, { backgroundColor: getReadingStatusColor(item.water_level_status) }]} />
+          <View style={styles.readingCardInfo}>
+            <Text style={styles.readingCardTitle} numberOfLines={1}>
+              {item.site_name || 'Unknown Site'}
+            </Text>
+            <View style={styles.readingMetaRow}>
+              <Ionicons name="person-circle-outline" size={14} color={Colors.textSecondary} />
+              <Text style={styles.readingCardMeta} numberOfLines={1}>
+                {userProfiles[item.user_id] || 'Unknown User'}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.readingCardRight}>
+          <View style={[styles.readingWaterLevelBadge, { backgroundColor: getReadingStatusColor(item.water_level_status) + '15' }]}>
+            <Ionicons name="water" size={16} color={getReadingStatusColor(item.water_level_status)} />
+            <Text style={[styles.readingWaterLevelText, { color: getReadingStatusColor(item.water_level_status) }]}>
+              {item.predicted_water_level?.toFixed(2) || 'N/A'} m
+            </Text>
+          </View>
+        </View>
+      </View>
+      
+      <View style={styles.readingCardFooter}>
+        <View style={styles.readingCardDetail}>
+          <Ionicons name="camera" size={14} color={Colors.textSecondary} />
+          <Text style={styles.readingCardDetailText}>
+            {item.reading_method === 'photo_analysis' ? 'Photo Analysis' : 'Manual Entry'}
+          </Text>
+        </View>
+        <View style={styles.readingCardDetail}>
+          <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
+          <Text style={styles.readingCardDetailText}>
+            {formatTimestamp(item.submission_timestamp)}
+          </Text>
+        </View>
+        {item.water_level_status && (
+          <View style={[styles.readingStatusChip, { backgroundColor: getReadingStatusColor(item.water_level_status) }]}>
+            <Text style={styles.readingStatusChipText}>
+              {item.water_level_status.toUpperCase()}
+            </Text>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
   );
 
   const renderEmpty = () => {
@@ -145,17 +216,17 @@ const AllReadingsScreen: React.FC<AllReadingsScreenProps> = ({ onBack }) => {
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={Colors.aquaTechBlue} />
-          <Text style={styles.loadingText}>Loading please wait...</Text>
+          <Text style={styles.loadingText}>Loading readings...</Text>
         </View>
       );
     }
 
     return (
       <View style={styles.centerContainer}>
-        <Ionicons name="document-text-outline" size={64} color={Colors.textSecondary} />
-        <Text style={styles.emptyTitle}>No Readings Available</Text>
+        <Ionicons name="document-text-outline" size={72} color={Colors.textSecondary} style={{ opacity: 0.5 }} />
+        <Text style={styles.emptyTitle}>No Readings Yet</Text>
         <Text style={styles.emptySubtitle}>
-          Water level readings will appear here once they are recorded
+          Water level readings will appear here once submitted from the field
         </Text>
       </View>
     );
@@ -245,14 +316,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 2,
   },
   backButton: {
     padding: 8,
@@ -335,6 +404,99 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.white,
     marginRight: 6,
+  },
+  // Modern Reading Card Styles (matching HomeScreen)
+  readingCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+  },
+  readingCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  readingCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+    marginRight: 12,
+  },
+  readingStatusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginTop: 4,
+    marginRight: 10,
+  },
+  readingCardInfo: {
+    flex: 1,
+  },
+  readingCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  readingMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  readingCardMeta: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    flex: 1,
+  },
+  readingCardRight: {
+    alignItems: 'flex-end',
+  },
+  readingWaterLevelBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  readingWaterLevelText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  readingCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  readingCardDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  readingCardDetailText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  readingStatusChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginLeft: 'auto',
+  },
+  readingStatusChipText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.white,
+    letterSpacing: 0.5,
   },
 });
 

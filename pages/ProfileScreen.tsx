@@ -275,7 +275,7 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
   };
 
   const handleViewDashboard = () => {
-    navigation.setCurrentScreen('dashboard'); // Use custom navigation method
+    navigation.navigateToDashboard();
   };
 
   const handleChangePassword = async () => {
@@ -339,8 +339,8 @@ export default function ProfileScreen({ profile: initialProfile, onEditProfile, 
         Alert.alert('Error', 'Failed to logout. Please try again.');
       } else {
         setShowLogoutModal(false);
-        // Navigate to auth screen
-        navigation.setCurrentScreen('auth');
+        // Navigate to auth screen and clear stack
+        navigation.setCurrentScreen('auth', true);
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred.');
