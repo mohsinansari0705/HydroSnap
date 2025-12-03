@@ -12,6 +12,7 @@ import PermissionScreen from './PermissionScreen';
 import HomeScreen from '../pages/HomeScreen';
 import ProfileScreen from '../pages/ProfileScreen';
 import MyReadingsScreen from '../pages/MyReadingsScreen';
+import ReadingDetailsScreen from '../pages/ReadingDetailsScreen';
 import AllReadingsScreen from '../pages/AllReadingsScreen';
 import SiteDetailsScreen from '../pages/SiteDetailsScreen';
 import SiteLocationsScreen from '../pages/SiteLocationsScreen';
@@ -23,6 +24,8 @@ import EditProfileScreen from '../pages/EditProfileScreen';
 import DashboardScreen from '../pages/DashboardScreen';
 import MapLibreMapScreen from '../pages/MapLibreMapScreen';
 import NotificationsScreen from '../pages/NotificationsScreen';
+import FloodAlertsScreen from '../pages/FloodAlertsScreen';
+import AlertDetailsScreen from '../pages/AlertDetailsScreen';
 import { Colors } from '../lib/colors';
 
 export default function AppNavigator() {
@@ -33,9 +36,12 @@ export default function AppNavigator() {
     hasSeenOnboarding,
     setHasSeenOnboarding,
     selectedSiteId,
+    selectedReadingId,
+    selectedAlertId,
     navigateToSite,
     navigateToNewReading,
     navigateToMyReadings,
+    navigateToProfile,
     navigateToSettings,
     navigateBack
   } = useNavigation();
@@ -45,14 +51,14 @@ export default function AppNavigator() {
   // Handle authentication success
   const handleAuthSuccess = () => {
     console.log('Authentication successful, navigating to home');
-    setCurrentScreen('home');
+    setCurrentScreen('home', true);
   };
 
   // Handle sign out
   const handleSignOut = async () => {
     const { signOut } = useAuth();
     await signOut();
-    setCurrentScreen('auth');
+    setCurrentScreen('auth', true);
   };
 
   // Navigation helpers
@@ -93,10 +99,10 @@ export default function AppNavigator() {
             onAnimationComplete={() => {
               if (session && profile) {
                 // User is logged in and verified
-                setCurrentScreen('home');
+                setCurrentScreen('home', true);
               } else {
                 // Show onboarding or auth
-                setCurrentScreen(hasSeenOnboarding ? 'auth' : 'onboarding');
+                setCurrentScreen(hasSeenOnboarding ? 'auth' : 'onboarding', true);
               }
             }}
           />
@@ -107,7 +113,7 @@ export default function AppNavigator() {
           <OnboardingScreen 
             onComplete={() => {
               setHasSeenOnboarding(true);
-              setCurrentScreen('permissions');
+              setCurrentScreen('permissions', true);
             }}
           />
         );
@@ -117,11 +123,11 @@ export default function AppNavigator() {
           <PermissionScreen
             onComplete={() => {
               console.log('✅ Permissions granted, navigating to auth');
-              setCurrentScreen('auth');
+              setCurrentScreen('auth', true);
             }}
             onSkip={() => {
               console.log('⚠️ User skipped permissions');
-              setCurrentScreen('auth');
+              setCurrentScreen('auth', true);
             }}
           />
         );
@@ -134,7 +140,7 @@ export default function AppNavigator() {
         return (
           <ProfileSetup 
             userId={session.user.id}
-            onProfileComplete={() => setCurrentScreen('home')}
+            onProfileComplete={() => setCurrentScreen('home', true)}
           />
         );
 
@@ -215,6 +221,15 @@ export default function AppNavigator() {
           />
         );
 
+      case 'reading-details':
+        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        return (
+          <ReadingDetailsScreen
+            readingId={selectedReadingId}
+            onBack={navigateBack}
+          />
+        );
+
       case 'all-readings':
         return (
           <AllReadingsScreen
@@ -241,7 +256,7 @@ export default function AppNavigator() {
               if (screen === 'Auth') {
                 handleSignOut();
               } else if (screen === 'Profile') {
-                setCurrentScreen('profile');
+                navigateToProfile();
               } else {
                 navigateBack();
               }
@@ -254,9 +269,7 @@ export default function AppNavigator() {
         if (!session) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
         return (
           <EditProfileScreen
-            onBack={() => {
-              setCurrentScreen('profile');
-            }}
+            onBack={navigateBack}
             onSuccess={() => {
               setShowProfileSuccessPopup(true);
             }}
@@ -283,8 +296,25 @@ export default function AppNavigator() {
           />
         );
 
+      case 'flood-alerts':
+        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        return (
+          <FloodAlertsScreen
+            profile={profile}
+          />
+        );
+
+      case 'alert-details':
+        if (!session || !profile) return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+        return (
+          <AlertDetailsScreen
+            alertId={selectedAlertId}
+            profile={profile}
+          />
+        );
+
       default:
-        return <SplashScreen onAnimationComplete={() => setCurrentScreen('auth')} />;
+        return <SplashScreen onAnimationComplete={() => setCurrentScreen('auth', true)} />;
     }
   };
 
