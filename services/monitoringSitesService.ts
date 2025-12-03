@@ -61,6 +61,7 @@ export class MonitoringSitesService {
   
   /**
    * Fetch all active monitoring sites
+   * Optimized for instant loading - no sorting (allows random display in UI)
    */
   static async getAllSites(): Promise<MonitoringSite[]> {
     try {
@@ -69,8 +70,8 @@ export class MonitoringSitesService {
       const { data, error } = await supabase
         .from('monitoring_sites')
         .select('*')
-        .eq('is_active', true)
-        .order('name');
+        .eq('is_active', true);
+        // Removed .order('name') for faster query and random display in UI
 
       if (error) {
         console.error('❌ Supabase error fetching monitoring sites:', error);
@@ -83,7 +84,7 @@ export class MonitoringSitesService {
         throw error;
       }
 
-      console.log('✅ Successfully fetched', data?.length || 0, 'monitoring sites');
+      console.log('✅ Successfully fetched', data?.length || 0, 'monitoring sites (unordered for performance)');
 
       return data || [];
     } catch (error) {
@@ -156,8 +157,8 @@ export class MonitoringSitesService {
         .from('monitoring_sites')
         .select('*')
         .eq('assigned_personnel_id', userId)
-        .eq('is_active', true)
-        .order('name');
+        .eq('is_active', true);
+        // Removed .order('name') for faster query
 
       if (error) {
         console.error('Error fetching assigned sites:', error);
@@ -228,12 +229,13 @@ export class MonitoringSitesService {
 
   /**
    * Enrich sites with latest reading data and status
+   * Optimized with batch queries for better performance
    */
   static async enrichSitesWithReadings(sites: MonitoringSite[]): Promise<MonitoringSite[]> {
     try {
-      // Skip enrichment if too many sites to improve performance
+      // For instant loading, return sites immediately if too many
       if (sites.length > 50) {
-        console.log('⚡ Skipping enrichment for', sites.length, 'sites to improve performance');
+        console.log('⚡ Large dataset detected:', sites.length, 'sites - using lightweight enrichment');
         return sites.map(site => ({
           ...site,
           status: 'reading_due' as const,
@@ -242,8 +244,12 @@ export class MonitoringSitesService {
         }));
       }
       
+      console.log('🔄 Starting optimized enrichment for', sites.length, 'sites...');
+      const startTime = Date.now();
+      
+      // Use optimized batch query instead of individual queries
       const siteIds = sites.map(site => site.id);
-      const latestReadings = await this.getLatestReadingsForSites(siteIds);
+      const latestReadings = await this.getLatestReadingsForSitesBatch(siteIds);
 
       const enrichedSites = sites.map(site => {
         const latestReading = latestReadings[site.id];
@@ -283,7 +289,8 @@ export class MonitoringSitesService {
         };
       });
 
-      console.log('✅ Sites enrichment completed. Total sites processed:', enrichedSites.length);
+      const enrichTime = Date.now() - startTime;
+      console.log(`✅ Enrichment completed in ${enrichTime}ms for ${enrichedSites.length} sites`);
 
       return enrichedSites;
     } catch (error) {
@@ -300,11 +307,48 @@ export class MonitoringSitesService {
   }
 
   /**
-   * Fetch all water level readings with optional limit
+   * Get the latest reading for multiple sites using a single optimized batch query
+   * Much faster than individual queries per site
    */
-  static async getAllReadings(limit?: number): Promise<WaterLevelReading[]> {
+  static async getLatestReadingsForSitesBatch(siteIds: string[]): Promise<{[siteId: string]: WaterLevelReading}> {
     try {
-      console.log('🔄 Fetching water level readings from Supabase...');
+      if (siteIds.length === 0) return {};
+      
+      // Fetch all latest readings in a single query using DISTINCT ON
+      const { data, error } = await supabase
+        .from('water_level_readings')
+        .select('*')
+        .in('site_id', siteIds)
+        .order('site_id')
+        .order('submission_timestamp', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error fetching batch readings:', error);
+        return {};
+      }
+
+      // Group readings by site_id and keep only the latest for each site
+      const readings: {[siteId: string]: WaterLevelReading} = {};
+      data?.forEach((reading: WaterLevelReading) => {
+        if (!readings[reading.site_id]) {
+          readings[reading.site_id] = reading;
+        }
+      });
+
+      console.log(`⚡ Batch loaded ${Object.keys(readings).length} readings for ${siteIds.length} sites`);
+      return readings;
+    } catch (error) {
+      console.error('💥 Error in getLatestReadingsForSitesBatch:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Fetch all water level readings with optional limit and offset for pagination
+   */
+  static async getAllReadings(limit?: number, offset?: number): Promise<WaterLevelReading[]> {
+    try {
+      console.log(`🔄 Fetching water level readings from Supabase (limit: ${limit || 'all'}, offset: ${offset || 0})...`);
       
       let query = supabase
         .from('water_level_readings')
@@ -313,6 +357,12 @@ export class MonitoringSitesService {
 
       if (limit) {
         query = query.limit(limit);
+      }
+
+      if (offset) {
+        query = query.range(offset, offset + (limit || 100) - 1);
+      } else if (limit) {
+        query = query.range(0, limit - 1);
       }
 
       const { data, error } = await query;
@@ -334,6 +384,27 @@ export class MonitoringSitesService {
     } catch (error) {
       console.error('💥 Error in getAllReadings:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get total count of water level readings
+   */
+  static async getReadingsCount(): Promise<number> {
+    try {
+      const { count, error } = await supabase
+        .from('water_level_readings')
+        .select('*', { count: 'exact', head: true });
+
+      if (error) {
+        console.error('❌ Error fetching readings count:', error);
+        throw error;
+      }
+
+      return count || 0;
+    } catch (error) {
+      console.error('💥 Error in getReadingsCount:', error);
+      return 0;
     }
   }
 

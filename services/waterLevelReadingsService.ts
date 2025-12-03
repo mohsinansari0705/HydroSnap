@@ -7,17 +7,51 @@ export interface WaterLevelReading {
   user_role: string;
   site_id: string;
   site_name: string;
-  water_level: number;
-  latitude: number;
-  longitude: number;
-  photo_url: string;
-  is_location_valid: boolean;
-  distance_from_site: number;
-  qr_code_scanned: string;
-  reading_method: 'manual' | 'photo_analysis' | 'qr_scan';
-  weather_conditions: string;
-  submission_timestamp: string;
-  created_at: string;
+  
+  // Location data
+  latitude?: number;
+  longitude?: number;
+  geofence_radius_used?: number;
+  is_location_valid?: boolean;
+  distance_from_site?: number;
+  
+  // QR Code
+  qr_scanned_at?: string;
+  qr_code_scanned?: string;
+  
+  // Photo and Analysis
+  photo_url?: string;
+  photo_analysis_status?: 'pending' | 'processing' | 'completed' | 'failed';
+  predicted_water_level?: number;
+  prediction_confidence?: number;
+  manual_override?: boolean;
+  manual_override_reason?: string;
+  
+  // Water Level Status
+  water_level_status?: 'safe' | 'warning' | 'danger' | 'critical';
+  alert_triggered?: boolean;
+  alert_type?: 'flood_warning' | 'drought_warning' | 'rapid_rise' | 'rapid_fall' | 'threshold_breach';
+  previous_reading_diff?: number;
+  trend_status?: 'rising' | 'falling' | 'stable';
+  
+  // Conditions
+  gauge_visibility?: 'excellent' | 'good' | 'fair' | 'poor';
+  weather_conditions?: string;
+  lighting_conditions?: 'excellent' | 'good' | 'fair' | 'poor';
+  image_quality_score?: number;
+  reading_method?: 'photo_analysis' | 'manual_override';
+  notes?: string;
+  
+  // Timestamps
+  site_selected_at?: string;
+  photo_taken_at?: string;
+  analysis_started_at?: string;
+  analysis_completed_at?: string;
+  submission_timestamp?: string;
+  created_at?: string;
+  
+  // Legacy fields for backward compatibility
+  water_level?: number;
 }
 
 export interface NewReadingData {
@@ -394,14 +428,72 @@ class WaterLevelReadingsService {
    */
   async getRecentReadings(siteId: string, limit: number = 10): Promise<WaterLevelReading[]> {
     try {
-      // For demonstration, return empty array
-      // In production, implement with AsyncStorage or Supabase
-      console.log(`Getting recent readings for site: ${siteId}, limit: ${limit}`);
-      return [];
+      const { data, error } = await supabase
+        .from('water_level_readings')
+        .select('*')
+        .eq('site_id', siteId)
+        .order('submission_timestamp', { ascending: false })
+        .limit(limit);
 
+      if (error) {
+        console.error('Error fetching recent readings:', error);
+        return [];
+      }
+
+      return data || [];
     } catch (error) {
       console.error('Failed to get recent readings:', error);
       return [];
+    }
+  }
+
+  /**
+   * Get all readings for the current user
+   */
+  async getUserReadings(userId: string, limit: number = 50, offset: number = 0) {
+    try {
+      const { data, error, count } = await supabase
+        .from('water_level_readings')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .order('submission_timestamp', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) {
+        console.error('Error fetching user readings:', error);
+        return { readings: [], total: 0 };
+      }
+
+      return { 
+        readings: data || [], 
+        total: count || 0 
+      };
+    } catch (error) {
+      console.error('Failed to get user readings:', error);
+      return { readings: [], total: 0 };
+    }
+  }
+
+  /**
+   * Get a specific reading by ID
+   */
+  async getReadingById(readingId: string): Promise<WaterLevelReading | null> {
+    try {
+      const { data, error } = await supabase
+        .from('water_level_readings')
+        .select('*')
+        .eq('id', readingId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching reading by ID:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Failed to get reading by ID:', error);
+      return null;
     }
   }
 
