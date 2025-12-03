@@ -49,44 +49,60 @@ export const useMonitoringSites = (
 
   /**
    * Fetch monitoring sites based on user role and location
+   * Optimized for instant loading - shows basic data immediately, enriches in background
    */
   const fetchSites = useCallback(async () => {
     try {
       setError(null);
-      console.log('🔄 useMonitoringSites: Starting to fetch sites...');
+      console.log('🔄 useMonitoringSites: Starting optimized site fetch...');
+      const startTime = Date.now();
       
       let fetchedSites: MonitoringSite[] = [];
 
-      // For now, let's simplify and always fetch all sites to debug the issue
-      console.log('🌍 Fetching all sites (simplified for debugging)');
+      // Fetch all sites (already optimized - no sorting)
+      console.log('🌍 Fetching sites with instant loading optimization');
       fetchedSites = await MonitoringSitesService.getAllSites();
       
-      // Add distance calculation if user location is available
-      if (userLocation) {
-        console.log('📍 Adding distance calculations for user location:', userLocation);
-        fetchedSites = fetchedSites.map(site => ({
-          ...site,
-          distanceFromUser: MonitoringSitesService.calculateDistance(
-            userLocation.latitude,
-            userLocation.longitude,
-            site.latitude,
-            site.longitude
-          )
-        }));
-      }
+      // Set basic sites immediately for instant rendering
+      const basicSites = fetchedSites.map(site => ({
+        ...site,
+        status: 'reading_due' as const,
+        lastReading: undefined,
+        isAccessible: true,
+        distanceFromUser: userLocation ? MonitoringSitesService.calculateDistance(
+          userLocation.latitude,
+          userLocation.longitude,
+          site.latitude,
+          site.longitude
+        ) : undefined
+      }));
+      
+      console.log(`⚡ Basic sites loaded in ${Date.now() - startTime}ms - rendering immediately`);
+      setSites(basicSites);
 
-      console.log('📦 Raw sites fetched:', fetchedSites.length);
-
-      // Enrich sites with latest readings and status
-      console.log('✨ Enriching sites with readings...');
+      // Enrich sites with latest readings in background (non-blocking)
+      console.log('🔄 Starting background enrichment...');
+      const enrichStartTime = Date.now();
       const enrichedSites = await MonitoringSitesService.enrichSitesWithReadings(fetchedSites);
       
-      console.log('✅ Fetched and enriched', enrichedSites.length, 'monitoring sites');
-
-      setSites(enrichedSites);
+      // Add distance calculation to enriched sites
+      const enrichedWithDistance = enrichedSites.map(site => ({
+        ...site,
+        distanceFromUser: userLocation ? MonitoringSitesService.calculateDistance(
+          userLocation.latitude,
+          userLocation.longitude,
+          site.latitude,
+          site.longitude
+        ) : site.distanceFromUser
+      }));
+      
+      console.log(`✅ Enrichment completed in ${Date.now() - enrichStartTime}ms`);
+      console.log(`📊 Total load time: ${Date.now() - startTime}ms for ${enrichedWithDistance.length} sites`);
+      
+      setSites(enrichedWithDistance);
 
       // Update stats
-      const floodAlerts = enrichedSites.filter(site => 
+      const floodAlerts = enrichedWithDistance.filter(site => 
         site.status === 'warning' || site.status === 'danger'
       );
       setFloodAlertsCount(floodAlerts.length);
