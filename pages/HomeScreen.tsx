@@ -8,24 +8,25 @@ import {
   RefreshControl,
   Alert,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../lib/colors';
 import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { Profile } from '../types/profile';
-import Card from '../components/Card';
 import Navbar from '../components/Navbar';
 import BottomNavigation from '../components/BottomNavigation';
 import SafeScreen from '../components/SafeScreen';
 import { useMonitoringSites } from '../hooks/useMonitoringSites';
-import { MonitoringSite, MonitoringSitesService, WaterLevelReading } from '../services/monitoringSitesService';
-import { DebugUtils } from '../services/debugUtils';
+import { MonitoringSite, MonitoringSitesService } from '../services/monitoringSitesService';
+import { WaterLevelReading } from '../services/waterLevelReadingsService';
 import { supabase } from '../lib/supabase';
 import { useSiteCache } from '../lib/SiteCacheContext';
 import { useNavigation } from '../lib/NavigationContext';
 import { useNotifications, useMissedReadingScheduler } from '../hooks/useNotifications';
 import notificationService from '../services/notificationService';
 import missedReadingScheduler from '../services/missedReadingScheduler';
+import floodAlertsService, { FloodAlert } from '../services/floodAlertsService';
 
 interface HomeScreenProps {
   profile: Profile | null;
@@ -52,31 +53,17 @@ const formatRole = (role: string): string => {
   }
 };
 
-// Flood alerts data
-const floodAlerts = [
-  {
-    id: 'flood_1',
-    title: 'High Water Level Alert',
-    description: 'Water level approaching danger mark at gauge station',
-    location: 'Brahmaputra River - Guwahati',
-    date: '2025-10-14',
-    type: 'flood_alert' as const,
-    severity: 'critical' as const,
-    waterLevel: 142.5,
-    dangerLevel: 145.0,
-  },
-  {
-    id: 'flood_2',
-    title: 'Rising Water Levels',
-    description: 'Steady increase in water level due to upstream rainfall',
-    location: 'Ganges River - Patna',
-    date: '2025-10-14',
-    type: 'flood_alert' as const,
-    severity: 'warning' as const,
-    waterLevel: 48.2,
-    dangerLevel: 50.0,
-  },
-];
+// Utility function to shuffle array (Fisher-Yates algorithm)
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
   profile,
@@ -89,13 +76,22 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const [activeTab, setActiveTab] = useState<'capture' | 'readings' | 'home' | 'sites' | 'profile'>('home');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | undefined>();
   // notification visibility moved to global navigation context
-  const { toggleNotifications, setCurrentScreen, navigateToAllReadings } = useNavigation();
+  const { toggleNotifications, navigateToProfile, navigateToMap, navigateToAllReadings, navigateToReadingDetails, navigateToFloodAlerts, navigateToAlertDetails } = useNavigation();
 
   // State for recent water level readings
   const [recentReadings, setRecentReadings] = useState<WaterLevelReading[]>([]);
   const [loadingReadings, setLoadingReadings] = useState<boolean>(true);
   const [readingsError, setReadingsError] = useState<string | null>(null);
   const [userProfiles, setUserProfiles] = useState<{[userId: string]: string}>({});
+  
+  // State for instant site rendering and random display
+  const [displaySitesShuffled, setDisplaySitesShuffled] = useState<MonitoringSite[]>([]);
+  const [isEnriching, setIsEnriching] = useState<boolean>(false);
+
+  // State for flood alerts
+  const [floodAlerts, setFloodAlerts] = useState<FloodAlert[]>([]);
+  const [loadingAlerts, setLoadingAlerts] = useState<boolean>(true);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
 
   // Initialize notification system
   const { unreadCount } = useNotifications();
@@ -130,6 +126,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       console.log(`[HomeScreen] Cached ${sites.length} sites for better performance`);
     }
   }, [sites, setCachedSites]);
+  
+  // Instantly show sites in random order for better UX
+  useEffect(() => {
+    if (displaySites.length > 0) {
+      // Show cached sites immediately with random shuffle
+      const shuffled = shuffleArray(displaySites);
+      setDisplaySitesShuffled(shuffled);
+      console.log(`[HomeScreen] 🎲 Displaying ${shuffled.length} sites in random order for better UX`);
+    }
+  }, [displaySites]);
 
   useEffect(() => {
     // Delay location fetching to improve initial load time
@@ -185,7 +191,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     }
   };
 
-  // Fetch recent water level readings
+  // Fetch recent water level readings (optimized with limit)
   useEffect(() => {
     const fetchRecentReadings = async () => {
       try {
@@ -193,7 +199,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         setReadingsError(null);
         console.log('📊 Fetching recent water level readings...');
         
-        const readings = await MonitoringSitesService.getAllReadings(5);
+        // Fetch only 5 most recent readings for home screen
+        const readings = await MonitoringSitesService.getAllReadings(5, 0) as WaterLevelReading[];
         setRecentReadings(readings);
         console.log('✅ Fetched', readings.length, 'recent readings');
 
@@ -212,8 +219,47 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       }
     };
 
-    fetchRecentReadings();
+    // Delay fetching to improve initial load time
+    const timer = setTimeout(() => {
+      fetchRecentReadings();
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, []);
+
+  // Fetch flood alerts
+  useEffect(() => {
+    const fetchFloodAlerts = async () => {
+      try {
+        setLoadingAlerts(true);
+        setAlertsError(null);
+        console.log('📊 Fetching flood alerts...');
+        
+        if (!profile?.id) {
+          setLoadingAlerts(false);
+          return;
+        }
+
+        // Fetch recent alerts (limit to 5 for home screen)
+        const alerts = await floodAlertsService.getUserAlerts(profile.id);
+        const recentAlerts = alerts.slice(0, 5);
+        setFloodAlerts(recentAlerts);
+        console.log('✅ Fetched', recentAlerts.length, 'flood alerts');
+      } catch (error) {
+        console.error('❌ Error fetching flood alerts:', error);
+        setAlertsError('Failed to load flood alerts');
+      } finally {
+        setLoadingAlerts(false);
+      }
+    };
+
+    // Delay fetching to improve initial load time
+    const timer = setTimeout(() => {
+      fetchFloodAlerts();
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [profile?.id]);
 
   const fetchUserLocation = async () => {
     try {
@@ -232,15 +278,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     try {
       // Clear cache to ensure fresh data on refresh
       clearCache();
+      setIsEnriching(true);
       console.log('[HomeScreen] Cleared cache for fresh data refresh');
       
-      // Refresh both sites and readings
+      // Refresh sites, readings, and alerts
       await Promise.all([
         refresh(),
         (async () => {
           try {
             setLoadingReadings(true);
-            const readings = await MonitoringSitesService.getAllReadings(5);
+            const readings = await MonitoringSitesService.getAllReadings(5) as WaterLevelReading[];
             setRecentReadings(readings);
             console.log('✅ Refreshed recent readings');
             
@@ -255,56 +302,27 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           } finally {
             setLoadingReadings(false);
           }
+        })(),
+        (async () => {
+          try {
+            setLoadingAlerts(true);
+            if (profile?.id) {
+              const alerts = await floodAlertsService.getUserAlerts(profile.id);
+              setFloodAlerts(alerts.slice(0, 5));
+              console.log('✅ Refreshed flood alerts');
+            }
+          } catch (error) {
+            console.error('❌ Error refreshing alerts:', error);
+          } finally {
+            setLoadingAlerts(false);
+          }
         })()
       ]);
     } catch (error) {
       Alert.alert('Error', 'Failed to refresh data. Please try again.');
+    } finally {
+      setIsEnriching(false);
     }
-  };
-
-  const runDebugTests = async () => {
-    console.log('🐛 Running debug tests from HomeScreen...');
-    try {
-      await DebugUtils.runAllTests();
-      Alert.alert('Debug Complete', 'Check the console for detailed debug information.');
-    } catch (error) {
-      console.error('Debug tests failed:', error);
-      Alert.alert('Debug Failed', 'Debug tests encountered an error. Check console for details.');
-    }
-  };
-
-  const getStatusColor = (status: MonitoringSite['status']) => {
-    switch (status) {
-      case 'normal':
-        return Colors.validationGreen;
-      case 'warning':
-        return Colors.warning;
-      case 'danger':
-        return Colors.alertRed;
-      case 'reading_due':
-        return Colors.warning;
-      default:
-        return Colors.textSecondary;
-    }
-  };
-
-  const getStatusText = (status: MonitoringSite['status']) => {
-    switch (status) {
-      case 'normal':
-        return 'Normal';
-      case 'warning':
-        return 'Warning';
-      case 'danger':
-        return 'Danger';
-      case 'reading_due':
-        return 'Reading Due';
-      default:
-        return 'Unknown';
-    }
-  };
-
-  const canTakeReading = (site: MonitoringSite) => {
-    return (site.isAccessible ?? true) && (site.distanceFromUser ?? 0) <= 500; // Within 500 meters
   };
 
   const handleTabPress = (tab: 'capture' | 'readings' | 'home' | 'sites' | 'profile') => {
@@ -324,7 +342,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         onNavigateToSiteLocations();
         break;
       case 'profile':
-        setCurrentScreen('profile');
+        navigateToProfile();
         break;
     }
   };
@@ -335,7 +353,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         toggleNotifications();
         break;
       case 'profile':
-        setCurrentScreen('profile');
+        navigateToProfile();
         break;
       case 'settings':
         console.log('Settings button pressed, calling onNavigateToSettings');
@@ -344,58 +362,96 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     }
   };
 
-  const renderSiteCard = (site: MonitoringSite) => (
-    <TouchableOpacity
-      key={site.id}
-      style={[styles.siteCard, createNeumorphicCard({ size: 'medium' })]}
-      onPress={() => onNavigateToSite(site.id)}
-    >
-      <View style={styles.siteHeader}>
-        <View style={styles.siteInfo}>
-          <Text style={[styles.siteName, NeumorphicTextStyles.heading]}>{site.name}</Text>
-          <View style={styles.locationRow}>
-            <Ionicons name="location" size={14} color={Colors.textSecondary} />
-            <Text style={[styles.siteLocation, NeumorphicTextStyles.caption]}>
-              {site.location}
-            </Text>
+  const renderSiteCard = (site: MonitoringSite) => {
+    const hasReading = !!site.lastReading;
+    const isReadingDue = site.status === 'reading_due';
+    
+    return (
+      <TouchableOpacity
+        key={site.id}
+        style={styles.genZCard}
+        onPress={() => onNavigateToSite(site.id)}
+        activeOpacity={0.6}
+      >
+        {/* Header Row - Title with Reading Status Badge */}
+        <View style={styles.cardHeaderRow}>
+          <Text style={styles.siteTitleText} numberOfLines={1}>
+            {site.name}
+          </Text>
+          {/* Reading Status Badge */}
+          {isReadingDue ? (
+            <View style={styles.topDueBadge}>
+              <Ionicons name="alert-circle" size={10} color={Colors.warning} />
+              <Text style={styles.topDueBadgeText}>Due</Text>
+            </View>
+          ) : hasReading ? (
+            <View style={styles.topCompleteBadge}>
+              <Ionicons name="checkmark-circle" size={10} color={Colors.successGreen} />
+              <Text style={styles.topCompleteBadgeText}>Updated</Text>
+            </View>
+          ) : (
+            <View style={styles.topDueBadge}>
+              <Ionicons name="alert-circle" size={10} color={Colors.warning} />
+              <Text style={styles.topDueBadgeText}>Due</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Two Column Layout */}
+        <View style={styles.twoColumnLayout}>
+          {/* Left Column */}
+          <View style={styles.leftColumn}>
+            {/* Location */}
+            <View style={styles.infoRow}>
+              <Ionicons name="location" size={12} color={Colors.textSecondary} />
+              <Text style={styles.infoText} numberOfLines={1}>
+                {site.location}
+              </Text>
+            </View>
+            
+            {/* River Name (if available) */}
+            {site.river_name && (
+              <View style={styles.infoRow}>
+                <MaterialCommunityIcons name="waves" size={12} color={Colors.aquaTechBlue} />
+                <Text style={styles.riverText} numberOfLines={1}>
+                  {site.river_name}
+                </Text>
+              </View>
+            )}
+            
+            {/* Distance */}
+            <View style={styles.infoRow}>
+              <Ionicons name="navigate" size={12} color={Colors.textSecondary} />
+              <Text style={styles.infoText} numberOfLines={1}>
+                {site.distanceFromUser ? (site.distanceFromUser < 500 ? `${Math.round(site.distanceFromUser)}m` : `${(site.distanceFromUser / 1000).toFixed(1)}km`) : 'N/A'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Right Column - Water Level */}
+          <View style={styles.rightColumn}>
+            {hasReading && site.lastReading ? (
+              <>
+                <View style={styles.levelDisplay}>
+                  <Text style={styles.levelValue}>{site.lastReading.waterLevel}</Text>
+                  <Text style={styles.levelUnit}>cm</Text>
+                </View>
+                <Text style={styles.timestampText} numberOfLines={1}>
+                  {site.lastReading.timestamp}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.noDataValue}>—</Text>
+                <Text style={styles.noDataLabel}>No data</Text>
+              </>
+            )}
           </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(site.status) }]}>
-          <Text style={styles.statusBadgeText}>{getStatusText(site.status)}</Text>
-        </View>
-      </View>
 
-      {site.lastReading && (
-        <View style={styles.readingInfo}>
-          <Text style={[styles.waterLevel, NeumorphicTextStyles.subheading]}>
-            {site.lastReading.waterLevel} cm
-          </Text>
-          <Text style={[styles.readingTime, NeumorphicTextStyles.caption]}>
-            Last Reading: {site.lastReading.timestamp}
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.siteFooter}>
-        <View style={styles.distanceRow}>
-          <Ionicons name="navigate" size={14} color={Colors.textSecondary} />
-          <Text style={[styles.distance, NeumorphicTextStyles.caption]}>
-            {site.distanceFromUser ? (site.distanceFromUser < 500 ? `${Math.round(site.distanceFromUser)}m away` : `${(site.distanceFromUser / 1000).toFixed(1)}km away`) : 'Distance unknown'}
-          </Text>
-        </View>
-        
-        {canTakeReading(site) && (
-          <TouchableOpacity
-            style={[styles.newReadingButton, createNeumorphicCard({ size: 'small' })]}
-            onPress={() => onNavigateToNewReading(site.id)}
-          >
-            <Ionicons name="add-circle" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-            <Text style={styles.newReadingButtonText}>New Reading</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const renderCompactHeader = () => {
     const currentHour = new Date().getHours();
@@ -502,7 +558,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       
       <TouchableOpacity 
         style={styles.secondaryActionButton}
-        onPress={() => setCurrentScreen('map')}
+        onPress={() => navigateToMap()}
       >
         <View style={styles.actionIconContainer}>
           <Ionicons name="map" size={24} color={Colors.white} />
@@ -513,52 +569,177 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   );
 
   const renderFloodAlerts = () => {
-    const mapSeverityForCard = (sev: string): 'low' | 'medium' | 'high' => {
-      switch (sev) {
-        case 'critical':
-          return 'high';
-        case 'warning':
-          return 'medium';
-        case 'low':
-          return 'low';
-        case 'medium':
-          return 'medium';
-        case 'high':
-          return 'high';
-        default:
-          return 'medium';
-      }
+    const getAlertDescription = (alert: FloodAlert) => {
+      const firstLine = alert.message.split('\n')[0];
+      return firstLine.replace(/[🚨⚠️📢📋⏰📊💧🌊📍]/g, '').trim();
     };
 
     return (
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeaderWithAction}>
           <View style={styles.sectionTitleContainer}>
-            <View style={[styles.sectionIconContainer, { backgroundColor: Colors.alertRed + '20' }]}>
-              <Ionicons name="alert-circle" size={24} color={Colors.alertRed} />
+            <View style={[styles.sectionIconContainer, { backgroundColor: Colors.alertRed + '15' }]}>
+              <Ionicons name="alert-circle" size={22} color={Colors.alertRed} />
             </View>
             <View>
-              <Text style={styles.sectionTitle}>Flood Alert Status</Text>
-              <Text style={styles.sectionSubtitle}>Real-time water level monitoring</Text>
+              <Text style={styles.sectionTitle}>Flood Alerts</Text>
+              <Text style={styles.sectionSubtitle}>Real-time monitoring</Text>
             </View>
           </View>
+          {!loadingAlerts && floodAlerts.length > 0 && (
+            <TouchableOpacity 
+              style={styles.viewAllButton}
+              onPress={() => {
+                console.log('Navigating to flood alerts');
+                navigateToFloodAlerts();
+              }}
+            >
+              <Text style={styles.viewAllButtonText}>View All</Text>
+            </TouchableOpacity>
+          )}
         </View>
-        {floodAlerts.map(alert => (
-          <Card
-            key={alert.id}
-            type={alert.type}
-            severity={mapSeverityForCard(alert.severity as string)}
-            title={alert.title}
-            description={alert.description}
-            location={alert.location}
-            date={alert.date}
-            waterLevel={alert.waterLevel}
-            dangerLevel={alert.dangerLevel}
-            onPress={() => console.log(`Flood alert ${alert.id} pressed`)}
-          />
-        ))}
+
+        {loadingAlerts ? (
+          <View style={styles.modernLoadingContainer}>
+            <ActivityIndicator size="large" color={Colors.alertRed} />
+            <Text style={styles.modernLoadingText}>Loading alerts...</Text>
+          </View>
+        ) : alertsError ? (
+          <View style={styles.modernErrorContainer}>
+            <Ionicons name="alert-circle" size={48} color={Colors.alertRed} />
+            <Text style={styles.modernErrorText}>{alertsError}</Text>
+            <TouchableOpacity 
+              onPress={async () => {
+                try {
+                  setLoadingAlerts(true);
+                  if (profile?.id) {
+                    const alerts = await floodAlertsService.getUserAlerts(profile.id);
+                    setFloodAlerts(alerts.slice(0, 5));
+                    setAlertsError(null);
+                  }
+                } catch (error) {
+                  setAlertsError('Failed to load flood alerts');
+                } finally {
+                  setLoadingAlerts(false);
+                }
+              }} 
+              style={styles.modernRetryButton}
+            >
+              <Ionicons name="refresh" size={18} color={Colors.white} style={{ marginRight: 8 }} />
+              <Text style={styles.modernRetryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : floodAlerts.length === 0 ? (
+          <View style={styles.modernEmptyContainer}>
+            <Ionicons name="checkmark-circle" size={56} color={Colors.successGreen} style={{ opacity: 0.5 }} />
+            <Text style={styles.modernEmptyText}>All Clear!</Text>
+            <Text style={styles.modernEmptySubtext}>No active flood alerts at this time</Text>
+          </View>
+        ) : (
+          floodAlerts.slice(0, 5).map(alert => {
+            const alertColor = alert.alert_type === 'danger' ? Colors.criticalRed : 
+                               alert.alert_type === 'warning' ? Colors.warningOrange : Colors.aquaTechBlue;
+            return (
+              <TouchableOpacity
+                key={alert.id}
+                style={styles.genZCard}
+                onPress={() => navigateToAlertDetails(alert.id)}
+                activeOpacity={0.6}
+              >
+                {/* Header */}
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.siteTitleText} numberOfLines={1}>
+                    {alert.site_name}
+                  </Text>
+                  {!alert.is_read && (
+                    <View style={[styles.topCompleteBadge, { backgroundColor: alertColor + '20' }]}>
+                      <View style={[styles.unreadDot, { backgroundColor: alertColor }]} />
+                      <Text style={[styles.topCompleteBadgeText, { color: alertColor }]}>New</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Two Column Layout */}
+                <View style={styles.twoColumnLayout}>
+                  {/* Left Column */}
+                  <View style={styles.leftColumn}>
+                    <View style={styles.infoRow}>
+                      <Ionicons name="location" size={12} color={Colors.textSecondary} />
+                      <Text style={styles.infoText} numberOfLines={1}>
+                        {alert.site_location || 'N/A'}
+                      </Text>
+                    </View>
+                    <View style={styles.infoRow}>
+                      <Ionicons name="time-outline" size={12} color={Colors.textSecondary} />
+                      <Text style={styles.infoText} numberOfLines={1}>
+                        {(() => {
+                          const date = new Date(alert.created_at);
+                          const now = new Date();
+                          const diffHours = Math.floor((now.getTime() - date.getTime()) / 3600000);
+                          if (diffHours < 1) return 'Just now';
+                          if (diffHours < 24) return `${diffHours}h ago`;
+                          return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                        })()}
+                      </Text>
+                    </View>
+                    {alert.water_level && (
+                      <View style={styles.infoRow}>
+                        <MaterialCommunityIcons name="waves" size={12} color={alertColor} />
+                        <Text style={[styles.riverText, { color: alertColor }]} numberOfLines={1}>
+                          {alert.water_level.toFixed(2)}m
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Right Column */}
+                  <View style={styles.rightColumn}>
+                    <View style={[styles.alertSeverityBox, { backgroundColor: alertColor + '15' }]}>
+                      <Text style={[styles.alertSeverityText, { color: alertColor }]}>
+                        {alert.severity.toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Alert Message */}
+                {getAlertDescription(alert) && (
+                  <Text style={styles.alertMessage} numberOfLines={2}>
+                    {getAlertDescription(alert)}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            );
+          })
+        )}
       </View>
     );
+  };
+
+  const getReadingStatusColor = (status?: string) => {
+    switch (status) {
+      case 'safe': return Colors.successGreen;
+      case 'warning': return Colors.warningOrange;
+      case 'danger': return Colors.criticalRed;
+      case 'critical': return Colors.darkRed;
+      default: return Colors.aquaTechBlue;
+    }
+  };
+
+  const formatTimestamp = (timestamp?: string) => {
+    if (!timestamp) return 'Just now';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   };
 
   const renderRecentReadings = () => (
@@ -566,11 +747,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       <View style={styles.sectionHeaderWithAction}>
         <View style={styles.sectionTitleContainer}>
           <View style={[styles.sectionIconContainer, { backgroundColor: Colors.aquaTechBlue + '20' }]}>
-            <Ionicons name="bar-chart" size={24} color={Colors.aquaTechBlue} />
+            <Ionicons name="water" size={24} color={Colors.aquaTechBlue} />
           </View>
           <View>
-            <Text style={styles.sectionTitle}>Recent Water Level Readings</Text>
-            <Text style={styles.sectionSubtitle}>Latest data collection</Text>
+            <Text style={styles.sectionTitle}>Recent Readings</Text>
+            <Text style={styles.sectionSubtitle}>Latest submissions from field</Text>
           </View>
         </View>
         {!loadingReadings && recentReadings.length > 0 && (
@@ -587,21 +768,22 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       </View>
       
       {loadingReadings ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading please wait...</Text>
+        <View style={styles.modernLoadingContainer}>
+          <ActivityIndicator size="large" color={Colors.aquaTechBlue} />
+          <Text style={styles.modernLoadingText}>Loading readings...</Text>
         </View>
       ) : readingsError ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{readingsError}</Text>
+        <View style={styles.modernErrorContainer}>
+          <Ionicons name="alert-circle" size={48} color={Colors.alertRed} />
+          <Text style={styles.modernErrorText}>{readingsError}</Text>
           <TouchableOpacity 
             onPress={async () => {
               try {
                 setLoadingReadings(true);
-                const readings = await MonitoringSitesService.getAllReadings(5);
+                const readings = await MonitoringSitesService.getAllReadings(5) as WaterLevelReading[];
                 setRecentReadings(readings);
                 setReadingsError(null);
                 
-                // Fetch user profiles
                 if (readings.length > 0) {
                   const uniqueUserIds = [...new Set(readings.map(r => r.user_id))];
                   const profiles = await fetchUserProfiles(uniqueUserIds);
@@ -613,31 +795,84 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                 setLoadingReadings(false);
               }
             }} 
-            style={styles.retryButton}
+            style={styles.modernRetryButton}
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Ionicons name="refresh" size={18} color={Colors.white} style={{ marginRight: 8 }} />
+            <Text style={styles.modernRetryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : recentReadings.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No recent readings available</Text>
-          <Text style={styles.emptySubtext}>Readings will appear here once they are recorded</Text>
+        <View style={styles.modernEmptyContainer}>
+          <Ionicons name="document-text-outline" size={56} color={Colors.textSecondary} style={{ opacity: 0.5 }} />
+          <Text style={styles.modernEmptyText}>No readings yet</Text>
+          <Text style={styles.modernEmptySubtext}>Readings will appear here once submitted</Text>
         </View>
       ) : (
-        recentReadings.slice(0, 5).map(reading => (
-          <Card
-            key={reading.id}
-            type="reading"
-            severity="low"
-            title={reading.site_name || 'Water Level Reading'}
-            description={`Reading method: ${reading.reading_method === 'photo_analysis' ? 'Photo Analysis' : 'Manual'}`}
-            location={reading.site_name}
-            date={reading.submission_timestamp}
-            waterLevel={reading.predicted_water_level}
-            fieldPersonnel={userProfiles[reading.user_id] || 'Unknown User'}
-            onPress={() => console.log(`Reading ${reading.id} pressed`)}
-          />
-        ))
+        recentReadings.slice(0, 5).map((reading) => {
+          const statusColor = getReadingStatusColor(reading.water_level_status);
+          return (
+            <TouchableOpacity
+              key={reading.id}
+              style={styles.genZCard}
+              activeOpacity={0.6}
+              onPress={() => {
+                console.log('Navigating to reading details:', reading.id);
+                navigateToReadingDetails(reading.id);
+              }}
+            >
+              {/* Header */}
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.siteTitleText} numberOfLines={1}>
+                  {reading.site_name || 'Unknown Site'}
+                </Text>
+                {reading.water_level_status && (
+                  <View style={[styles.topCompleteBadge, { backgroundColor: statusColor + '20' }]}>
+                    <View style={[styles.unreadDot, { backgroundColor: statusColor }]} />
+                    <Text style={[styles.topCompleteBadgeText, { color: statusColor }]}>
+                      {reading.water_level_status.charAt(0).toUpperCase() + reading.water_level_status.slice(1)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Two Column Layout */}
+              <View style={styles.twoColumnLayout}>
+                {/* Left Column */}
+                <View style={styles.leftColumn}>
+                  <View style={styles.infoRow}>
+                    <Ionicons name="person-circle-outline" size={12} color={Colors.textSecondary} />
+                    <Text style={styles.infoText} numberOfLines={1}>
+                      {userProfiles[reading.user_id] || 'Unknown'}
+                    </Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Ionicons name="time-outline" size={12} color={Colors.textSecondary} />
+                    <Text style={styles.infoText} numberOfLines={1}>
+                      {formatTimestamp(reading.submission_timestamp)}
+                    </Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Ionicons name="location" size={12} color={Colors.textSecondary} />
+                    <Text style={styles.infoText} numberOfLines={1}>
+                      {reading.distance_from_site ? `${reading.distance_from_site.toFixed(0)}m away` : 'N/A'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Right Column */}
+                <View style={styles.rightColumn}>
+                  <View style={styles.levelDisplay}>
+                    <Text style={styles.levelValue}>
+                      {reading.predicted_water_level?.toFixed(1) || '—'}
+                    </Text>
+                    <Text style={styles.levelUnit}>m</Text>
+                  </View>
+                  <Text style={styles.noDataLabel}>Water Level</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })
       )}
     </View>
   );
@@ -699,13 +934,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <View style={styles.sectionTitleContainer}>
               <View style={styles.sectionIconContainer}>
                 <MaterialCommunityIcons name="water-pump" size={24} color={Colors.deepSecurityBlue} />
+                {isEnriching && (
+                  <View style={styles.enrichingIndicator}>
+                    <ActivityIndicator size="small" color={Colors.white} />
+                  </View>
+                )}
               </View>
               <View>
                 <Text style={styles.sectionTitle}>Monitoring Sites</Text>
-                <Text style={styles.sectionSubtitle}>Overview • History • Map</Text>
+                <Text style={styles.sectionSubtitle}>
+                  {isEnriching ? 'Updating live data...' : 'Overview • History • Map'}
+                </Text>
               </View>
             </View>
-            {displaySites.length > 5 && (
+            {displaySitesShuffled.length > 5 && (
               <TouchableOpacity 
                 style={styles.viewAllButton}
                 onPress={() => handleTabPress('sites')}
@@ -715,28 +957,29 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             )}
           </View>
           
-          {loading && displaySites.length === 0 ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading monitoring sites...</Text>
+          {loading && displaySitesShuffled.length === 0 ? (
+            <View style={styles.modernLoadingContainer}>
+              <ActivityIndicator size="large" color={Colors.deepSecurityBlue} />
+              <Text style={styles.modernLoadingText}>Loading monitoring sites...</Text>
             </View>
           ) : error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>Failed to load sites: {error}</Text>
-              <TouchableOpacity onPress={refresh} style={styles.retryButton}>
-                <Text style={styles.retryButtonText}>Retry</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={runDebugTests} style={[styles.retryButton, { backgroundColor: Colors.warning, marginTop: 10 }]}>
-                <Text style={styles.retryButtonText}>Run Debug Tests</Text>
+            <View style={styles.modernErrorContainer}>
+              <Ionicons name="alert-circle" size={48} color={Colors.alertRed} />
+              <Text style={styles.modernErrorText}>Failed to load sites: {error}</Text>
+              <TouchableOpacity onPress={refresh} style={styles.modernRetryButton}>
+                <Ionicons name="refresh" size={18} color={Colors.white} style={{ marginRight: 8 }} />
+                <Text style={styles.modernRetryButtonText}>Retry</Text>
               </TouchableOpacity>
             </View>
-          ) : displaySites.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No monitoring sites found in your area</Text>
-              <Text style={styles.emptySubtext}>Trying to load sites...</Text>
+          ) : displaySitesShuffled.length === 0 ? (
+            <View style={styles.modernEmptyContainer}>
+              <Ionicons name="location-outline" size={56} color={Colors.textSecondary} style={{ opacity: 0.5 }} />
+              <Text style={styles.modernEmptyText}>No monitoring sites found</Text>
+              <Text style={styles.modernEmptySubtext}>Sites will appear here when available</Text>
             </View>
           ) : (
-            // Only show first 5 sites on home screen
-            displaySites.slice(0, 5).map(renderSiteCard)
+            // Show first 5 sites in random order for better UX
+            displaySitesShuffled.slice(0, 5).map(renderSiteCard)
           )}
         </View>
 
@@ -882,82 +1125,176 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.textSecondary,
   },
-  // Site Card Styles
-  siteCard: {
-    padding: 20,
-    marginBottom: 16,
-    marginHorizontal: 4,
+  // Gen Z Minimalist Card Styles with 2-Column Layout
+  genZCard: {
+    backgroundColor: Colors.white,
     borderRadius: 16,
+    marginBottom: 12,
+    marginHorizontal: 4,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
   },
-  siteHeader: {
+  cardHeaderRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
     marginBottom: 12,
   },
-  siteInfo: {
+  siteTitleText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    letterSpacing: -0.2,
     flex: 1,
-    marginRight: 12,
+    marginRight: 8,
   },
-  siteName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.deepSecurityBlue,
-    marginBottom: 4,
+  // Top Corner Badges
+  topDueBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    backgroundColor: Colors.warning + '15',
+    borderRadius: 6,
   },
-  siteLocation: {
-    fontSize: 14,
-    color: Colors.textSecondary,
+  topDueBadgeText: {
+    fontSize: 10,
+    color: Colors.warning,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+  topCompleteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    backgroundColor: Colors.successGreen + '15',
+    borderRadius: 6,
   },
-  statusBadgeText: {
-    fontSize: 12,
-    color: Colors.white,
-    fontWeight: '600',
+  topCompleteBadgeText: {
+    fontSize: 10,
+    color: Colors.successGreen,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
-  readingInfo: {
+  // Two Column Layout
+  twoColumnLayout: {
+    flexDirection: 'row',
     marginBottom: 12,
+    gap: 12,
   },
-  waterLevel: {
-    fontSize: 28,
-    fontWeight: 'bold',
+  leftColumn: {
+    flex: 1,
+    gap: 6,
+  },
+  rightColumn: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minWidth: 80,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  infoText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    flex: 1,
+  },
+  riverText: {
+    fontSize: 12,
     color: Colors.aquaTechBlue,
-    marginBottom: 4,
-  },
-  readingTime: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  siteFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  distance: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  newReadingButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: Colors.deepSecurityBlue,
-  },
-  newReadingButtonText: {
-    fontSize: 12,
-    color: Colors.white,
     fontWeight: '600',
+    flex: 1,
+  },
+  // Right Column - Water Level
+  levelDisplay: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 3,
+    marginBottom: 3,
+  },
+  levelValue: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: Colors.textPrimary,
+    letterSpacing: -1.2,
+  },
+  levelUnit: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  timestampText: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    textAlign: 'right',
+  },
+  noDataValue: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: Colors.textSecondary,
+    opacity: 0.25,
+    marginBottom: 3,
+  },
+  noDataLabel: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  // Bottom Row - Button Only
+  cardBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 8,
+  },
+  captureBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.deepSecurityBlue,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.deepSecurityBlue,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  // Alert Specific Styles
+  alertSeverityBox: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  alertSeverityText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  unreadDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  alertMessage: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 16,
+    marginTop: 8,
   },
   // AI Insights Styles
   insightCard: {
@@ -1109,6 +1446,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.deepSecurityBlue + '15',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  enrichingIndicator: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.aquaTechBlue,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.aquaTechBlue,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 3,
   },
   locationRow: {
     flexDirection: 'row',
@@ -1125,15 +1479,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   viewAllButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: Colors.aquaTechBlue,
-    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: Colors.aquaTechBlue + '12',
+    borderRadius: 8,
     marginLeft: 8,
+    gap: 2,
   },
   viewAllButtonText: {
-    color: Colors.white,
-    fontSize: 14,
+    color: Colors.aquaTechBlue,
+    fontSize: 13,
     fontWeight: '600',
   },
   // Compact Header Styles
@@ -1304,6 +1661,90 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.white,
   },
+
+  // Modern State Container Styles
+  modernLoadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    marginHorizontal: 4,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  modernLoadingText: {
+    marginTop: 12,
+    color: Colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  modernErrorContainer: {
+    padding: 40,
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    marginHorizontal: 4,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  modernErrorText: {
+    color: Colors.alertRed,
+    textAlign: 'center',
+    marginTop: 12,
+    marginBottom: 20,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  modernRetryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: Colors.aquaTechBlue,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: Colors.aquaTechBlue,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  modernRetryButtonText: {
+    color: Colors.white,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  modernEmptyContainer: {
+    padding: 50,
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    marginHorizontal: 4,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  modernEmptyText: {
+    color: Colors.textPrimary,
+    textAlign: 'center',
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modernEmptySubtext: {
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    fontSize: 14,
+  },
+
 });
 
 export default HomeScreen;
