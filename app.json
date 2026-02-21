@@ -31,7 +31,10 @@
           "savePhotosPermission": "Allow HydroSnap to save photos to your photo library.",
           "isAccessMediaLocationEnabled": false
         }
-      ]
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ],
     "ios": {
       "supportsTablet": true,
@@ -41,7 +44,9 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "HydroSnap needs your location to verify you're at the monitoring site.",
         "NSLocationWhenInUseUsageDescription": "HydroSnap needs your location to verify you're at the monitoring site.",
         "NSLocationAlwaysUsageDescription": "HydroSnap needs background location to maintain geofence validation during readings.",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location"
+        ]
       }
     },
     "android": {
