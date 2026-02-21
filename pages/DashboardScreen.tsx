@@ -11,14 +11,20 @@ import {
   Modal,
   Animated,
   RefreshControl,
+  Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { MaterialIcons } from '@expo/vector-icons';
 import { PieChart, BarChart, LineChart } from 'react-native-gifted-charts';
 import { Colors } from '../lib/colors';
 import SafeScreen from '../components/SafeScreen';
-import { createNeumorphicCard, createNeumorphicButton, NeumorphicTextStyles } from '../lib/neumorphicStyles';
-import { supabase } from '../lib/supabase';
+import { createNeumorphicCard, NeumorphicTextStyles } from '../lib/neumorphicStyles';
 import { Profile } from '../types/profile';
 import { MonitoringSitesService } from '../services/monitoringSitesService';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import ViewShot from 'react-native-view-shot';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -52,12 +58,26 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const dashboardFadeAnim = useRef(new Animated.Value(1)).current;
   const pinAnimations = useRef<{[key: number]: {scale: Animated.Value, opacity: Animated.Value}}>({}).current;
+  const chartViewRef = useRef<ViewShot>(null);
+  const pieChartRefs = useRef<{[key: number]: View | null}>({}).current;
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState({ current: 0, total: 0, chartName: '' });
   
   // Profile is used for user context
   console.log('Dashboard loaded for user:', profile.id);
   const [selectedChart, setSelectedChart] = useState<ChartType>('pie');
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [focusedPieIndex, setFocusedPieIndex] = useState<{[key: number]: number}>({});
+  
+  // Time period filter states
+  const [timePeriod, setTimePeriod] = useState<'1week' | '1month' | 'custom'>('1month');
+  const [timePeriodModalVisible, setTimePeriodModalVisible] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
+  const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [availableDateRange, setAvailableDateRange] = useState<{ min: Date | null; max: Date | null }>({ min: null, max: null });
+  const [currentPieChartPage, setCurrentPieChartPage] = useState(0); // For navigating between pie charts
   const [stats, setStats] = useState({
     totalSites: 0,
     totalReadings: 0,
@@ -79,10 +99,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
   useEffect(() => {
     if (stats.totalSites > 0) {
       generateChartData(selectedChart, selectedDataset);
-      
-
     }
-  }, [selectedChart, stats, selectedDataset]);
+  }, [selectedChart, stats, selectedDataset, timePeriod, customStartDate, customEndDate]);
+
+  // Reset pie chart page when dataset changes
+  useEffect(() => {
+    setCurrentPieChartPage(0);
+  }, [selectedDataset]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -149,6 +172,38 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
     }
   };
 
+  const getDateRange = (): { startDate: Date; endDate: Date } => {
+    const now = new Date();
+    const endDate = new Date();
+    let startDate = new Date();
+
+    switch (timePeriod) {
+      case '1week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case '1month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          return { startDate: customStartDate, endDate: customEndDate };
+        }
+        // Fallback to 1 month if custom dates not set
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+    }
+
+    return { startDate, endDate };
+  };
+
+  const filterDataByDateRange = (data: any[], dateField: string = 'submission_timestamp') => {
+    const { startDate, endDate } = getDateRange();
+    return data.filter(item => {
+      const itemDate = new Date(item[dateField]);
+      return itemDate >= startDate && itemDate <= endDate;
+    });
+  };
+
   const generateChartData = async (chartType: ChartType, dataset: 'overview' | 'sites' | 'readings') => {
     setChartLoading(true);
     fadeAnim.setValue(0);
@@ -158,6 +213,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
       if (dataset === 'sites') {
         // Monitoring Sites data using service
         const allSites = await MonitoringSitesService.getAllSites();
+        
+        // Note: Sites don't have timestamps in the same way readings do
+        // If you need time-based filtering for sites, you'll need to add a date field to sites
+        // For now, we'll use all sites but you can limit the data shown
         const sites = allSites.slice(0, 20);
 
         if (!sites || sites.length === 0) {
@@ -332,10 +391,30 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
         }
       } else if (dataset === 'readings') {
         // Water Level Readings data using service
-        const readings = await MonitoringSitesService.getAllReadings(15);
+        const allReadings = await MonitoringSitesService.getAllReadings(100);
+        
+        // Filter by date range
+        const filteredReadings = filterDataByDateRange(allReadings || []);
+        const readings = filteredReadings.slice(0, 15);
+        
+        // Debug: Log filtering results
+        console.log(`Time Period: ${timePeriod}`);
+        console.log(`All Readings: ${allReadings?.length || 0}`);
+        console.log(`Filtered Readings: ${filteredReadings.length}`);
+        console.log(`Date Range:`, getDateRange());
+        
+        // Update available date range for custom picker
+        if (allReadings && allReadings.length > 0) {
+          const dates = allReadings.map(r => new Date(r.submission_timestamp));
+          setAvailableDateRange({
+            min: new Date(Math.min(...dates.map(d => d.getTime()))),
+            max: new Date(Math.max(...dates.map(d => d.getTime())))
+          });
+        }
 
         if (!readings || readings.length === 0) {
           setChartData({ labels: [], values: [] });
+          console.log('No readings found after filtering');
           return;
         }
 
@@ -584,37 +663,108 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
     }
   };
 
-  const renderStatCard = (title: string, value: string | number, icon: string, color: string) => (
+  const getStatIcon = (title: string) => {
+    switch (title) {
+      case 'Total Sites':
+        return 'location-on';
+      case 'Total Readings':
+        return 'analytics';
+      case 'Danger Alerts':
+        return 'warning';
+      case 'Warnings':
+        return 'error-outline';
+      default:
+        return 'info';
+    }
+  };
+
+  const renderStatCard = (title: string, value: string | number, _iconName: string, color: string) => (
     <View style={[styles.statCard, createNeumorphicCard({ size: 'small' })]}>
-      <Text style={styles.statIcon}>{icon}</Text>
+      <View style={[styles.statIconContainer, { backgroundColor: color + '15' }]}>
+        <MaterialIcons name={getStatIcon(title)} size={24} color={color} />
+      </View>
       <Text style={[styles.statValue, { color }]}>{value}</Text>
       <Text style={styles.statLabel}>{title}</Text>
     </View>
   );
 
   const chartTypes: Array<{ type: ChartType; icon: string; label: string; description: string }> = [
-    { type: 'pie', icon: '🥧', label: 'Pie Chart', description: 'Show data as portions of a whole' },
-    { type: 'donut', icon: '🍩', label: 'Donut Chart', description: 'Ring-shaped pie chart' },
-    { type: 'line', icon: '📈', label: 'Line Chart', description: 'Display trends over time' },
-    { type: 'area', icon: '🌊', label: 'Area Chart', description: 'Filled line chart' },
-    { type: 'bar', icon: '📊', label: 'Bar Chart', description: 'Compare values side by side' },
-    { type: 'stackedBar', icon: '📚', label: 'Stacked Bar', description: 'Layered bar comparison' },
+    { type: 'pie', icon: 'pie-chart', label: 'Pie Chart', description: 'Show data as portions of a whole' },
+    { type: 'donut', icon: 'donut-large', label: 'Donut Chart', description: 'Ring-shaped pie chart' },
+    { type: 'line', icon: 'show-chart', label: 'Line Chart', description: 'Display trends over time' },
+    { type: 'area', icon: 'area-chart', label: 'Area Chart', description: 'Filled line chart' },
+    { type: 'bar', icon: 'bar-chart', label: 'Bar Chart', description: 'Compare values side by side' },
+    { type: 'stackedBar', icon: 'stacked-bar-chart', label: 'Stacked Bar', description: 'Layered bar comparison' },
   ];
 
-  const getChartLabel = (type: ChartType) => {
-    const chart = chartTypes.find(c => c.type === type);
-    return chart ? `${chart.icon} ${chart.label}` : type;
+  const getTimePeriodLabel = () => {
+    const { startDate, endDate } = getDateRange();
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    
+    switch (timePeriod) {
+      case '1week':
+        return `📅 Last 1 Week (${formatDate(startDate)} - ${formatDate(endDate)})`;
+      case '1month':
+        return `📅 Last 1 Month (${formatDate(startDate)} - ${formatDate(endDate)})`;
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          return `📅 ${formatDate(customStartDate)} - ${formatDate(customEndDate)}`;
+        }
+        return '📅 Custom Range';
+    }
   };
 
-  const renderChartTypeSelector = () => (
-    <View style={[styles.chartSelector, createNeumorphicCard({ size: 'medium' })]}>
-      <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>📊 Chart Type</Text>
+  const renderChartControls = () => (
+    <View style={[styles.chartControlsBar, createNeumorphicCard({ size: 'small' })]}>
+      {/* Chart Type Selector */}
       <TouchableOpacity
-        style={[styles.selectButton, createNeumorphicButton('primary', { size: 'medium', borderRadius: 12 })]}
+        style={styles.controlButton}
         onPress={() => setChartModalVisible(true)}
       >
-        <Text style={styles.selectButtonText}>{getChartLabel(selectedChart)}</Text>
-        <Text style={styles.selectButtonArrow}>▼</Text>
+        <View style={styles.controlButtonContent}>
+          <MaterialIcons name="bar-chart" size={20} color={Colors.aquaTechBlue} />
+          <View style={styles.controlButtonTextContainer}>
+            <Text style={styles.controlButtonLabel}>Chart</Text>
+            <Text style={styles.controlButtonValue} numberOfLines={1}>{selectedChart.charAt(0).toUpperCase() + selectedChart.slice(1)}</Text>
+          </View>
+          <MaterialIcons name="arrow-drop-down" size={20} color={Colors.textSecondary} />
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.controlDivider} />
+
+      {/* Time Period Selector */}
+      <TouchableOpacity
+        style={styles.controlButton}
+        onPress={() => setTimePeriodModalVisible(true)}
+      >
+        <View style={styles.controlButtonContent}>
+          <MaterialIcons name="access-time" size={20} color={Colors.aquaTechBlue} />
+          <View style={styles.controlButtonTextContainer}>
+            <Text style={styles.controlButtonLabel}>Period</Text>
+            <Text style={styles.controlButtonValue} numberOfLines={1}>
+              {timePeriod === '1week' ? '1 Week' : timePeriod === '1month' ? '1 Month' : 'Custom'}
+            </Text>
+          </View>
+          <MaterialIcons name="arrow-drop-down" size={20} color={Colors.textSecondary} />
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.controlDivider} />
+
+      {/* Export Button */}
+      <TouchableOpacity
+        style={styles.controlButtonExport}
+        onPress={exportChartToPDF}
+        disabled={isExporting || !chartData || chartData.values.length === 0}
+      >
+        {isExporting ? (
+          <ActivityIndicator size="small" color={Colors.aquaTechBlue} />
+        ) : (
+          <MaterialIcons name="file-download" size={24} color={Colors.aquaTechBlue} />
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -651,7 +801,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                     setChartModalVisible(false);
                   }}
                 >
-                  <Text style={styles.chartTypeIcon}>{chart.icon}</Text>
+                  <MaterialIcons 
+                    name={chart.icon as any} 
+                    size={40} 
+                    color={selectedChart === chart.type ? Colors.aquaTechBlue : Colors.deepSecurityBlue}
+                    style={styles.chartTypeIconSvg}
+                  />
                   <Text style={[
                     styles.chartTypeLabel,
                     selectedChart === chart.type && styles.chartTypeLabelActive,
@@ -661,7 +816,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                   <Text style={styles.chartTypeDescription}>{chart.description}</Text>
                   {selectedChart === chart.type && (
                     <View style={styles.selectedBadge}>
-                      <Text style={styles.selectedBadgeText}>✓ Selected</Text>
+                      <MaterialIcons name="check-circle" size={16} color={Colors.white} />
                     </View>
                   )}
                 </TouchableOpacity>
@@ -672,6 +827,890 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
       </View>
     </Modal>
   );
+
+  const renderTimePeriodModal = () => (
+    <Modal
+      visible={timePeriodModalVisible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setTimePeriodModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.timePeriodModalContent, createNeumorphicCard({ size: 'medium' })]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Time Period</Text>
+            <TouchableOpacity onPress={() => setTimePeriodModalVisible(false)} style={styles.modalCloseButton}>
+              <MaterialIcons name="close" size={24} color={Colors.deepSecurityBlue} />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.timePeriodOptionsNew}>
+            <TouchableOpacity
+              style={[
+                styles.periodOptionButton,
+                timePeriod === '1week' && styles.periodOptionButtonActive,
+              ]}
+              onPress={() => {
+                setTimePeriod('1week');
+                setTimePeriodModalVisible(false);
+              }}
+            >
+              <MaterialIcons 
+                name="date-range" 
+                size={24} 
+                color={timePeriod === '1week' ? Colors.white : Colors.deepSecurityBlue} 
+              />
+              <View style={styles.periodOptionTextContainer}>
+                <Text style={[styles.periodOptionTitle, timePeriod === '1week' && styles.periodOptionTitleActive]}>
+                  Last 1 Week
+                </Text>
+                <Text style={[styles.periodOptionSubtitle, timePeriod === '1week' && styles.periodOptionSubtitleActive]}>
+                  Past 7 days
+                </Text>
+              </View>
+              {timePeriod === '1week' && (
+                <MaterialIcons name="check-circle" size={20} color={Colors.white} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.periodOptionButton,
+                timePeriod === '1month' && styles.periodOptionButtonActive,
+              ]}
+              onPress={() => {
+                setTimePeriod('1month');
+                setTimePeriodModalVisible(false);
+              }}
+            >
+              <MaterialIcons 
+                name="calendar-today" 
+                size={24} 
+                color={timePeriod === '1month' ? Colors.white : Colors.deepSecurityBlue} 
+              />
+              <View style={styles.periodOptionTextContainer}>
+                <Text style={[styles.periodOptionTitle, timePeriod === '1month' && styles.periodOptionTitleActive]}>
+                  Last 1 Month
+                </Text>
+                <Text style={[styles.periodOptionSubtitle, timePeriod === '1month' && styles.periodOptionSubtitleActive]}>
+                  Past 30 days
+                </Text>
+              </View>
+              {timePeriod === '1month' && (
+                <MaterialIcons name="check-circle" size={20} color={Colors.white} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.periodOptionButton,
+                timePeriod === 'custom' && styles.periodOptionButtonActive,
+              ]}
+              onPress={() => {
+                setTimePeriod('custom');
+              }}
+            >
+              <MaterialIcons 
+                name="event" 
+                size={24} 
+                color={timePeriod === 'custom' ? Colors.white : Colors.deepSecurityBlue} 
+              />
+              <View style={styles.periodOptionTextContainer}>
+                <Text style={[styles.periodOptionTitle, timePeriod === 'custom' && styles.periodOptionTitleActive]}>
+                  Custom Range
+                </Text>
+                <Text style={[styles.periodOptionSubtitle, timePeriod === 'custom' && styles.periodOptionSubtitleActive]}>
+                  Select dates
+                </Text>
+              </View>
+              {timePeriod === 'custom' && (
+                <MaterialIcons name="check-circle" size={20} color={Colors.white} />
+              )}
+            </TouchableOpacity>
+
+            {timePeriod === 'custom' && (
+              <View style={styles.customDateSection}>
+                <View style={styles.customDateHeader}>
+                  <MaterialIcons name="event-note" size={20} color={Colors.deepSecurityBlue} />
+                  <Text style={styles.customDateHeaderText}>Choose Dates</Text>
+                </View>
+
+                {availableDateRange.min && availableDateRange.max && (
+                  <View style={styles.dateInfoBanner}>
+                    <MaterialIcons name="info-outline" size={16} color="#6366F1" />
+                    <Text style={styles.dateInfoText}>
+                      Data available from {availableDateRange.min.toLocaleDateString()} to {availableDateRange.max.toLocaleDateString()}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.dateSelectorsRow}>
+                  <View style={styles.dateSelector}>
+                    <Text style={styles.dateSelectorLabel}>Start Date</Text>
+                    <TouchableOpacity
+                      style={styles.dateSelectorButton}
+                      onPress={() => setShowStartDatePicker(true)}
+                    >
+                      <MaterialIcons name="event" size={20} color={Colors.aquaTechBlue} />
+                      <Text style={styles.dateSelectorText}>
+                        {customStartDate ? customStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Select'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <MaterialIcons name="arrow-forward" size={24} color={Colors.textSecondary} style={{ marginTop: 28 }} />
+
+                  <View style={styles.dateSelector}>
+                    <Text style={styles.dateSelectorLabel}>End Date</Text>
+                    <TouchableOpacity
+                      style={styles.dateSelectorButton}
+                      onPress={() => setShowEndDatePicker(true)}
+                    >
+                      <MaterialIcons name="event" size={20} color={Colors.aquaTechBlue} />
+                      <Text style={styles.dateSelectorText}>
+                        {customEndDate ? customEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Select'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {customStartDate && customEndDate && (
+                  <TouchableOpacity
+                    style={styles.applyCustomButton}
+                    onPress={() => {
+                      if (customStartDate > customEndDate) {
+                        Alert.alert('Invalid Range', 'Start date must be before end date');
+                        return;
+                      }
+                      if (availableDateRange.min && customStartDate < availableDateRange.min) {
+                        const minDateStr = availableDateRange.min.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                        Alert.alert('Invalid Date', `Start date must be on or after ${minDateStr}`);
+                        return;
+                      }
+                      if (availableDateRange.max && customEndDate > availableDateRange.max) {
+                        const maxDateStr = availableDateRange.max.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                        Alert.alert('Invalid Date', `End date must be on or before ${maxDateStr}`);
+                        return;
+                      }
+                      setTimePeriodModalVisible(false);
+                    }}
+                  >
+                    <MaterialIcons name="check" size={20} color={Colors.white} style={{ marginRight: 8 }} />
+                    <Text style={styles.applyCustomButtonText}>Apply Custom Range</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* DateTimePicker for Start Date */}
+          {showStartDatePicker && (
+            <DateTimePicker
+              value={customStartDate || availableDateRange.min || new Date()}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+              {...(availableDateRange.min && { minimumDate: availableDateRange.min })}
+              maximumDate={customEndDate || availableDateRange.max || new Date()}
+              onChange={(event, selectedDate) => {
+                setShowStartDatePicker(false);
+                if (event.type === 'set' && selectedDate) {
+                  // Ensure selected date is within available range
+                  if (availableDateRange.min && selectedDate < availableDateRange.min) {
+                    Alert.alert('Invalid Date', 'Selected date is before the earliest available data');
+                    return;
+                  }
+                  if (availableDateRange.max && selectedDate > availableDateRange.max) {
+                    Alert.alert('Invalid Date', 'Selected date is after the latest available data');
+                    return;
+                  }
+                  setCustomStartDate(selectedDate);
+                }
+              }}
+            />
+          )}
+
+          {/* DateTimePicker for End Date */}
+          {showEndDatePicker && (
+            <DateTimePicker
+              value={customEndDate || availableDateRange.max || new Date()}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+              {...((customStartDate || availableDateRange.min) && { minimumDate: (customStartDate || availableDateRange.min) as Date })}
+              maximumDate={availableDateRange.max || new Date()}
+              onChange={(event, selectedDate) => {
+                setShowEndDatePicker(false);
+                if (event.type === 'set' && selectedDate) {
+                  // Ensure selected date is within available range
+                  if (customStartDate && selectedDate < customStartDate) {
+                    Alert.alert('Invalid Date', 'End date must be after start date');
+                    return;
+                  }
+                  if (availableDateRange.max && selectedDate > availableDateRange.max) {
+                    Alert.alert('Invalid Date', 'Selected date is after the latest available data');
+                    return;
+                  }
+                  setCustomEndDate(selectedDate);
+                }
+              }}
+            />
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Helper function to generate chart data synchronously for PDF export
+  const exportChartToPDF = async () => {
+    try {
+      setIsExporting(true);
+      
+      console.log('[PDF Export] Starting PDF generation with chart screenshots');
+
+      // Calculate actual date range
+      const getActualDateRange = () => {
+        const now = new Date();
+        let startDate: Date;
+        let endDate: Date = now;
+
+        if (timePeriod === '1week') {
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return {
+            start: startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            end: endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          };
+        } else if (timePeriod === '1month') {
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          return {
+            start: startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            end: endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          };
+        } else if (timePeriod === 'custom' && customStartDate && customEndDate) {
+          return {
+            start: customStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            end: customEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          };
+        }
+        return {
+          start: 'N/A',
+          end: 'N/A'
+        };
+      };
+
+      const dateRange = getActualDateRange();
+
+      // Store current chart and pie chart page
+      const originalChartType = selectedChart;
+      const originalPieChartPage = currentPieChartPage;
+
+      // Base chart types (excluding area and donut as requested)
+      const baseChartTypes: ChartType[] = ['pie', 'line', 'bar', 'stackedBar'];
+      const chartImagesArray: Array<{ type: ChartType; label: string; image: string; data: any }> = [];
+      
+      // Calculate total charts to capture
+      // For 'pie', we'll capture each page separately
+      let totalChartsToCapture = baseChartTypes.length - 1; // Start with non-pie charts
+      
+      // Generate data to check how many pie charts exist
+      await generateChartData('pie', selectedDataset);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const pieChartCount = chartData?.pieCharts?.length || 1;
+      totalChartsToCapture += pieChartCount; // Add pie chart pages
+      
+      // Set total for progress modal
+      setExportProgress({ current: 0, total: totalChartsToCapture, chartName: '' });
+
+      let capturedCount = 0;
+
+      // Capture each chart type
+      for (let i = 0; i < baseChartTypes.length; i++) {
+        const chartType = baseChartTypes[i];
+        
+        // Special handling for pie charts - capture each page separately
+        if (chartType === 'pie') {
+          // Switch to pie chart and generate data
+          setSelectedChart('pie');
+          await generateChartData('pie', selectedDataset);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const pieChartsData = chartData?.pieCharts || [];
+          
+          // Capture each pie chart page
+          for (let pieIndex = 0; pieIndex < pieChartsData.length; pieIndex++) {
+            const pieChartInfo = pieChartsData[pieIndex];
+            const pieLabel = pieChartInfo.title || `Pie Chart ${pieIndex + 1}`;
+            
+            try {
+              capturedCount++;
+              console.log(`[PDF Export] Processing pie chart ${pieIndex + 1}/${pieChartsData.length}: ${pieLabel}`);
+              
+              // Update progress
+              setExportProgress({ 
+                current: capturedCount, 
+                total: totalChartsToCapture, 
+                chartName: pieLabel 
+              });
+              
+              // Switch to this pie chart page
+              setCurrentPieChartPage(pieIndex);
+              await new Promise(resolve => setTimeout(resolve, 1500));
+              
+              // Capture screenshot
+              if (chartViewRef.current && chartViewRef.current.capture) {
+                console.log(`[PDF Export] Capturing ${pieLabel} screenshot...`);
+                const imageUri = await chartViewRef.current.capture();
+                
+                // Read as base64
+                const base64Image = await FileSystem.readAsStringAsync(imageUri, {
+                  encoding: FileSystem.EncodingType.Base64,
+                });
+                
+                console.log(`[PDF Export] ${pieLabel} captured - Size: ${(base64Image.length / 1024).toFixed(2)} KB`);
+                
+                // Sort pie chart data by value (same as displayed in chart)
+                const combined = pieChartInfo.labels.map((label: string, idx: number) => ({
+                  label,
+                  value: pieChartInfo.values[idx],
+                  color: pieChartInfo.colors[idx]
+                }));
+                combined.sort((a, b) => b.value - a.value);
+                
+                // Store with specific pie chart data (sorted to match visual chart)
+                chartImagesArray.push({
+                  type: 'pie',
+                  label: pieLabel,
+                  image: base64Image,
+                  data: {
+                    labels: combined.map(c => c.label),
+                    values: combined.map(c => c.value),
+                    colors: combined.map(c => c.color)
+                  }
+                });
+              } else {
+                console.error(`[PDF Export] chartViewRef not available for ${pieLabel}`);
+              }
+            } catch (error) {
+              console.error(`[PDF Export] Error capturing ${pieLabel}:`, error);
+            }
+          }
+        } else {
+          // Handle other chart types normally
+          const chartInfo = chartTypes.find(c => c.type === chartType);
+          const chartLabel = chartInfo?.label || chartType;
+          
+          try {
+            capturedCount++;
+            console.log(`[PDF Export] Processing chart ${capturedCount}/${totalChartsToCapture}: ${chartLabel}`);
+            
+            // Update progress
+            setExportProgress({ 
+              current: capturedCount, 
+              total: totalChartsToCapture, 
+              chartName: chartLabel 
+            });
+            
+            // Switch to this chart type - update state AND generate data
+            setSelectedChart(chartType);
+            await generateChartData(chartType, selectedDataset);
+            
+            // Wait for chart to render completely
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Capture screenshot with optimized quality for PDF
+            if (chartViewRef.current && chartViewRef.current.capture) {
+              console.log(`[PDF Export] Capturing ${chartLabel} screenshot...`);
+              const imageUri = await chartViewRef.current.capture();
+              
+              // Read as base64 with compression
+              const base64Image = await FileSystem.readAsStringAsync(imageUri, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+              
+              console.log(`[PDF Export] ${chartLabel} captured - Size: ${(base64Image.length / 1024).toFixed(2)} KB`);
+              
+              // Get chart data from current state (already loaded by generateChartData)
+              const data = chartData ? {
+                labels: chartData.labels || [],
+                values: chartData.values || [],
+                colors: chartData.colors || []
+              } : { labels: [], values: [], colors: [] };
+              
+              chartImagesArray.push({
+                type: chartType,
+                label: chartLabel,
+                image: base64Image,
+                data: data
+              });
+            } else {
+              console.error(`[PDF Export] chartViewRef not available for ${chartLabel}`);
+            }
+          } catch (error) {
+            console.error(`[PDF Export] Error capturing ${chartLabel}:`, error);
+          }
+        }
+      }
+      
+      console.log(`[PDF Export] Captured ${chartImagesArray.length} charts successfully`);
+      
+      // Update progress for PDF creation
+      setExportProgress({ 
+        current: totalChartsToCapture, 
+        total: totalChartsToCapture, 
+        chartName: 'Creating PDF document...' 
+      });
+      
+      // Wait a bit for state update
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Restore original chart and pie chart page
+      setSelectedChart(originalChartType);
+      setCurrentPieChartPage(originalPieChartPage);
+      await generateChartData(originalChartType, selectedDataset);
+
+      // Generate HTML content for PDF
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
+              body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+                background-color: #ffffff;
+                line-height: 1.5;
+                color: #333;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 20px;
+                background: #667eea;
+                color: white;
+                padding: 30px 20px;
+                border-radius: 10px;
+              }
+              .header h1 {
+                margin: 0;
+                font-size: 36px;
+                font-weight: bold;
+                letter-spacing: 1px;
+              }
+              .header p {
+                margin: 10px 0 0 0;
+                font-size: 14px;
+                opacity: 0.95;
+              }
+              .section {
+                background: white;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 8px;
+                page-break-inside: avoid;
+                border: 1px solid #ddd;
+              }
+              .section-title {
+                font-size: 22px;
+                font-weight: bold;
+                color: #667eea;
+                margin-bottom: 18px;
+                border-bottom: 3px solid #667eea;
+                padding-bottom: 10px;
+              }
+              .chart-image-container {
+                text-align: center;
+                margin: 15px 0;
+                padding: 10px;
+                background: #f5f5f5;
+                border-radius: 8px;
+              }
+              .chart-image {
+                width: 100%;
+                max-width: 800px;
+                height: auto;
+              }
+              .chart-image-pie {
+                width: 100%;
+                max-width: 800px;
+                height: auto;
+                max-height: 900px;
+              }
+              .chart-title-section {
+                text-align: center;
+                margin-bottom: 20px;
+              }
+              .chart-title-section h2 {
+                color: #667eea;
+                margin: 0 0 8px 0;
+                font-size: 28px;
+                font-weight: bold;
+              }
+              .chart-subtitle {
+                color: #666;
+                font-size: 14px;
+                font-style: italic;
+              }
+              .info-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 12px;
+                padding: 12px 15px;
+                background: #f8f9fa;
+                border-radius: 6px;
+                border-left: 4px solid #667eea;
+              }
+              .info-label {
+                font-weight: bold;
+                color: #555;
+                font-size: 15px;
+              }
+              .info-value {
+                color: #333;
+                font-size: 15px;
+                font-weight: 500;
+              }
+              .legend-section {
+                margin-top: 20px;
+                page-break-inside: avoid;
+                background: #f8f9fa;
+                padding: 20px;
+                border-radius: 10px;
+                border: 2px solid #e0e0e0;
+              }
+              .legend-section h3 {
+                color: #667eea;
+                margin-bottom: 15px;
+                font-size: 20px;
+                font-weight: bold;
+              }
+              .legend-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+              }
+              .legend-item {
+                display: flex;
+                align-items: center;
+                padding: 12px;
+                background: white;
+                border-radius: 8px;
+                border: 2px solid #e0e0e0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+              }
+              .legend-color-box {
+                width: 24px;
+                height: 24px;
+                border-radius: 6px;
+                margin-right: 12px;
+                flex-shrink: 0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+              }
+              .legend-info {
+                flex: 1;
+              }
+              .legend-label {
+                font-weight: bold;
+                color: #333;
+                font-size: 14px;
+                margin-bottom: 4px;
+              }
+              .legend-value {
+                color: #666;
+                font-size: 13px;
+              }
+              .data-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+                border-radius: 8px;
+                overflow: hidden;
+              }
+              .data-table th {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 14px 12px;
+                text-align: left;
+                font-weight: bold;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+              }
+              .data-table td {
+                padding: 12px;
+                border-bottom: 1px solid #e0e0e0;
+                font-size: 13px;
+              }
+              .data-table tr:nth-child(even) {
+                background: #f8f9fa;
+              }
+              .data-table tr:hover {
+                background: #e3f2fd;
+              }
+              .footer {
+                text-align: center;
+                margin-top: 30px;
+                padding: 20px;
+                color: #666;
+                font-size: 12px;
+                border-top: 2px solid #e0e0e0;
+                page-break-inside: avoid;
+              }
+              .date-range-highlight {
+                background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+                padding: 15px;
+                border-radius: 8px;
+                margin: 15px 0;
+                text-align: center;
+                font-weight: bold;
+                color: #1565c0;
+                border: 3px solid #2196f3;
+                font-size: 16px;
+                box-shadow: 0 4px 8px rgba(33, 150, 243, 0.2);
+              }
+              .page-break {
+                page-break-before: always;
+                margin-top: 0;
+              }
+              .chart-page {
+                display: flex;
+                flex-direction: column;
+                padding: 15px;
+              }
+              .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+                margin-top: 15px;
+              }
+              .stat-box {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px;
+                border-radius: 10px;
+                text-align: center;
+                box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+              }
+              .stat-box.danger {
+                background: linear-gradient(135deg, #f44336 0%, #e53935 100%);
+              }
+              .stat-box.warning {
+                background: linear-gradient(135deg, #ff9800 0%, #fb8c00 100%);
+              }
+              .stat-value {
+                font-size: 32px;
+                font-weight: bold;
+                margin-bottom: 8px;
+              }
+              .stat-label {
+                font-size: 14px;
+                opacity: 0.95;
+              }
+              @media print {
+                body {
+                  padding: 20px;
+                }
+                .section {
+                  page-break-inside: avoid;
+                  margin-bottom: 15px;
+                }
+                .page-break {
+                  page-break-before: always;
+                }
+                .chart-image {
+                  max-height: 700px;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>📊 HydroSnap Dashboard Report</h1>
+              <p>Comprehensive Water Level Monitoring Analysis</p>
+              <p>Generated on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
+
+            <div class="section">
+              <div class="section-title">📈 Report Information</div>
+              <div class="info-row">
+                <span class="info-label">Dataset:</span>
+                <span class="info-value">${selectedDataset === 'sites' ? 'Monitoring Sites' : selectedDataset === 'readings' ? 'Water Level Readings' : 'Overview'}</span>
+              </div>
+              <div class="date-range-highlight">
+                📅 Data Period: ${dateRange.start} to ${dateRange.end}
+              </div>
+              <div class="info-row">
+                <span class="info-label">Total Charts:</span>
+                <span class="info-value">${chartImagesArray.length} visualization types</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Chart Types Included:</span>
+                <span class="info-value">Pie Charts (multiple categories), Line, Bar, Stacked Bar</span>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">📊 Key Statistics Summary</div>
+              <div class="stats-grid">
+                <div class="stat-box">
+                  <div class="stat-value">${stats.totalSites}</div>
+                  <div class="stat-label">Total Sites Monitored</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-value">${stats.totalReadings}</div>
+                  <div class="stat-label">Total Readings</div>
+                </div>
+                <div class="stat-box danger">
+                  <div class="stat-value">${stats.dangerSites}</div>
+                  <div class="stat-label">⚠️ Danger Sites</div>
+                </div>
+                <div class="stat-box warning">
+                  <div class="stat-value">${stats.warningSites}</div>
+                  <div class="stat-label">⚡ Warning Sites</div>
+                </div>
+              </div>
+              <div class="info-row" style="margin-top: 15px;">
+                <span class="info-label">Average Water Level:</span>
+                <span class="info-value">${stats.avgWaterLevel.toFixed(2)} meters</span>
+              </div>
+            </div>
+
+            ${chartImagesArray.map((chartInfo, index) => `
+              <div class="${index > 0 ? 'page-break' : ''}">
+                <div class="section chart-page">
+                  <div class="chart-title-section">
+                    <h2>${chartInfo.label}</h2>
+                    <p class="chart-subtitle">Chart ${index + 1} of ${chartImagesArray.length} • ${selectedDataset === 'sites' ? 'Site Analysis' : 'Reading Analysis'}</p>
+                  </div>
+                  
+                  ${chartInfo.image ? `
+                  <div class="chart-image-container">
+                    <img src="data:image/png;base64,${chartInfo.image}" class="${chartInfo.type === 'pie' ? 'chart-image-pie' : 'chart-image'}" alt="${chartInfo.label}" />
+                  </div>
+                  ` : ''}
+                  
+                  ${chartInfo.data && chartInfo.data.labels && chartInfo.data.values ? `
+                  <h3 style="color: #667eea; margin: 20px 0 15px 0; font-size: 20px; font-weight: bold;">📊 Data Values</h3>
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Category</th>
+                        <th>Value</th>
+                        <th>Percentage</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${chartInfo.data.labels.map((label: string, idx: number) => {
+                        const value = chartInfo.data.values[idx];
+                        const total = chartInfo.data.values.reduce((a: number, b: number) => a + b, 0);
+                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+                        const color = chartInfo.data.colors?.[idx] || '#667eea';
+                        return `
+                        <tr style="border-left: 6px solid ${color};">
+                          <td style="font-weight: bold;">${idx + 1}</td>
+                          <td style="font-weight: 600;">${label}</td>
+                          <td style="font-weight: bold;">${value}</td>
+                          <td><strong>${percentage}%</strong></td>
+                        </tr>
+                        `;
+                      }).join('')}
+                      <tr style="background: #667eea; color: white; font-weight: bold;">
+                        <td colspan="2">TOTAL</td>
+                        <td>${chartInfo.data.values.reduce((a: number, b: number) => a + b, 0)}</td>
+                        <td>100%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  ` : ''}
+                </div>
+              </div>
+            `).join('')}
+
+            <div class="page-break">
+              <div class="footer">
+                <p style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">🌊 HydroSnap - Water Level Monitoring System</p>
+                <p>This comprehensive report was automatically generated by HydroSnap Dashboard</p>
+                <p>Report includes ${chartImagesArray.length} optimized chart visualizations with detailed data tables</p>
+                <p style="margin-top: 10px; font-style: italic;">For more information, visit our website or contact support</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      // Validate we have chart images before creating PDF
+      if (chartImagesArray.length === 0) {
+        throw new Error('No charts were captured. Please try again.');
+      }
+
+      const htmlSizeKB = htmlContent.length / 1024;
+      console.log(`[PDF Export] Creating PDF with ${chartImagesArray.length} charts`);
+      console.log(`[PDF Export] Total HTML size: ${htmlSizeKB.toFixed(2)} KB`);
+
+      // Check if HTML is too large (warn if over 5MB)
+      if (htmlSizeKB > 5120) {
+        console.warn(`[PDF Export] HTML size is large (${htmlSizeKB.toFixed(2)} KB), PDF generation may fail`);
+      }
+
+      // Create PDF with error handling and extended timeout
+      console.log(`[PDF Export] Starting PDF creation...`);
+      const { uri } = await Promise.race([
+        Print.printToFileAsync({ 
+          html: htmlContent,
+          base64: false
+        }),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('PDF generation timeout')), 120000)
+        )
+      ]);
+      
+      console.log(`[PDF Export] PDF created at: ${uri}`);
+      
+      // Share or save the PDF
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Save or Share Chart Report',
+          UTI: 'com.adobe.pdf'
+        });
+        Alert.alert('Success', 'PDF generated successfully!');
+      } else {
+        Alert.alert('Success', `PDF saved at: ${uri}`);
+      }
+    } catch (error: any) {
+      console.log('[PDF Export] Failed - User will see error dialog');
+      const errorMessage = error?.message || 'Unknown error occurred';
+      
+      if (errorMessage.includes('PDF data') || errorMessage.includes('writing the PDF')) {
+        Alert.alert(
+          'PDF Too Large', 
+          'The PDF file size exceeds limits. The report has been optimized, but you can try:\n\n• Using a shorter time period\n• Exporting fewer data points\n• Reducing the dataset size',
+          [{ text: 'OK' }]
+        );
+      } else if (errorMessage.includes('timeout')) {
+        Alert.alert(
+          'Taking Too Long',
+          'PDF generation is taking too long. Please try again or contact support if the issue persists.',
+          [{ text: 'OK' }]
+        );
+      } else if (errorMessage.includes('No charts')) {
+        Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
+      } else {
+        Alert.alert(
+          'Export Failed', 
+          'Unable to generate PDF. Please try again or contact support if the issue persists.',
+          [{ text: 'OK' }]
+        );
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const renderChart = () => {
     if (loading) {
@@ -729,9 +1768,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
           },
         ];
 
+        // Only show the selected chart based on currentPieChartPage
+        const selectedPieChart = pieChartsToRender[currentPieChartPage] || pieChartsToRender[0];
+        const chartIndex = currentPieChartPage;
+
         return (
           <ScrollView horizontal={false} showsVerticalScrollIndicator={false}>
-            {pieChartsToRender.map((pieChartData, chartIndex) => {
+            {[selectedPieChart].map((pieChartData) => {
               // Initialize animation values for this chart if not exists
               if (!pinAnimations[chartIndex]) {
                 pinAnimations[chartIndex] = {
@@ -861,9 +1904,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
               return (
                 <Animated.View
                   key={chartIndex}
+                  ref={(ref: any) => { pieChartRefs[chartIndex] = ref; }}
                   style={[
                     styles.chartContainer,
-                    createNeumorphicCard({ size: 'large' }),
+                    isExporting ? { backgroundColor: '#FFFFFF', ...createNeumorphicCard({ size: 'large' }) } : {},
                     {
                       marginBottom: 16,
                       opacity: fadeAnim,
@@ -875,7 +1919,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
                     <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
                       {pieChartData.title}
                     </Text>
-                    <Text style={styles.chartHelperText}>Tap chart or legend items to highlight</Text>
                   </View>
                   <View style={styles.pieChartContainer}>
                     <View style={styles.pieChartCenter}>
@@ -1000,7 +2043,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
           <Animated.View 
             style={[
               styles.chartContainer, 
-              createNeumorphicCard({ size: 'large' }),
+              isExporting ? { backgroundColor: '#FFFFFF', ...createNeumorphicCard({ size: 'large' }) } : {},
               {
                 opacity: fadeAnim,
                 transform: [{ scale: scaleAnim }],
@@ -1011,7 +2054,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
               <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
                 {selectedDataset === 'sites' ? 'Danger Level Trend' : selectedDataset === 'readings' ? 'Water Level Trend' : 'Data Trend'}
               </Text>
-              <Text style={styles.chartHelperText}>Swipe left/right • Long press for details</Text>
+              <Text style={styles.chartDataInfo}>
+                {lineData.length} data points • {getTimePeriodLabel()}
+              </Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={true}>
               <View style={styles.giftedChartWrapper}>
@@ -1073,7 +2118,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
           <Animated.View 
             style={[
               styles.chartContainer, 
-              createNeumorphicCard({ size: 'large' }),
+              isExporting ? { backgroundColor: '#FFFFFF', ...createNeumorphicCard({ size: 'large' }) } : {},
               {
                 opacity: fadeAnim,
                 transform: [{ scale: scaleAnim }],
@@ -1084,7 +2129,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
               <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
                 {selectedDataset === 'sites' ? 'Danger Level Trend' : selectedDataset === 'readings' ? 'Water Level Trend' : 'Data Trend'}
               </Text>
-              <Text style={styles.chartHelperText}>Swipe left/right • Long press for details</Text>
+              <Text style={styles.chartDataInfo}>
+                {lineData.length} data points • {getTimePeriodLabel()}
+              </Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={true}>
               <View style={styles.giftedChartWrapper}>
@@ -1149,12 +2196,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
       case 'bar':
       case 'stackedBar':
         return (
-          <View style={[styles.chartContainer, createNeumorphicCard({ size: 'large' })]}>
+          <View style={[styles.chartContainer, isExporting ? { backgroundColor: '#FFFFFF', ...createNeumorphicCard({ size: 'large' }) } : {}]}>
             <View style={styles.chartHeader}>
               <Text style={[styles.chartTitle, NeumorphicTextStyles.subheading]}>
                 {selectedDataset === 'sites' ? 'Danger Level Distribution' : selectedDataset === 'readings' ? 'Water Level Distribution' : 'Data Distribution'}
               </Text>
-              <Text style={styles.chartHelperText}>Swipe to view all bars</Text>
+              <Text style={styles.chartDataInfo}>
+                {barData.length} data points • {getTimePeriodLabel()}
+              </Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={true}>
               <View style={styles.giftedChartWrapper}>
@@ -1189,40 +2238,165 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
     }
   };
 
+  const renderExportProgressModal = () => (
+    <Modal
+      visible={isExporting}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+    >
+      <View style={styles.exportProgressOverlay}>
+        <View style={[styles.exportProgressContent, createNeumorphicCard({ size: 'medium' })]}>
+          <MaterialIcons name="picture-as-pdf" size={56} color={Colors.aquaTechBlue} />
+          
+          <Text style={styles.exportProgressTitle}>Generating PDF</Text>
+          <Text style={styles.exportProgressSubtitle}>
+            {exportProgress.chartName || 'Preparing charts...'}
+          </Text>
+          
+          {exportProgress.total > 0 && (
+            <>
+              <View style={styles.exportProgressBarContainer}>
+                <View 
+                  style={[
+                    styles.exportProgressBarFill,
+                    { width: `${(exportProgress.current / exportProgress.total) * 100}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.exportProgressText}>
+                {exportProgress.current} of {exportProgress.total} charts
+              </Text>
+            </>
+          )}
+          
+          <ActivityIndicator 
+            size="large" 
+            color={Colors.aquaTechBlue} 
+            style={{ marginTop: 16 }} 
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderChartNavigation = () => {
+    if (!chartData || !chartData.pieCharts) return null;
+
+    const navItems = selectedDataset === 'sites' 
+      ? [
+          { id: 0, label: 'Types', icon: 'dashboard', color: '#667eea', desc: 'Site Types' },
+          { id: 1, label: 'Rivers', icon: 'water', color: '#3b82f6', desc: 'River Sites' },
+          { id: 2, label: 'Dams', icon: 'layers', color: '#06b6d4', desc: 'Reservoir/Dams' },
+        ]
+      : [
+          { id: 0, label: 'Methods', icon: 'edit-note', color: '#8b5cf6', desc: 'Reading Methods' },
+          { id: 1, label: 'Status', icon: 'warning', color: '#f59e0b', desc: 'Water Status' },
+        ];
+
+    // Filter only available charts based on pieCharts data
+    const availableNavItems = navItems.filter(item => item.id < chartData.pieCharts!.length);
+
+    if (availableNavItems.length <= 1) return null; // Don't show nav if only 1 chart
+
+    return (
+      <View style={styles.chartNavigationWrapper}>
+        <View style={styles.chartNavigation}>
+          {availableNavItems.map((item) => {
+            const isActive = currentPieChartPage === item.id;
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.chartNavItem,
+                  isActive && styles.chartNavItemActive,
+                ]}
+                onPress={() => {
+                  setCurrentPieChartPage(item.id);
+                  // Scroll to the chart section if needed
+                  if (pieChartRefs[item.id]) {
+                    pieChartRefs[item.id]?.measureLayout(
+                      pieChartRefs[0] as any,
+                      (_x: number, y: number) => {
+                        console.log(`Scroll to chart ${item.id} at position ${y}`);
+                      },
+                      () => console.log('Layout measurement failed')
+                    );
+                  }
+                }}
+              >
+                <MaterialIcons
+                  name={item.icon as any}
+                  size={22}
+                  color={isActive ? '#FFFFFF' : item.color}
+                />
+                <Text
+                  style={[
+                    styles.chartNavLabel,
+                    isActive && styles.chartNavLabelActive,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
   const renderDatasetButtons = () => (
-    <View style={[styles.exportSection, createNeumorphicCard({ size: 'medium' })]}>
-      <Text style={[styles.sectionTitle, NeumorphicTextStyles.subheading]}>📊 View Dataset Charts</Text>
-      <Text style={styles.exportDescription}>
-        Click to view detailed charts for specific datasets
+    <View style={styles.datasetSection}>
+      <View style={styles.datasetHeader}>
+        <MaterialIcons name="insights" size={24} color={Colors.deepSecurityBlue} />
+        <Text style={styles.datasetHeaderText}>Select Dataset</Text>
+      </View>
+      <Text style={styles.datasetDescription}>
+        Choose a dataset to view detailed charts and analytics
       </Text>
       
-      <View style={styles.exportButtons}>
+      <View style={styles.datasetButtonsContainer}>
         <TouchableOpacity
           style={[
-            styles.exportButton,
-            createNeumorphicButton('primary', { size: 'large', borderRadius: 12 }),
+            styles.datasetButtonNew,
+            createNeumorphicCard({ size: 'small' }),
             selectedDataset === 'sites' && styles.datasetButtonActive,
           ]}
           onPress={() => handleDatasetChange('sites')}
           disabled={loading}
         >
           {loading && selectedDataset === 'sites' ? (
-            <ActivityIndicator color={Colors.white} size="small" />
+            <ActivityIndicator color={Colors.aquaTechBlue} size="small" />
           ) : (
             <>
-              <Text style={styles.exportButtonIcon}>🗺️</Text>
-              <Text style={styles.exportButtonText}>Monitoring Sites</Text>
-              <Text style={styles.exportButtonSubtext}>
-                {selectedDataset === 'sites' ? 'Currently Viewing' : 'View charts & analysis'}
+              <View style={[styles.datasetIconBox, selectedDataset === 'sites' && styles.datasetIconBoxActive]}>
+                <MaterialIcons 
+                  name="place" 
+                  size={32} 
+                  color={selectedDataset === 'sites' ? Colors.white : Colors.aquaTechBlue} 
+                />
+              </View>
+              <Text style={[styles.datasetButtonTitle, selectedDataset === 'sites' && styles.datasetButtonTitleActive]}>
+                Monitoring Sites
               </Text>
+              <Text style={styles.datasetButtonDesc}>
+                Site locations & status
+              </Text>
+              {selectedDataset === 'sites' && (
+                <View style={styles.activeIndicator}>
+                  <MaterialIcons name="check-circle" size={16} color={Colors.validationGreen} />
+                  <Text style={styles.activeIndicatorText}>Active</Text>
+                </View>
+              )}
             </>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[
-            styles.exportButton,
-            createNeumorphicButton('secondary', { size: 'large', borderRadius: 12 }),
+            styles.datasetButtonNew,
+            createNeumorphicCard({ size: 'small' }),
             selectedDataset === 'readings' && styles.datasetButtonActive,
           ]}
           onPress={() => handleDatasetChange('readings')}
@@ -1232,11 +2406,25 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
             <ActivityIndicator color={Colors.aquaTechBlue} size="small" />
           ) : (
             <>
-              <Text style={styles.exportButtonIcon}>📊</Text>
-              <Text style={styles.exportButtonText}>Water Level Readings</Text>
-              <Text style={styles.exportButtonSubtext}>
-                {selectedDataset === 'readings' ? 'Currently Viewing' : 'View charts & analysis'}
+              <View style={[styles.datasetIconBox, selectedDataset === 'readings' && styles.datasetIconBoxActive]}>
+                <MaterialIcons 
+                  name="water-drop" 
+                  size={32} 
+                  color={selectedDataset === 'readings' ? Colors.white : Colors.aquaTechBlue} 
+                />
+              </View>
+              <Text style={[styles.datasetButtonTitle, selectedDataset === 'readings' && styles.datasetButtonTitleActive]}>
+                Water Readings
               </Text>
+              <Text style={styles.datasetButtonDesc}>
+                Level measurements
+              </Text>
+              {selectedDataset === 'readings' && (
+                <View style={styles.activeIndicator}>
+                  <MaterialIcons name="check-circle" size={16} color={Colors.validationGreen} />
+                  <Text style={styles.activeIndicatorText}>Active</Text>
+                </View>
+              )}
             </>
           )}
         </TouchableOpacity>
@@ -1287,22 +2475,46 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ profile, onBack }) =>
 
             {/* Statistics Cards */}
             <View style={styles.statsGrid}>
-          {renderStatCard('Total Sites', stats.totalSites, '🏗️', Colors.aquaTechBlue)}
-          {renderStatCard('Total Readings', stats.totalReadings, '📊', Colors.deepSecurityBlue)}
-          {renderStatCard('Danger Alerts', stats.dangerSites, '🚨', Colors.criticalRed)}
-          {renderStatCard('Warnings', stats.warningSites, '⚠️', Colors.warningYellow)}
+          {renderStatCard('Total Sites', stats.totalSites, 'location-on', '#6366F1')}
+          {renderStatCard('Total Readings', stats.totalReadings, 'analytics', '#8B5CF6')}
+          {renderStatCard('Danger Alerts', stats.dangerSites, 'warning', '#EF4444')}
+          {renderStatCard('Warnings', stats.warningSites, 'error-outline', '#F59E0B')}
         </View>
           </>
         ) : (
           <>
-            {/* Chart Type Selector */}
-            {renderChartTypeSelector()}
+            {/* Chart Controls Bar */}
+            {renderChartControls()}
 
             {/* Chart Selection Modal */}
             {renderChartSelectionModal()}
+            
+            {/* Time Period Selection Modal */}
+            {renderTimePeriodModal()}
+
+            {/* PDF Export Progress Modal */}
+            {renderExportProgressModal()}
+
+            {/* Blur overlay during PDF export */}
+            {isExporting && (
+              <View style={styles.blurOverlay} />
+            )}
+
+            {/* Chart Navigation (only for pie/donut charts on sites/readings datasets) */}
+            {(selectedChart === 'pie' || selectedChart === 'donut') && 
+             (selectedDataset === 'sites' || selectedDataset === 'readings') && 
+             renderChartNavigation()}
 
             {/* Chart Display */}
-            {renderChart()}
+            <ViewShot 
+              ref={chartViewRef} 
+              options={{ format: 'png', quality: 1.0 }}
+              style={{ backgroundColor: isExporting ? '#FFFFFF' : 'transparent' }}
+            >
+              {renderChart()}
+            </ViewShot>
+
+
           </>
         )}
         </Animated.View>
@@ -1321,8 +2533,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    paddingTop: 50,
+    paddingTop: 16,
     margin: 16,
+    marginTop: 8,
     marginBottom: 8,
     borderRadius: 16,
   },
@@ -1378,24 +2591,34 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: (screenWidth - 48) / 2,
-    padding: 16,
+    padding: 20,
     marginBottom: 12,
     borderRadius: 16,
     alignItems: 'center',
+  },
+  statIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   statIcon: {
     fontSize: 32,
     marginBottom: 8,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textSecondary,
     textAlign: 'center',
+    fontWeight: '500',
   },
   avgCard: {
     padding: 20,
@@ -1417,6 +2640,55 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     borderRadius: 16,
+  },
+  chartControlsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.white,
+  },
+  controlButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  controlButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  controlButtonTextContainer: {
+    flex: 1,
+    marginLeft: 8,
+    marginRight: 4,
+  },
+  controlButtonLabel: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  controlButtonValue: {
+    fontSize: 13,
+    color: Colors.deepSecurityBlue,
+    fontWeight: '600',
+  },
+  controlButtonExport: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  controlDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: Colors.border,
+    marginHorizontal: 4,
   },
   sectionTitle: {
     fontSize: 16,
@@ -1454,6 +2726,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 16,
     minHeight: 300,
+    backgroundColor: 'transparent',
   },
   chartHeader: {
     marginBottom: 16,
@@ -1471,6 +2744,13 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  chartDataInfo: {
+    fontSize: 10,
+    color: Colors.aquaTechBlue,
+    textAlign: 'center',
+    marginTop: 4,
+    fontWeight: '600',
   },
   noDataText: {
     textAlign: 'center',
@@ -1663,14 +2943,12 @@ const styles = StyleSheet.create({
   pieChartContainer: {
     position: 'relative',
     width: '100%',
-    height: 400,
+    minHeight: 400,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 0,
-    overflow: 'hidden',
   },
   pieChartCenter: {
-    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1734,6 +3012,83 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 16,
   },
+  datasetSection: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  datasetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  datasetHeaderText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+    marginLeft: 8,
+  },
+  datasetDescription: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  datasetButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  datasetButtonNew: {
+    flex: 1,
+    padding: 20,
+    borderRadius: 16,
+    alignItems: 'center',
+    minHeight: 160,
+    justifyContent: 'center',
+    backgroundColor: Colors.white,
+  },
+  datasetIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#E0F2FE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  datasetIconBoxActive: {
+    backgroundColor: Colors.aquaTechBlue,
+  },
+  datasetButtonTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  datasetButtonTitleActive: {
+    color: Colors.aquaTechBlue,
+  },
+  datasetButtonDesc: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  activeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#DCFCE7',
+    borderRadius: 12,
+  },
+  activeIndicatorText: {
+    fontSize: 11,
+    color: Colors.validationGreen,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
   exportDescription: {
     fontSize: 14,
     color: Colors.textSecondary,
@@ -1743,12 +3098,20 @@ const styles = StyleSheet.create({
   exportButtons: {
     gap: 12,
   },
-  exportButton: {
+  datasetButton: {
     padding: 20,
     borderRadius: 12,
     alignItems: 'center',
     minHeight: 120,
     justifyContent: 'center',
+  },
+  exportButton: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    minHeight: 56,
   },
   exportButtonDisabled: {
     opacity: 0.6,
@@ -1756,6 +3119,9 @@ const styles = StyleSheet.create({
   exportButtonIcon: {
     fontSize: 36,
     marginBottom: 8,
+  },
+  exportButtonIconSvg: {
+    marginRight: 10,
   },
   exportButtonText: {
     fontSize: 16,
@@ -1938,7 +3304,9 @@ const styles = StyleSheet.create({
     fontSize: 40,
     marginBottom: 8,
   },
-
+  chartTypeIconSvg: {
+    marginBottom: 8,
+  },
   chartTypeLabel: {
     fontSize: 14,
     fontWeight: 'bold',
@@ -1959,6 +3327,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.validationGreen,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1969,6 +3339,361 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: 'bold',
   },
+  timePeriodModalContent: {
+    width: screenWidth - 32,
+    maxHeight: '80%',
+    backgroundColor: Colors.white,
+    borderRadius: 20,
+    padding: 20,
+  },
+  timePeriodOptionsNew: {
+    gap: 12,
+  },
+  periodOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: Colors.softLightGrey,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  periodOptionButtonActive: {
+    backgroundColor: Colors.aquaTechBlue,
+    borderColor: Colors.aquaTechBlue,
+  },
+  periodOptionTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  periodOptionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+    marginBottom: 2,
+  },
+  periodOptionTitleActive: {
+    color: Colors.white,
+  },
+  periodOptionSubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  periodOptionSubtitleActive: {
+    color: Colors.white,
+    opacity: 0.9,
+  },
+  customDateSection: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+  },
+  customDateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  customDateHeaderText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+    marginLeft: 8,
+  },
+  dateInfoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  dateInfoText: {
+    fontSize: 12,
+    color: '#6366F1',
+    marginLeft: 8,
+    flex: 1,
+    lineHeight: 18,
+  },
+  dateSelectorsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  dateSelector: {
+    flex: 1,
+  },
+  dateSelectorLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.deepSecurityBlue,
+    marginBottom: 8,
+  },
+  dateSelectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: Colors.white,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  dateSelectorText: {
+    fontSize: 14,
+    color: Colors.deepSecurityBlue,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  applyCustomButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    backgroundColor: Colors.aquaTechBlue,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  applyCustomButtonText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: Colors.white,
+  },
+  timePeriodOptions: {
+    paddingVertical: 8,
+  },
+  timePeriodOption: {
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 16,
+    alignItems: 'center',
+    minHeight: 120,
+    position: 'relative',
+  },
+  timePeriodOptionActive: {
+    borderWidth: 3,
+    borderColor: Colors.aquaTechBlue,
+    backgroundColor: Colors.white,
+  },
+  timePeriodIcon: {
+    fontSize: 40,
+    marginBottom: 8,
+  },
+  timePeriodIconSvg: {
+    marginBottom: 8,
+  },
+  timePeriodLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  timePeriodLabelActive: {
+    color: Colors.aquaTechBlue,
+  },
+  timePeriodDescription: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  customDateContainer: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: Colors.softLightGrey,
+    borderRadius: 12,
+  },
+  customDateTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  dateRangeInfo: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginLeft: 6,
+    flex: 1,
+  },
+  dateRangeInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e3f2fd',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  datePickerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  datePickerItem: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  dateLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.deepSecurityBlue,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  dateButton: {
+    flexDirection: 'row',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.white,
+  },
+  dateButtonText: {
+    fontSize: 13,
+    color: Colors.deepSecurityBlue,
+    fontWeight: '500',
+  },
+  applyButton: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: Colors.aquaTechBlue,
+    marginTop: 8,
+  },
+  applyButtonText: {
+    fontSize: 15,
+    color: Colors.white,
+    fontWeight: 'bold',
+  },
+
+  // Export Progress Modal Styles
+  exportProgressOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  exportProgressContent: {
+    backgroundColor: Colors.white,
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    width: screenWidth - 80,
+    maxWidth: 400,
+  },
+  exportProgressTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  exportProgressSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  exportProgressBarContainer: {
+    width: '100%',
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  exportProgressBarFill: {
+    height: '100%',
+    backgroundColor: Colors.aquaTechBlue,
+    borderRadius: 4,
+  },
+  exportProgressText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontWeight: '600',
+  },
+  chartNavigationWrapper: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  chartNavigationTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.deepSecurityBlue,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  chartNavigationSubtitle: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginBottom: 12,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  chartNavigation: {
+    flexDirection: 'row',
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    padding: 0,
+    gap: 10,
+  },
+  chartNavItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    gap: 7,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  chartNavItemActive: {
+    backgroundColor: '#3B82F6',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+    borderWidth: 0,
+    borderColor: 'transparent',
+  },
+  chartNavLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4B5563',
+    letterSpacing: 0.3,
+  },
+  chartNavLabelActive: {
+    color: '#FFFFFF',
+  },
+  blurOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    zIndex: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  blurOverlayText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.deepSecurityBlue,
+  },
+
 });
 
 export default DashboardScreen;
