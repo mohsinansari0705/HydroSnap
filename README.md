@@ -75,8 +75,8 @@ flowchart TD
 
 ## 👥 Team: GrayCode
 
-| Name            | Role                          |
-|-----------------|-------------------------------|
+| Team Members            |
+|-----------------|
 | [`Mohsin Ansari`](https://github.com/mohsinansari0705)   | Model Integration & Backend |
 | [`Rohit Yadav`](https://github.com/RohityadavGG)     | Data & Visualizations       |
 | [`Ayush`](https://github.com/ayush-code303)     | Backend Development       |
